@@ -6,10 +6,26 @@ import os
 
 load_dotenv()
 
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+# Determinar el entorno (por defecto 'local' si no está definido)
+APP_ENV = os.getenv("APP_ENV", "local")
+
+# Obtener URL de base de datos según el entorno
+if APP_ENV == "production":
+    SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+else:
+    # Intenta obtener la URL local explícita, sino usa la default o fallback
+    SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL_LOCAL")
+    if not SQLALCHEMY_DATABASE_URL:
+        # Fallback para compatibilidad si no se define _LOCAL
+        SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Validación básica
+if not SQLALCHEMY_DATABASE_URL:
+    raise ValueError(f"DATABASE_URL no está configurada para el entorno: {APP_ENV}")
 
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL
+    SQLALCHEMY_DATABASE_URL,
+    pool_pre_ping=True
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

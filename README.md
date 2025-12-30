@@ -123,8 +123,9 @@ CREATE TABLE orders (
 
 ### Instrucciones
 
-1. **Configurar Base de Datos**:
-   Asegúrese de que PostgreSQL esté corriendo y actualice la URL en `backend/database.py`.
+1. **Configuración de Base de Datos**:
+   - Para desarrollo local, consulte el archivo `configuracion_backend.md` (si tiene acceso) o configure su archivo `.env` basándose en el ejemplo provisto.
+   - Asegúrese de que PostgreSQL esté corriendo.
 
 2. **Instalar Dependencias**:
    ```bash

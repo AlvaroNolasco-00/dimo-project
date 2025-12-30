@@ -1,4 +1,5 @@
 # PVC specific
+configuracion_backend.md
 .env
 .venv/
 venv/
