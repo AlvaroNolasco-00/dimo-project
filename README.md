@@ -165,7 +165,7 @@ Si necesitas configurar el servicio manualmente en el dashboard:
 
 1.  **Buildpack**: Selecciona `Python`.
 2.  **Configuración de Build y Run** (Configure Buildpack):
-    - **Build command**: `pip install -r requirements.txt`
+    - **Build command**: Dejar en **blanco** (Override OFF). Koyeb instalará automáticamente las dependencias si detecta `requirements.txt`.
     - **Run command**: `gunicorn -w 4 -k uvicorn.workers.UvicornWorker backend.main:app`
     - **Privileged**: Dejar **desmarcado**.
     - **Work directory**: Dejar en **blanco** (o usar `.`). **IMPORTANTE**: No poner `backend`, ya que el archivo `requirements.txt` está en la raíz.
