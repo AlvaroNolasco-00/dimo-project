@@ -168,7 +168,7 @@ Si necesitas configurar el servicio manualmente en el dashboard:
     - **Build command**: `pip install -r requirements.txt`
     - **Run command**: `gunicorn -w 4 -k uvicorn.workers.UvicornWorker backend.main:app`
     - **Privileged**: Dejar **desmarcado**.
-    - **Work directory**: `backend` (o dejar en blanco si Koyeb detecta la raíz correctamente, pero asegúrate de que el comando de run apunte a `backend.main:app`). NOTA: Si usas el repo tal cual, el `koyeb.yaml` setea `PYTHONPATH=.` para que funcione desde la raíz.
+    - **Work directory**: Dejar en **blanco** (o usar `.`). **IMPORTANTE**: No poner `backend`, ya que el archivo `requirements.txt` está en la raíz.
 
 ### Variables de Entorno (Environment Variables)
 Para que la aplicación funcione, debes configurar la siguiente variable en Koyeb:
