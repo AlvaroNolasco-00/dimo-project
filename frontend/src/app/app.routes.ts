@@ -3,7 +3,7 @@ import { EditorComponent } from './editor/editor.component';
 import { LoginComponent } from './auth/login/login.component';
 import { RegisterComponent } from './auth/register/register.component';
 import { PendingApprovalComponent } from './auth/pending-approval/pending-approval.component';
-import { approvedGuard } from './guards/auth.guard';
+import { approvedGuard, adminGuard } from './guards/auth.guard';
 import { AuthLayoutComponent } from './layout/auth-layout/auth-layout.component';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 import { UsuariosLayoutComponent } from './usuarios/usuarios-layout/usuarios-layout.component';
@@ -60,7 +60,11 @@ export const routes: Routes = [
                 children: [
                     { path: '', redirectTo: 'listado', pathMatch: 'full' },
                     { path: 'permisos', component: PermisosComponent },
-                    { path: 'creacion', component: CreacionComponent },
+                    {
+                        path: 'creacion',
+                        component: CreacionComponent,
+                        canActivate: [adminGuard]
+                    },
                     { path: 'listado', component: ListadoComponent },
                 ]
             }

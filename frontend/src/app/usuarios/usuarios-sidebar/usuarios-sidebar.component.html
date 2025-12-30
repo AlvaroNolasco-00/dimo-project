@@ -14,7 +14,8 @@
       <i class="ph ph-shield-check"></i>
       <span class="btn-text" *ngIf="!isCollapsed()">Permisos</span>
     </button>
-    <button class="nav-btn" routerLink="/usuarios/creacion" routerLinkActive="active" [title]="'Creación'">
+    <button class="nav-btn" routerLink="/usuarios/creacion" routerLinkActive="active" [title]="'Creación'"
+      *ngIf="isAdmin">
       <i class="ph ph-user-plus"></i>
       <span class="btn-text" *ngIf="!isCollapsed()">Creación</span>
     </button>
@@ -24,4 +25,3 @@
     </button>
   </nav>
 </aside>
-

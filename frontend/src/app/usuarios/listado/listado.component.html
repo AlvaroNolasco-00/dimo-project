@@ -3,7 +3,7 @@
 
   <div class="controls">
     <div class="actions-row">
-      <button class="btn-create" [routerLink]="['/usuarios/creacion']">
+      <button class="btn-create" [routerLink]="['/usuarios/creacion']" *ngIf="isAdmin">
         <i class="ph ph-plus"></i>
         Nuevo Usuario
       </button>

@@ -39,6 +39,6 @@ export const adminGuard = () => {
         return true;
     }
 
-    router.navigate(['/factory']);
+    router.navigate(['/utilidades']);
     return false;
 };

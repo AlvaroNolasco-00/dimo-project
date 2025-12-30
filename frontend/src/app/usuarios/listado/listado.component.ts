@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { UserService, User } from '../../services/user.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-listado',
@@ -26,13 +27,17 @@ export class ListadoComponent implements OnInit, OnDestroy {
   Math = Math; // For ceiling in template
   private searchSubject = new Subject<string>();
 
+  isAdmin = false;
+
   constructor(
     private userService: UserService,
+    private authService: AuthService, // Inject AuthService
     private cdr: ChangeDetectorRef,
     private zone: NgZone
   ) { }
 
   ngOnInit() {
+    this.isAdmin = this.authService.isAdmin();
     this.loadUsers();
 
     this.searchSubject.pipe(
