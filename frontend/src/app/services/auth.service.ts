@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { tap, catchError, switchMap, map } from 'rxjs/operators';
 import { of, Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 interface User {
     email: string;
@@ -42,7 +43,7 @@ export class AuthService {
     }
 
     login(credentials: FormData): Observable<any> {
-        return this.http.post<any>('/api/auth/login', credentials).pipe(
+        return this.http.post<any>(`${environment.apiUrl}/auth/login`, credentials).pipe(
             tap(res => {
                 localStorage.setItem(this.TOKEN_KEY, res.access_token);
             }),
@@ -51,11 +52,11 @@ export class AuthService {
     }
 
     register(credentials: FormData): Observable<any> {
-        return this.http.post<any>('/api/auth/register', credentials);
+        return this.http.post<any>(`${environment.apiUrl}/auth/register`, credentials);
     }
 
     fetchMe(): Observable<User | null> {
-        return this.http.get<User>('/api/auth/me').pipe(
+        return this.http.get<User>(`${environment.apiUrl}/auth/me`).pipe(
             tap(user => this._user.set(user)),
             catchError(() => {
                 this.logout();

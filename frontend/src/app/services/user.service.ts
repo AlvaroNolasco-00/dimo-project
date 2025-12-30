@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface User {
     id: number;
@@ -19,7 +20,7 @@ export interface UserListResponse {
     providedIn: 'root'
 })
 export class UserService {
-    private apiUrl = '/api/admin/users';
+    private apiUrl = `${environment.apiUrl}/admin/users`;
 
     constructor(private http: HttpClient) { }
 
@@ -46,6 +47,6 @@ export class UserService {
     }
 
     approveUser(userId: number): Observable<any> {
-        return this.http.post(`/api/admin/approve/${userId}`, {});
+        return this.http.post(`${environment.apiUrl}/admin/approve/${userId}`, {});
     }
 }
