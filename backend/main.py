@@ -178,6 +178,33 @@ async def approve_user(user_id: int, db: Session = Depends(get_db), admin: model
     db.commit()
     return {"message": f"User {user.email} approved"}
 
+@app.post("/api/admin/users/create")
+async def create_user_by_admin(
+    email: str = Form(...),
+    full_name: str = Form(...),
+    password: str = Form(...),
+    is_admin: bool = Form(False),
+    db: Session = Depends(get_db),
+    admin: models.User = Depends(get_admin_user)
+):
+    # Check if email exists
+    db_user = db.query(models.User).filter(models.User.email == email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    new_user = models.User(
+        email=email,
+        full_name=full_name,
+        hashed_password=auth.get_password_hash(password),
+        is_approved=True, # Auto-approve when created by admin
+        is_admin=is_admin
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    return {"message": "User created successfully", "user_id": new_user.id}
+
 # --- IMAGE PROCESSING ENDPOINTS (PROTECTED) ---
 
 @app.post("/api/remove-objects")

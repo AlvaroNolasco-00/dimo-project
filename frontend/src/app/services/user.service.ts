@@ -49,4 +49,16 @@ export class UserService {
     approveUser(userId: number): Observable<any> {
         return this.http.post(`${environment.apiUrl}/admin/approve/${userId}`, {});
     }
+
+    createUser(user: any): Observable<any> {
+        const formData = new FormData();
+        formData.append('email', user.email);
+        formData.append('full_name', user.full_name);
+        formData.append('password', user.password);
+        // formData handles boolean as string usually, but explicit conversion is safer if backend expects specific format
+        // Backend (FastAPI Form) handles "true"/"false" strings correctly for bool
+        formData.append('is_admin', String(user.is_admin));
+
+        return this.http.post(`${environment.apiUrl}/admin/users/create`, formData);
+    }
 }

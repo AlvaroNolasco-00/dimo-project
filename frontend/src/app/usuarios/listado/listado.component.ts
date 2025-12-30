@@ -1,5 +1,6 @@
 import { Component, OnInit, ChangeDetectorRef, OnDestroy, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subject, debounceTime, distinctUntilChanged } from 'rxjs';
 import { UserService, User } from '../../services/user.service';
@@ -7,7 +8,7 @@ import { UserService, User } from '../../services/user.service';
 @Component({
   selector: 'app-listado',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './listado.component.html',
   styleUrl: './listado.component.scss'
 })
