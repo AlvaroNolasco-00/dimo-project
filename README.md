@@ -148,3 +148,32 @@ CREATE TABLE orders (
    npm start
    # La app estará disponible en http://localhost:4200
    ```
+
+---
+
+## ☁️ Despliegue en Koyeb
+
+El proyecto está pre-configurado para desplegarse fácilmente en Koyeb.
+
+### Opción 1: Configuración Automática (Recomendada)
+El repositorio incluye un archivo `koyeb.yaml` que Koyeb detectará automáticamente.
+1.  Conecta tu repositorio de GitHub a Koyeb.
+2.  Koyeb leerá la configuración y desplegará el servicio.
+
+### Opción 2: Configuración Manual
+Si necesitas configurar el servicio manualmente en el dashboard:
+
+1.  **Buildpack**: Selecciona `Python`.
+2.  **Configuración de Build y Run** (Configure Buildpack):
+    - **Build command**: `pip install -r requirements.txt`
+    - **Run command**: `gunicorn -w 4 -k uvicorn.workers.UvicornWorker backend.main:app`
+    - **Privileged**: Dejar **desmarcado**.
+    - **Work directory**: `backend` (o dejar en blanco si Koyeb detecta la raíz correctamente, pero asegúrate de que el comando de run apunte a `backend.main:app`). NOTA: Si usas el repo tal cual, el `koyeb.yaml` setea `PYTHONPATH=.` para que funcione desde la raíz.
+
+### Variables de Entorno (Environment Variables)
+Para que la aplicación funcione, debes configurar la siguiente variable en Koyeb:
+
+| Variable | Descripción |
+| :--- | :--- |
+| `DATABASE_URL` | String de conexión a tu base de datos PostgreSQL (ej. Neon.tech). |
+
