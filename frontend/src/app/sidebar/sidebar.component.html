@@ -1,0 +1,39 @@
+<aside class="sidebar" [class.collapsed]="isCollapsed()">
+  <div class="sidebar-header">
+    <div class="logo">
+      <i class="ph ph-aperture"></i>
+      <span *ngIf="!isCollapsed()">PhotoEdit</span>
+    </div>
+    <button class="toggle-btn" (click)="toggle()" [title]="isCollapsed() ? 'Expandir' : 'Colapsar'">
+      <i class="ph" [class.ph-caret-double-right]="isCollapsed()" [class.ph-caret-double-left]="!isCollapsed()"></i>
+    </button>
+  </div>
+
+  <nav>
+    <button class="nav-btn" routerLink="/utilidades/remove-bg" routerLinkActive="active" [title]="'Quitar Fondo'">
+      <i class="ph ph-eraser"></i>
+      <span class="btn-text" *ngIf="!isCollapsed()">Quitar Fondo</span>
+    </button>
+    <button class="nav-btn" routerLink="/utilidades/remove-objects" routerLinkActive="active" [title]="'Borrar Objetos'">
+      <i class="ph ph-magic-wand"></i>
+      <span class="btn-text" *ngIf="!isCollapsed()">Borrar Objetos</span>
+    </button>
+    <button class="nav-btn" routerLink="/utilidades/enhance" routerLinkActive="active" [title]="'Mejorar Calidad'">
+      <i class="ph ph-sparkle"></i>
+      <span class="btn-text" *ngIf="!isCollapsed()">Mejorar Calidad</span>
+    </button>
+    <button class="nav-btn" routerLink="/utilidades/upscale" routerLinkActive="active" [title]="'Upscaling'">
+      <i class="ph ph-arrows-out-simple"></i>
+      <span class="btn-text" *ngIf="!isCollapsed()">Upscaling</span>
+    </button>
+    <button class="nav-btn" routerLink="/utilidades/halftone" routerLinkActive="active" [title]="'Semitonos'">
+      <i class="ph ph-grid-nine"></i>
+      <span class="btn-text" *ngIf="!isCollapsed()">Semitonos</span>
+    </button>
+    <button class="nav-btn" routerLink="/utilidades/contour-clip" routerLinkActive="active"
+      [title]="'Recorte de Contorno'">
+      <i class="ph ph-scissors"></i>
+      <span class="btn-text" *ngIf="!isCollapsed()">Recorte de Contorno</span>
+    </button>
+  </nav>
+</aside>

@@ -1,0 +1,9 @@
+<div class="app-container">
+    <app-navbar-top></app-navbar-top>
+    <div class="content-wrapper">
+        <app-sidebar *ngIf="showSidebar()"></app-sidebar>
+        <main class="main-content" [class.with-sidebar]="showSidebar()">
+            <router-outlet></router-outlet>
+        </main>
+    </div>
+</div>

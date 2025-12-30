@@ -1,0 +1,101 @@
+<div class="user-list-container">
+  <h2>Listado de Usuarios</h2>
+
+  <div class="controls">
+    <div class="filters-row">
+      <div class="search-box">
+        <i class="ph ph-magnifying-glass search-icon"></i>
+        <input type="text" placeholder="Buscar por nombre o correo..." [(ngModel)]="search" (input)="onSearch($event)"
+          class="search-input">
+      </div>
+
+      <div class="filters-group">
+        <div class="filter-item">
+          <label>Estado</label>
+          <select [(ngModel)]="filterStatus" (change)="onFilterChange()">
+            <option [ngValue]="null">Todos</option>
+            <option [ngValue]="false">Pendiente</option>
+            <option [ngValue]="true">Aprobado</option>
+          </select>
+        </div>
+
+        <div class="filter-item">
+          <label>Rol</label>
+          <select [(ngModel)]="filterRole" (change)="onFilterChange()">
+            <option [ngValue]="null">Todos</option>
+            <option [ngValue]="false">Usuario</option>
+            <option [ngValue]="true">Admin</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-container">
+    <div class="loader-overlay" *ngIf="loading">
+      <div class="loader"></div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="user-table">
+        <thead>
+          <tr>
+            <th (click)="sort('id')" class="sortable">
+              ID
+              <i class="ph" *ngIf="sortBy === 'id'"
+                [ngClass]="sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down'"></i>
+            </th>
+            <th (click)="sort('full_name')" class="sortable">
+              Nombre Completo
+              <i class="ph" *ngIf="sortBy === 'full_name'"
+                [ngClass]="sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down'"></i>
+            </th>
+            <th (click)="sort('email')" class="sortable">
+              Correo Electrónico
+              <i class="ph" *ngIf="sortBy === 'email'"
+                [ngClass]="sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down'"></i>
+            </th>
+            <th (click)="sort('is_approved')" class="sortable">
+              Estado
+              <i class="ph" *ngIf="sortBy === 'is_approved'"
+                [ngClass]="sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down'"></i>
+            </th>
+            <th (click)="sort('is_admin')" class="sortable">
+              Rol
+              <i class="ph" *ngIf="sortBy === 'is_admin'"
+                [ngClass]="sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down'"></i>
+            </th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users">
+            <td>{{ user.id }}</td>
+            <td>{{ user.full_name || 'N/A' }}</td>
+            <td>{{ user.email }}</td>
+            <td>
+              <span [class.status-approved]="user.is_approved" [class.status-pending]="!user.is_approved">
+                {{ user.is_approved ? 'Aprobado' : 'Pendiente' }}
+              </span>
+            </td>
+            <td>{{ user.is_admin ? 'Admin' : 'Usuario' }}</td>
+            <td>
+              <button *ngIf="!user.is_approved" (click)="approve(user)" class="btn-approve">Aprobar</button>
+            </td>
+          </tr>
+          <tr *ngIf="users.length === 0">
+            <td colspan="6" class="no-data">No se encontraron usuarios.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="pagination">
+    <span>Mostrando página {{ page }} de {{ Math.ceil(total / limit) || 1 }} (Total: {{ total }} usuarios)</span>
+    <div class="pagination-buttons">
+      <button (click)="changePage(page - 1)" [disabled]="page === 1">Anterior</button>
+      <button (click)="changePage(page + 1)" [disabled]="page * limit >= total">Siguiente</button>
+    </div>
+  </div>
+</div>

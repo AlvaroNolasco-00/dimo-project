@@ -1,0 +1,79 @@
+<div class="pedidos-container">
+  <div class="header">
+    <div class="title-section">
+      <h1>Pedidos</h1>
+      <p>Gestión y seguimiento de órdenes de producción</p>
+    </div>
+    <a routerLink="/gestion/pedidos/crear" class="btn-create">
+      <i class="ph ph-plus"></i>
+      Crear Pedido
+    </a>
+  </div>
+
+  <!-- Próximas Entregas Section -->
+  <div class="section-container">
+    <h2>Próximas Entregas</h2>
+    <div class="cards-grid">
+      <div class="delivery-card" *ngFor="let pedido of top3Entregas">
+        <div class="card-header">
+          <span class="delivery-date">
+            <i class="ph ph-calendar-blank"></i>
+            {{ pedido.fechaEntrega | date:'dd MMM yyyy' }}
+          </span>
+          <span class="status-badge" [ngClass]="pedido.etapa.toLowerCase()">
+            {{ pedido.etapa }}
+          </span>
+        </div>
+        <div class="card-body">
+          <h3>{{ pedido.cliente }}</h3>
+          <p class="order-id">#{{ pedido.id }}</p>
+        </div>
+        <div class="card-footer">
+          <span class="days-remaining">
+            <i class="ph ph-clock"></i>
+            Entrega cercana
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pedidos Activos Section -->
+  <div class="section-container">
+    <h2>Pedidos Activos</h2>
+    <div class="table-responsive">
+      <table class="pedidos-table">
+        <thead>
+          <tr>
+            <th>Pedido</th>
+            <th>Cliente</th>
+            <th>Fecha Creación</th>
+            <th>Fecha Entrega</th>
+            <th>Etapa</th>
+            <th>Notas</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let pedido of pedidosActivos">
+            <td class="fw-bold">#{{ pedido.id }}</td>
+            <td>{{ pedido.cliente }}</td>
+            <td>{{ pedido.fechaCreacion | date:'shortDate' }}</td>
+            <td>{{ pedido.fechaEntrega | date:'shortDate' }}</td>
+            <td>
+              <span class="status-badge" [ngClass]="pedido.etapa.toLowerCase()">
+                {{ pedido.etapa }}
+              </span>
+            </td>
+            <td class="notes-cell" title="{{ pedido.notas }}">{{ pedido.notas }}</td>
+            <td>
+              <button class="btn-icon" title="Ver detalle">
+                <i class="ph ph-eye"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

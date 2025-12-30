@@ -1,0 +1,44 @@
+<nav class="navbar-top">
+  <div class="navbar-container">
+    <div class="navbar-brand">
+      <i class="ph ph-aperture"></i>
+      <span>PhotoEdit</span>
+    </div>
+    <div class="navbar-right">
+      <div class="navbar-links">
+        <a routerLink="/utilidades" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" class="nav-link">
+          <i class="ph ph-toolbox"></i>
+          <span>Utilidades</span>
+        </a>
+        <a routerLink="/usuarios" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" class="nav-link">
+          <i class="ph ph-users"></i>
+          <span>Usuarios</span>
+        </a>
+        <a routerLink="/gestion" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" class="nav-link">
+          <i class="ph ph-folder-open"></i>
+          <span>Gestión</span>
+        </a>
+      </div>
+      <div class="user-menu-container" #userMenuContainer>
+        <button class="user-menu-trigger" (click)="toggleDropdown($event)">
+          <div class="user-avatar">
+            <i class="ph ph-user"></i>
+          </div>
+          <span class="user-name">{{ getUserDisplayName() }}</span>
+          <i class="ph ph-caret-down" [class.rotated]="isDropdownOpen()"></i>
+        </button>
+        <div class="user-dropdown" *ngIf="isDropdownOpen()">
+          <a class="dropdown-item" (click)="closeDropdown()">
+            <i class="ph ph-user-circle"></i>
+            <span>Ver perfil</span>
+          </a>
+          <button class="dropdown-item logout" (click)="logout()">
+            <i class="ph ph-sign-out"></i>
+            <span>Cerrar sesión</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+

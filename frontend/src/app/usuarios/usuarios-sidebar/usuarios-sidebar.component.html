@@ -1,0 +1,27 @@
+<aside class="sidebar" [class.collapsed]="isCollapsed()">
+  <div class="sidebar-header">
+    <div class="logo">
+      <i class="ph ph-users"></i>
+      <span *ngIf="!isCollapsed()">Usuarios</span>
+    </div>
+    <button class="toggle-btn" (click)="toggle()" [title]="isCollapsed() ? 'Expandir' : 'Colapsar'">
+      <i class="ph" [class.ph-caret-double-right]="isCollapsed()" [class.ph-caret-double-left]="!isCollapsed()"></i>
+    </button>
+  </div>
+
+  <nav>
+    <button class="nav-btn" routerLink="/usuarios/permisos" routerLinkActive="active" [title]="'Permisos'">
+      <i class="ph ph-shield-check"></i>
+      <span class="btn-text" *ngIf="!isCollapsed()">Permisos</span>
+    </button>
+    <button class="nav-btn" routerLink="/usuarios/creacion" routerLinkActive="active" [title]="'Creación'">
+      <i class="ph ph-user-plus"></i>
+      <span class="btn-text" *ngIf="!isCollapsed()">Creación</span>
+    </button>
+    <button class="nav-btn" routerLink="/usuarios/listado" routerLinkActive="active" [title]="'Listado'">
+      <i class="ph ph-list"></i>
+      <span class="btn-text" *ngIf="!isCollapsed()">Listado</span>
+    </button>
+  </nav>
+</aside>
+

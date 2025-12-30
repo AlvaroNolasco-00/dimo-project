@@ -1,0 +1,71 @@
+<div class="costos-operativos-container">
+  <h1>Costos Operativos</h1>
+  <p>Aquí podrás gestionar y visualizar todos los costos operativos del negocio.</p>
+  <div class="costs-container">
+    <div class="section camisas-section">
+      <div class="section-header">
+        <h2>Camisas</h2>
+      </div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Talla</th>
+              <th>Material</th>
+              <th>Tipo</th>
+              <th>Info Adicional</th>
+              <th>Costo</th>
+              <th class="text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let camisa of camisas">
+              <td>{{camisa.talla}}</td>
+              <td>{{camisa.material}}</td>
+              <td>{{camisa.tipo}}</td>
+              <td>{{camisa.infoAdicional}}</td>
+              <td>{{camisa.costo | currency}}</td>
+              <td class="text-right">
+                <button class="btn-edit">Editar</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section-footer">
+        <button class="btn-add">Agregar información</button>
+      </div>
+    </div>
+
+    <div class="section estampados-section">
+      <div class="section-header">
+        <h2>Estampados</h2>
+      </div>
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Posición</th>
+              <th>Tamaño</th>
+              <th>Costo</th>
+              <th class="text-right">Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let estampado of estampados">
+              <td>{{estampado.posicion}}</td>
+              <td>{{estampado.tamano}}</td>
+              <td>{{estampado.costo | currency}}</td>
+              <td class="text-right">
+                <button class="btn-edit">Editar</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section-footer">
+        <button class="btn-add">Agregar información</button>
+      </div>
+    </div>
+  </div>
+</div>

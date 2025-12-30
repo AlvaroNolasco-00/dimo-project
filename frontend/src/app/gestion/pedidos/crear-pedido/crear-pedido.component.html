@@ -1,0 +1,86 @@
+<div class="crear-pedido-container">
+  <div class="form-card">
+    <div class="form-header">
+      <h1>Crear Nuevo Pedido</h1>
+      <p>Ingresa la información detallada para registrar un nuevo pedido.</p>
+    </div>
+
+    <form (ngSubmit)="guardarPedido()">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="cliente">Nombre del Cliente</label>
+          <div class="input-wrapper">
+            <i class="ph ph-user"></i>
+            <input type="text" id="cliente" [(ngModel)]="nuevoPedido.cliente" name="cliente"
+              placeholder="Ej. Empresas Polar" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="fecha">Fecha de Entrega</label>
+          <div class="input-wrapper">
+            <i class="ph ph-calendar"></i>
+            <input type="date" id="fecha" [(ngModel)]="nuevoPedido.fechaEntrega" name="fecha" required>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map Section -->
+      <div class="form-group full-width">
+        <label for="ubicacion">Lugar de Entrega</label>
+        <p class="helper-text">Busca una dirección o selecciona el punto en el mapa.</p>
+
+        <div class="search-box">
+          <div class="input-wrapper">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="text" [(ngModel)]="searchQuery" name="searchQuery"
+              placeholder="Buscar dirección (Ej. Av. Reforma 222, CDMX)"
+              (keydown.enter)="$event.preventDefault(); searchAddress()">
+          </div>
+          <button type="button" class="btn-search" (click)="searchAddress()">
+            Buscar
+          </button>
+        </div>
+
+        <div id="map" class="map-container"></div>
+
+        <div class="selected-address" *ngIf="nuevoPedido.direccion">
+          <i class="ph ph-map-pin"></i>
+          <span>{{ nuevoPedido.direccion }}</span>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="etapa">Etapa Inicial</label>
+          <div class="input-wrapper">
+            <i class="ph ph-steps"></i>
+            <select id="etapa" [(ngModel)]="nuevoPedido.etapa" name="etapa" required>
+              <option *ngFor="let etapa of etapas" [value]="etapa">{{ etapa }}</option>
+            </select>
+            <i class="ph ph-caret-down select-icon"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group full-width">
+        <label for="notas">Notas Adicionales</label>
+        <div class="input-wrapper textarea-wrapper">
+          <i class="ph ph-note-pencil"></i>
+          <textarea id="notas" [(ngModel)]="nuevoPedido.notas" name="notas" rows="4"
+            placeholder="Información relevante sobre el pedido..."></textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn-cancel" (click)="cancelar()">
+          Cancelar
+        </button>
+        <button type="submit" class="btn-save">
+          <i class="ph ph-floppy-disk"></i>
+          Guardar Pedido
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
