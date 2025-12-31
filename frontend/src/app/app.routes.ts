@@ -20,6 +20,7 @@ import { RecuentoGastosComponent } from './gestion/finanzas/recuento-gastos/recu
 import { RecuentoGananciasComponent } from './gestion/finanzas/recuento-ganancias/recuento-ganancias.component';
 import { ProyectosComponent } from './gestion/proyectos/proyectos.component';
 import { NoProjectComponent } from './auth/no-project/no-project.component';
+import { ProfileComponent } from './profile/profile.component';
 
 export const routes: Routes = [
     // Auth Routes (Clean layout, no sidebar)
@@ -48,6 +49,7 @@ export const routes: Routes = [
             { path: 'upscale', component: EditorComponent },
             { path: 'halftone', component: EditorComponent },
             { path: 'contour-clip', component: EditorComponent },
+            { path: 'profile', component: ProfileComponent },
         ]
     },
 

@@ -20,6 +20,7 @@ class User(Base):
     hashed_password = Column(String)
     is_approved = Column(Boolean, default=False)
     is_admin = Column(Boolean, default=False)
+    avatar_url = Column(String, nullable=True)
 
     projects = relationship("Project", secondary=user_projects, back_populates="users")
 

@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, status
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
+from datetime import datetime
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
@@ -11,7 +12,13 @@ import backend.processing as processing
 from . import models, auth, database, finance
 from .routers import projects
 from .database import engine, get_db
+import shutil
+import os
 from .deps import get_current_user, get_approved_user, get_admin_user
+
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+os.makedirs(STATIC_DIR, exist_ok=True)
+
 
 # Create DB tables
 models.Base.metadata.create_all(bind=engine)
@@ -79,10 +86,63 @@ async def read_users_me(current_user: models.User = Depends(get_current_user), d
 
     return {
         "email": current_user.email,
+        "full_name": current_user.full_name,
         "is_approved": current_user.is_approved,
         "is_admin": current_user.is_admin,
+        "avatar_url": current_user.avatar_url,
         "projects": projects_list
     }
+
+@app.post("/api/auth/change-password")
+async def change_password(
+    current_password: str = Form(...),
+    new_password: str = Form(...),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not auth.verify_password(current_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect current password")
+    
+    current_user.hashed_password = auth.get_password_hash(new_password)
+    db.commit()
+    return {"message": "Password updated successfully"}
+
+@app.post("/api/auth/avatar")
+async def update_avatar(
+    file: UploadFile = File(...),
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        # Create a unique filename
+        file_extension = os.path.splitext(file.filename)[1]
+        filename = f"avatar_{current_user.id}_{int(datetime.utcnow().timestamp())}{file_extension}"
+        file_path = os.path.join(STATIC_DIR, filename)
+        
+        # Save file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+            
+        # Update user record
+        # In a real app with cloud storage, this would be a URL like S3 or Cloudinary
+        # For local, we'll serve it as a static file or just return the path for now
+        # Assuming we will mount static dir to serve these
+        avatar_url = f"/static/{filename}"
+        current_user.avatar_url = avatar_url
+        db.commit()
+        
+        return {"avatar_url": avatar_url}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/auth/validate-email")
+async def validate_email(
+    current_user: models.User = Depends(get_current_user)
+):
+    # Mock implementation
+    print(f"Sending validation email to {current_user.email}")
+    return {"message": "Validation email sent"}
+
 
 # --- ADMIN ENDPOINTS ---
 
@@ -354,6 +414,7 @@ async def api_contour_clip(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+app.mount("/api/static", StaticFiles(directory=STATIC_DIR), name="static")
 # app.mount("/", StaticFiles(directory="frontend/dist/frontend/browser", html=True), name="static")
 
 import uvicorn

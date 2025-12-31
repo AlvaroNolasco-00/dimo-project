@@ -50,7 +50,7 @@
           <i class="ph ph-caret-down" [class.rotated]="isDropdownOpen()"></i>
         </button>
         <div class="user-dropdown" *ngIf="isDropdownOpen()">
-          <a class="dropdown-item" (click)="closeDropdown()">
+          <a class="dropdown-item" routerLink="/utilidades/profile" (click)="closeDropdown()">
             <i class="ph ph-user-circle"></i>
             <span>Ver perfil</span>
           </a>

@@ -5,13 +5,7 @@ import { tap, catchError, switchMap, map } from 'rxjs/operators';
 import { of, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Project } from '../interfaces/project.interface';
-
-interface User {
-    email: string;
-    is_approved: boolean;
-    is_admin: boolean;
-    projects?: Project[];
-}
+import { User } from '../interfaces/user.interface';
 
 @Injectable({
     providedIn: 'root'
@@ -70,6 +64,30 @@ export class AuthService {
 
     register(credentials: FormData): Observable<any> {
         return this.http.post<any>(`${environment.apiUrl}/auth/register`, credentials);
+    }
+
+    updateAvatar(file: File): Observable<{ avatar_url: string }> {
+        const formData = new FormData();
+        formData.append('file', file);
+        return this.http.post<{ avatar_url: string }>(`${environment.apiUrl}/auth/avatar`, formData).pipe(
+            tap(res => {
+                const currentUser = this._user();
+                if (currentUser) {
+                    this._user.set({ ...currentUser, avatar_url: res.avatar_url });
+                }
+            })
+        );
+    }
+
+    changePassword(currentPassword: string, newPassword: string): Observable<any> {
+        const formData = new FormData();
+        formData.append('current_password', currentPassword);
+        formData.append('new_password', newPassword);
+        return this.http.post(`${environment.apiUrl}/auth/change-password`, formData);
+    }
+
+    sendVerificationEmail(): Observable<any> {
+        return this.http.post(`${environment.apiUrl}/auth/validate-email`, {});
     }
 
     fetchMe(): Observable<User | null> {

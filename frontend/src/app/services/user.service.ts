@@ -3,13 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
-export interface User {
-    id: number;
-    email: string;
-    full_name: string;
-    is_approved: boolean;
-    is_admin: boolean;
-}
+import { User } from '../interfaces/user.interface';
 
 export interface UserListResponse {
     total: number;

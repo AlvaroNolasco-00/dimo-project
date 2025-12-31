@@ -1,0 +1,99 @@
+<div class="profile-container">
+    <div class="profile-header">
+        <h1>Mi Perfil</h1>
+    </div>
+
+    <div class="profile-grid">
+        <!-- Left Column: User Info & Avatar -->
+        <div class="profile-card user-card">
+            <div class="avatar-wrapper" (click)="triggerFileInput()">
+                <div class="avatar-container">
+                    <img [src]="userAvatarUrl" alt="Avatar" class="avatar-image">
+                    <div class="avatar-overlay">
+                        <i class="ph ph-camera"></i>
+                    </div>
+                </div>
+                <input type="file" #fileInput class="hidden-input" (change)="onFileSelected($event)" accept="image/*">
+                <canvas #canvas class="hidden-input"></canvas>
+            </div>
+
+            <h2 class="user-name">{{ user()?.full_name }}</h2>
+            <p class="user-email">{{ user()?.email }}</p>
+
+            <button *ngIf="isRegularAccount" class="btn-premium">
+                <i class="ph ph-crown"></i> Conseguir Premium
+            </button>
+            <p class="account-status">Actualmente tienes Cuenta Regular</p>
+        </div>
+
+        <!-- Right Column: Settings -->
+        <div class="settings-column">
+            <!-- Email Verification -->
+            <div class="profile-card">
+                <h3 class="card-title">Información de Contacto</h3>
+                <div class="info-row">
+                    <div>
+                        <p class="info-label">Correo Electrónico</p>
+                        <p class="info-value">{{ user()?.email }}</p>
+                    </div>
+                    <button (click)="validateEmail()" class="btn-secondary">
+                        <i class="ph ph-check-circle"></i> Validar Correo
+                    </button>
+                </div>
+                <p *ngIf="validationMessage" class="success-message">{{ validationMessage }}</p>
+            </div>
+
+            <!-- Change Password -->
+            <div class="profile-card">
+                <h3 class="card-title">Seguridad</h3>
+
+                <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="password-form">
+                    <div class="form-group">
+                        <label>Contraseña Actual</label>
+                        <input type="password" formControlName="currentPassword" class="form-input">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nueva Contraseña</label>
+                            <input type="password" formControlName="newPassword" class="form-input">
+                        </div>
+                        <div class="form-group">
+                            <label>Confirmar Contraseña</label>
+                            <input type="password" formControlName="confirmPassword" class="form-input">
+                        </div>
+                    </div>
+
+                    <div *ngIf="passwordForm.errors?.['mismatch'] && passwordForm.touched" class="error-message">
+                        Las contraseñas no coinciden.
+                    </div>
+
+                    <div class="form-footer">
+                        <div class="message-container">
+                            <span *ngIf="passwordMessage" class="success-message">{{ passwordMessage }}</span>
+                            <span *ngIf="passwordError" class="error-message">{{ passwordError }}</span>
+                        </div>
+                        <button type="submit" [disabled]="passwordForm.invalid" class="btn-primary">
+                            Cambiar Contraseña
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Linked Projects -->
+            <div class="profile-card">
+                <h3 class="card-title">Proyectos Vinculados</h3>
+                <div *ngIf="user()?.projects?.length; else noProjects">
+                    <ul class="project-list">
+                        <li *ngFor="let project of user()?.projects" class="project-item">
+                            <i class="ph ph-folder"></i>
+                            <span>{{ project.name }}</span>
+                        </li>
+                    </ul>
+                </div>
+                <ng-template #noProjects>
+                    <p class="empty-state">No tienes proyectos vinculados.</p>
+                </ng-template>
+            </div>
+        </div>
+    </div>
+</div>
