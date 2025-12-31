@@ -2,59 +2,21 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, sta
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm
 from typing import Optional, List
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 import backend.processing as processing
-from . import models, auth, database
+from . import models, auth, database, finance
 from .database import engine, get_db
+from .deps import get_current_user, get_approved_user, get_admin_user
 
 # Create DB tables
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="PhotoEdit Suite API")
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
-
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
-    payload = auth.decode_access_token(token)
-    if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    email: str = payload.get("sub")
-    if email is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    user = db.query(models.User).filter(models.User.email == email).first()
-    if user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
-async def get_approved_user(current_user: models.User = Depends(get_current_user)):
-    if not current_user.is_approved:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account not approved yet. Please wait for an administrator to approve your account."
-        )
-    return current_user
-
-async def get_admin_user(current_user: models.User = Depends(get_current_user)):
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin privileges required"
-        )
-    return current_user
-
-app = FastAPI(title="PhotoEdit Suite API")
+app.include_router(finance.router)
 
 # CORS config
 app.add_middleware(

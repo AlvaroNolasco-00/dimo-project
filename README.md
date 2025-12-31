@@ -80,6 +80,7 @@ La conexión se define en `backend/database.py`. Asegúrese de tener una base de
 
 ### Scripts de Creación (DDL)
 
+
 #### Tabla de Usuarios (`users`)
 Almacena la información de autenticación y estado de los usuarios.
 
@@ -111,6 +112,31 @@ CREATE TABLE orders (
     notes TEXT
 );
 ```
+
+#### Costos Operativos (`cost_types` & `operative_costs`)
+Permite manejar "N" tipos de costos dinámicos mediante una columna JSONB para atributos variables.
+
+```sql
+-- 1. Definición de Tipos (Ej: Camisas, Estampados)
+CREATE TABLE cost_types (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR UNIQUE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Costos con Atributos Variables (JSONB)
+CREATE TABLE operative_costs (
+    id SERIAL PRIMARY KEY,
+    cost_type_id INTEGER REFERENCES cost_types(id) ON DELETE CASCADE,
+    base_cost DECIMAL(10, 2) NOT NULL,
+    attributes JSONB DEFAULT '{}', -- Ej: {"talla": "S", "material": "Algodón"}
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX ix_operative_costs_type ON operative_costs (cost_type_id);
+```
+
 
 ---
 

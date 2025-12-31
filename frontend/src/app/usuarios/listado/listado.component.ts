@@ -1,4 +1,5 @@
 import { Component, OnInit, ChangeDetectorRef, OnDestroy, NgZone } from '@angular/core';
+import Swal from 'sweetalert2';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -108,11 +109,37 @@ export class ListadoComponent implements OnInit, OnDestroy {
   }
 
   approve(user: User) {
-    if (confirm('Are you sure you want to approve this user?')) {
-      this.userService.approveUser(user.id).subscribe(() => {
-        this.loadUsers();
-      })
-    }
+    Swal.fire({
+      title: '¿Estás seguro?',
+      text: `¿Deseas aprobar al usuario ${user.full_name}?`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Sí, aprobar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.userService.approveUser(user.id).subscribe({
+          next: () => {
+            Swal.fire(
+              'Aprobado',
+              'El usuario ha sido aprobado exitosamente.',
+              'success'
+            );
+            this.loadUsers();
+          },
+          error: (err) => {
+            console.error('Error approving user:', err);
+            Swal.fire(
+              'Error',
+              'Hubo un problema al aprobar al usuario.',
+              'error'
+            );
+          }
+        });
+      }
+    });
   }
 }
 

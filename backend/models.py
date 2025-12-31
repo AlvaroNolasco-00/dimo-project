@@ -1,4 +1,6 @@
-from sqlalchemy import Boolean, Column, Integer, String
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Numeric, func
+from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.postgresql import JSON
 from .database import Base
 
 class User(Base):
@@ -10,3 +12,22 @@ class User(Base):
     hashed_password = Column(String)
     is_approved = Column(Boolean, default=False)
     is_admin = Column(Boolean, default=False)
+
+class CostType(Base):
+    __tablename__ = "cost_types"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+    description = Column(String)
+    created_at = Column(DateTime, server_default=func.now())
+
+class OperativeCost(Base):
+    __tablename__ = "operative_costs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    cost_type_id = Column(Integer, ForeignKey("cost_types.id", ondelete="CASCADE"))
+    base_cost = Column(Numeric(10, 2), nullable=False)
+    attributes = Column(JSON, default={})
+    created_at = Column(DateTime, server_default=func.now())
+
+    cost_type = relationship("CostType")

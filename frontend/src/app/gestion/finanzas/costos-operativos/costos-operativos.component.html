@@ -1,71 +1,92 @@
 <div class="costos-operativos-container">
   <h1>Costos Operativos</h1>
   <p>Aquí podrás gestionar y visualizar todos los costos operativos del negocio.</p>
+
+  <div class="actions-bar" style="margin-bottom: 20px;">
+    <button class="btn-primary" (click)="openTypeModal()">+ Nuevo Tipo de Gasto</button>
+  </div>
+
   <div class="costs-container">
-    <div class="section camisas-section">
+    <div class="section" *ngFor="let type of costTypes">
       <div class="section-header">
-        <h2>Camisas</h2>
+        <h2>{{ type.name }}</h2>
+        <small>{{ type.description }}</small>
       </div>
       <div class="table-responsive">
         <table>
           <thead>
             <tr>
-              <th>Talla</th>
-              <th>Material</th>
-              <th>Tipo</th>
-              <th>Info Adicional</th>
-              <th>Costo</th>
+              <th *ngFor="let col of typeColumns[type.id]">{{ col | titlecase }}</th>
+              <th>Costo Base</th>
               <th class="text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let camisa of camisas">
-              <td>{{camisa.talla}}</td>
-              <td>{{camisa.material}}</td>
-              <td>{{camisa.tipo}}</td>
-              <td>{{camisa.infoAdicional}}</td>
-              <td>{{camisa.costo | currency}}</td>
+            <tr *ngFor="let cost of groupedCosts[type.id]">
+              <td *ngFor="let col of typeColumns[type.id]">
+                {{ cost.attributes[col] }}
+              </td>
+              <td>{{ cost.base_cost | currency }}</td>
               <td class="text-right">
-                <button class="btn-edit">Editar</button>
+                <button class="btn-edit" (click)="editCost(cost)">Editar</button>
+              </td>
+            </tr>
+            <tr *ngIf="!groupedCosts[type.id] || groupedCosts[type.id].length === 0">
+              <td [attr.colspan]="(typeColumns[type.id]?.length || 0) + 2" class="text-center">
+                No hay costos registrados.
               </td>
             </tr>
           </tbody>
         </table>
       </div>
       <div class="section-footer">
-        <button class="btn-add">Agregar información</button>
+        <button class="btn-add" (click)="openCostModal(type.id)">Agregar costo a {{type.name}}</button>
       </div>
     </div>
+  </div>
+</div>
 
-    <div class="section estampados-section">
-      <div class="section-header">
-        <h2>Estampados</h2>
+<!-- Modal: New Cost Type -->
+<div class="modal-backdrop" *ngIf="showTypeModal">
+  <div class="modal-content">
+    <h2>Nuevo Tipo de Gasto</h2>
+    <div class="form-group">
+      <label>Nombre (Ej: "Camisas", "Estampados")</label>
+      <input type="text" [(ngModel)]="newTypeName" class="form-control">
+    </div>
+    <div class="form-group">
+      <label>Descripción</label>
+      <input type="text" [(ngModel)]="newTypeDesc" class="form-control">
+    </div>
+    <div class="modal-actions">
+      <button (click)="closeTypeModal()" class="btn-secondary">Cancelar</button>
+      <button (click)="saveType()" class="btn-primary" [disabled]="!newTypeName">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: New Cost -->
+<div class="modal-backdrop" *ngIf="showCostModal">
+  <div class="modal-content">
+    <h2>Agregar Costo</h2>
+    <div class="form-group">
+      <label>Costo Base</label>
+      <input type="number" [(ngModel)]="newCostBase" class="form-control">
+    </div>
+
+    <h3>Atributos</h3>
+    <div class="attributes-list">
+      <div class="attribute-row" *ngFor="let attr of newCostAttributes; let i = index">
+        <input type="text" [(ngModel)]="attr.key" placeholder="Nombre (ej: Talla)" class="form-control">
+        <input type="text" [(ngModel)]="attr.value" placeholder="Valor (ej: XL)" class="form-control">
+        <button (click)="removeAttribute(i)" class="btn-danger">X</button>
       </div>
-      <div class="table-responsive">
-        <table>
-          <thead>
-            <tr>
-              <th>Posición</th>
-              <th>Tamaño</th>
-              <th>Costo</th>
-              <th class="text-right">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let estampado of estampados">
-              <td>{{estampado.posicion}}</td>
-              <td>{{estampado.tamano}}</td>
-              <td>{{estampado.costo | currency}}</td>
-              <td class="text-right">
-                <button class="btn-edit">Editar</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="section-footer">
-        <button class="btn-add">Agregar información</button>
-      </div>
+      <button (click)="addAttribute()" class="btn-secondary btn-sm">+ Agregar Atributo</button>
+    </div>
+
+    <div class="modal-actions">
+      <button (click)="closeCostModal()" class="btn-secondary">Cancelar</button>
+      <button (click)="saveCost()" class="btn-primary">Guardar</button>
     </div>
   </div>
 </div>
