@@ -2,7 +2,7 @@
   <div class="navbar-container">
     <div class="navbar-brand">
       <i class="ph ph-aperture"></i>
-      <span>PhotoEdit</span>
+      <span>Dimo Suite</span>
     </div>
 
     <div class="user-menu-container project-selector" *ngIf="(authService.user()?.projects || []).length > 0"
@@ -30,7 +30,8 @@
           <i class="ph ph-toolbox"></i>
           <span>Utilidades</span>
         </a>
-        <a routerLink="/usuarios" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" class="nav-link">
+        <a routerLink="/usuarios" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" class="nav-link"
+          *ngIf="authService.isAdmin()">
           <i class="ph ph-users"></i>
           <span>Usuarios</span>
         </a>
