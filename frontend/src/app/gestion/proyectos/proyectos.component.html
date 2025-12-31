@@ -1,0 +1,146 @@
+<div class="proyectos-container">
+    <div class="header">
+        <h1>Gestión de Proyectos</h1>
+        <button class="btn-primary" (click)="openCreateModal()">
+            <i class="ph ph-plus"></i> Nuevo Proyecto
+        </button>
+    </div>
+
+    <div class="content">
+        <div class="loading" *ngIf="isLoading()">
+            <i class="ph ph-spinner ph-spin"></i> Cargando proyectos...
+        </div>
+
+        <table class="data-table" *ngIf="!isLoading()">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Fecha Creación</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr *ngFor="let p of projects()">
+                    <td>{{ p.id }}</td>
+                    <td>{{ p.name }}</td>
+                    <td>{{ p.description }}</td>
+                    <td>{{ p.created_at | date:'shortDate' }}</td>
+                    <td class="actions">
+                        <button class="btn-icon" (click)="openUsersModal(p)" title="Gestionar Usuarios">
+                            <i class="ph ph-users"></i>
+                        </button>
+                        <button class="btn-icon" (click)="openEditModal(p)" title="Editar">
+                            <i class="ph ph-pencil-simple"></i>
+                        </button>
+                        <button class="btn-icon danger" (click)="deleteProject(p)" title="Eliminar">
+                            <i class="ph ph-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+                <tr *ngIf="projects().length === 0">
+                    <td colspan="5" class="empty-state">No hay proyectos creados.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Create Modal -->
+<div class="modal-overlay" *ngIf="showCreateModal()">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Nuevo Proyecto</h2>
+            <button class="close-btn" (click)="closeCreateModal()"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Nombre</label>
+                <input type="text" [(ngModel)]="newProjectName" class="form-control" placeholder="Nombre del proyecto">
+            </div>
+            <div class="form-group">
+                <label>Descripción</label>
+                <textarea [(ngModel)]="newProjectDesc" class="form-control"
+                    placeholder="Descripción opcional"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" (click)="closeCreateModal()">Cancelar</button>
+            <button class="btn-primary" (click)="createProject()" [disabled]="!newProjectName">Crear</button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" *ngIf="showEditModal()">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Editar Proyecto</h2>
+            <button class="close-btn" (click)="closeEditModal()"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Nombre</label>
+                <input type="text" [(ngModel)]="editProjectName" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Descripción</label>
+                <textarea [(ngModel)]="editProjectDesc" class="form-control"></textarea>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" (click)="closeEditModal()">Cancelar</button>
+            <button class="btn-primary" (click)="updateProject()" [disabled]="!editProjectName">Guardar</button>
+        </div>
+    </div>
+</div>
+
+<!-- Users Modal -->
+<div class="modal-overlay" *ngIf="showUsersModal()">
+    <div class="modal large">
+        <div class="modal-header">
+            <h2>Usuarios en {{ selectedProjectForUsers?.name }}</h2>
+            <button class="close-btn" (click)="closeUsersModal()"><i class="ph ph-x"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="users-split">
+                <!-- Assigned Users -->
+                <div class="user-list">
+                    <h3>Asignados</h3>
+                    <ul>
+                        <li *ngFor="let u of projectUsers()">
+                            <span>{{ u.email }} ({{ u.full_name }})</span>
+                            <button class="btn-icon danger" (click)="removeUser(u.id)"><i
+                                    class="ph ph-minus-circle"></i></button>
+                        </li>
+                        <li *ngIf="projectUsers().length === 0" class="empty">No hay usuarios asignados.</li>
+                    </ul>
+                </div>
+
+                <!-- All Users (Available) -->
+                <div class="user-list">
+                    <h3>Disponibles</h3>
+                    <div class="search-box">
+                        <input type="text" [(ngModel)]="searchTerm" placeholder="Buscar usuario...">
+                    </div>
+                    <ul>
+                        <li *ngFor="let u of allUsers() | slice:0:20">
+                            <!-- Todo: Implement filter pipe or computed signal for search -->
+                            <ng-container
+                                *ngIf="!searchTerm || u.email.includes(searchTerm) || u.full_name.includes(searchTerm)">
+                                <div class="user-info">
+                                    <span [class.assigned]="isAssigned(u.id)">{{ u.email }}</span>
+                                </div>
+                                <button *ngIf="!isAssigned(u.id)" class="btn-icon success" (click)="assignUser(u.id)">
+                                    <i class="ph ph-plus-circle"></i>
+                                </button>
+                                <span *ngIf="isAssigned(u.id)" class="badge">Asignado</span>
+                            </ng-container>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

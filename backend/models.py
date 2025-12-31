@@ -1,7 +1,15 @@
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Numeric, func
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Numeric, func, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSON
 from .database import Base
+
+# Association table for User <-> Project
+user_projects = Table(
+    "user_projects",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("project_id", Integer, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
+)
 
 class User(Base):
     __tablename__ = "users"
@@ -12,6 +20,18 @@ class User(Base):
     hashed_password = Column(String)
     is_approved = Column(Boolean, default=False)
     is_admin = Column(Boolean, default=False)
+
+    projects = relationship("Project", secondary=user_projects, back_populates="users")
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, index=True, nullable=False)
+    description = Column(String)
+    created_at = Column(DateTime, server_default=func.now())
+
+    users = relationship("User", secondary=user_projects, back_populates="projects")
 
 class CostType(Base):
     __tablename__ = "cost_types"

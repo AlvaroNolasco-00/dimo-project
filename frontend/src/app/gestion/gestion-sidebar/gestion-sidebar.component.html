@@ -18,6 +18,10 @@
       <i class="ph ph-currency-dollar"></i>
       <span class="btn-text" *ngIf="!isCollapsed()">Finanzas</span>
     </button>
+    <button class="nav-btn" routerLink="/gestion/proyectos" routerLinkActive="active" [title]="'Proyectos'"
+      *ngIf="authService.isAdmin()">
+      <i class="ph ph-briefcase"></i>
+      <span class="btn-text" *ngIf="!isCollapsed()">Proyectos</span>
+    </button>
   </nav>
 </aside>
-

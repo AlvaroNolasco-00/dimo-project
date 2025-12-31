@@ -9,6 +9,7 @@ from sqlalchemy import or_
 
 import backend.processing as processing
 from . import models, auth, database, finance
+from .routers import projects
 from .database import engine, get_db
 from .deps import get_current_user, get_approved_user, get_admin_user
 
@@ -17,6 +18,7 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="PhotoEdit Suite API")
 app.include_router(finance.router)
+app.include_router(projects.router)
 
 # CORS config
 app.add_middleware(
@@ -67,11 +69,19 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.get("/api/auth/me")
-async def read_users_me(current_user: models.User = Depends(get_current_user)):
+async def read_users_me(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    projects_list = []
+    if current_user.is_admin:
+        all_projs = db.query(models.Project).all()
+        projects_list = [{"id": p.id, "name": p.name} for p in all_projs]
+    else:
+        projects_list = [{"id": p.id, "name": p.name} for p in current_user.projects]
+
     return {
         "email": current_user.email,
         "is_approved": current_user.is_approved,
-        "is_admin": current_user.is_admin
+        "is_admin": current_user.is_admin,
+        "projects": projects_list
     }
 
 # --- ADMIN ENDPOINTS ---

@@ -4,9 +4,29 @@
       <i class="ph ph-aperture"></i>
       <span>PhotoEdit</span>
     </div>
+
+    <div class="user-menu-container project-selector" *ngIf="(authService.user()?.projects || []).length > 0"
+      #projectMenuContainer>
+      <button class="user-menu-trigger" (click)="toggleProjectDropdown($event)">
+        <div class="user-avatar project-avatar">
+          <i class="ph ph-briefcase"></i>
+        </div>
+        <span class="user-name">{{ authService.currentProject()?.name || 'Seleccionar Proyecto' }}</span>
+        <i class="ph ph-caret-down" [class.rotated]="isProjectDropdownOpen()"></i>
+      </button>
+      <div class="user-dropdown" *ngIf="isProjectDropdownOpen()">
+        <a class="dropdown-item" *ngFor="let p of authService.user()?.projects" (click)="selectProject(p)"
+          [class.active]="authService.currentProject()?.id === p.id">
+          <i class="ph ph-folder"></i>
+          <span>{{ p.name }}</span>
+        </a>
+      </div>
+    </div>
+
     <div class="navbar-right">
       <div class="navbar-links">
-        <a routerLink="/utilidades" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" class="nav-link">
+        <a routerLink="/utilidades" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}"
+          class="nav-link">
           <i class="ph ph-toolbox"></i>
           <span>Utilidades</span>
         </a>
@@ -19,6 +39,7 @@
           <span>Gestión</span>
         </a>
       </div>
+
       <div class="user-menu-container" #userMenuContainer>
         <button class="user-menu-trigger" (click)="toggleDropdown($event)">
           <div class="user-avatar">
@@ -41,4 +62,3 @@
     </div>
   </div>
 </nav>
-

@@ -13,7 +13,9 @@ import { AuthService } from '../../services/auth.service';
 export class NavbarTopComponent implements AfterViewInit, OnDestroy {
   authService = inject(AuthService);
   isDropdownOpen = signal(false);
+  isProjectDropdownOpen = signal(false);
   @ViewChild('userMenuContainer') userMenuContainer?: ElementRef;
+  @ViewChild('projectMenuContainer') projectMenuContainer?: ElementRef;
   private clickListener?: (event: MouseEvent) => void;
   private isToggling = false;
 
@@ -25,10 +27,17 @@ export class NavbarTopComponent implements AfterViewInit, OnDestroy {
         return;
       }
 
+      const target = event.target as Node;
+
       if (this.isDropdownOpen() && this.userMenuContainer) {
-        const target = event.target as Node;
         if (!this.userMenuContainer.nativeElement.contains(target)) {
           this.closeDropdown();
+        }
+      }
+
+      if (this.isProjectDropdownOpen() && this.projectMenuContainer) {
+        if (!this.projectMenuContainer.nativeElement.contains(target)) {
+          this.closeProjectDropdown();
         }
       }
     };
@@ -44,17 +53,32 @@ export class NavbarTopComponent implements AfterViewInit, OnDestroy {
   toggleDropdown(event: Event) {
     event.stopPropagation();
     this.isToggling = true;
+    this.closeProjectDropdown(); // close other
     const newValue = !this.isDropdownOpen();
     this.isDropdownOpen.set(newValue);
+    setTimeout(() => { this.isToggling = false; }, 100);
+  }
 
-    // Reset flag after a short delay to allow the click event to complete
-    setTimeout(() => {
-      this.isToggling = false;
-    }, 100);
+  toggleProjectDropdown(event: Event) {
+    event.stopPropagation();
+    this.isToggling = true;
+    this.closeDropdown(); // close other
+    const newValue = !this.isProjectDropdownOpen();
+    this.isProjectDropdownOpen.set(newValue);
+    setTimeout(() => { this.isToggling = false; }, 100);
   }
 
   closeDropdown() {
     this.isDropdownOpen.set(false);
+  }
+
+  closeProjectDropdown() {
+    this.isProjectDropdownOpen.set(false);
+  }
+
+  selectProject(project: any) {
+    this.authService.selectProject(project);
+    this.closeProjectDropdown();
   }
 
   logout() {

@@ -42,3 +42,22 @@ export const adminGuard = () => {
     router.navigate(['/utilidades']);
     return false;
 };
+export const projectGuard = () => {
+    const authService = inject(AuthService);
+    const router = inject(Router);
+
+    // Allow if admin
+    if (authService.isAdmin()) {
+        return true;
+    }
+
+    // Check if user has projects
+    const user = authService.user();
+    if (user && user.projects && user.projects.length > 0) {
+        return true;
+    }
+
+    // Otherwise redirect
+    router.navigate(['/auth/no-project']);
+    return false;
+};

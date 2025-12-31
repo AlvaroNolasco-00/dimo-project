@@ -3,7 +3,7 @@ import { EditorComponent } from './editor/editor.component';
 import { LoginComponent } from './auth/login/login.component';
 import { RegisterComponent } from './auth/register/register.component';
 import { PendingApprovalComponent } from './auth/pending-approval/pending-approval.component';
-import { approvedGuard, adminGuard } from './guards/auth.guard';
+import { approvedGuard, adminGuard, projectGuard } from './guards/auth.guard';
 import { AuthLayoutComponent } from './layout/auth-layout/auth-layout.component';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 import { UsuariosLayoutComponent } from './usuarios/usuarios-layout/usuarios-layout.component';
@@ -18,6 +18,8 @@ import { FinanzasComponent } from './gestion/finanzas/finanzas.component';
 import { CostosOperativosComponent } from './gestion/finanzas/costos-operativos/costos-operativos.component';
 import { RecuentoGastosComponent } from './gestion/finanzas/recuento-gastos/recuento-gastos.component';
 import { RecuentoGananciasComponent } from './gestion/finanzas/recuento-ganancias/recuento-ganancias.component';
+import { ProyectosComponent } from './gestion/proyectos/proyectos.component';
+import { NoProjectComponent } from './auth/no-project/no-project.component';
 
 export const routes: Routes = [
     // Auth Routes (Clean layout, no sidebar)
@@ -28,6 +30,7 @@ export const routes: Routes = [
             { path: 'login', component: LoginComponent },
             { path: 'register', component: RegisterComponent },
             { path: 'pending-approval', component: PendingApprovalComponent },
+            { path: 'no-project', component: NoProjectComponent },
             { path: '', redirectTo: 'login', pathMatch: 'full' },
         ]
     },
@@ -36,7 +39,7 @@ export const routes: Routes = [
     {
         path: 'utilidades',
         component: MainLayoutComponent,
-        canActivate: [approvedGuard],
+        canActivate: [approvedGuard, projectGuard],
         children: [
             { path: '', redirectTo: 'remove-bg', pathMatch: 'full' },
             { path: 'remove-bg', component: EditorComponent },
@@ -85,6 +88,7 @@ export const routes: Routes = [
                     { path: 'pedidos', component: PedidosComponent },
                     { path: 'pedidos/crear', component: CrearPedidoComponent },
                     { path: 'pedidos/:id', component: DetallePedidoComponent },
+                    { path: 'proyectos', component: ProyectosComponent, canActivate: [adminGuard] },
                     { path: 'finanzas', component: FinanzasComponent },
                     { path: 'finanzas/costos-operativos', component: CostosOperativosComponent },
                     { path: 'finanzas/recuento-gastos', component: RecuentoGastosComponent },
@@ -94,7 +98,6 @@ export const routes: Routes = [
         ]
     },
 
-    // Fallback
     // Fallback and Root
     { path: '', redirectTo: 'utilidades', pathMatch: 'full' },
     { path: '**', redirectTo: 'utilidades' }
