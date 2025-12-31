@@ -50,3 +50,4 @@ testem.log
 *.swo
 .DS_Store
 Thumbs.db
+backend/static/

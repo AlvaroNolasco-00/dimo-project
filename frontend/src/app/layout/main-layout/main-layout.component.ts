@@ -4,7 +4,6 @@ import { SidebarComponent } from '../../sidebar/sidebar.component';
 import { NavbarTopComponent } from '../navbar-top/navbar-top.component';
 import { CommonModule } from '@angular/common';
 import { filter } from 'rxjs/operators';
-
 @Component({
   selector: 'app-main-layout',
   standalone: true,

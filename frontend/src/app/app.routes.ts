@@ -49,7 +49,16 @@ export const routes: Routes = [
             { path: 'upscale', component: EditorComponent },
             { path: 'halftone', component: EditorComponent },
             { path: 'contour-clip', component: EditorComponent },
-            { path: 'profile', component: ProfileComponent },
+        ]
+    },
+
+    // Profile Routes
+    {
+        path: 'profile',
+        component: MainLayoutComponent,
+        canActivate: [approvedGuard],
+        children: [
+            { path: '', component: ProfileComponent }
         ]
     },
 

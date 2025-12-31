@@ -2,6 +2,7 @@ import { Component, signal, inject, ElementRef, ViewChild, AfterViewInit, OnDest
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-navbar-top',
@@ -89,7 +90,21 @@ export class NavbarTopComponent implements AfterViewInit, OnDestroy {
   getUserDisplayName(): string {
     const user = this.authService.user();
     if (!user) return 'Usuario';
+
+    if (user.full_name) {
+      return user.full_name.split(' ')[0];
+    }
+
     return user.email || 'Usuario';
   }
-}
 
+  getUserAvatarUrl(): string | null {
+    const user = this.authService.user();
+    if (!user?.avatar_url) return null;
+
+    if (user.avatar_url.startsWith('http')) {
+      return user.avatar_url;
+    }
+    return `${environment.apiUrl}${user.avatar_url}`;
+  }
+}

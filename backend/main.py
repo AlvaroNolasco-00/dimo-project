@@ -121,8 +121,11 @@ async def update_avatar(
         
         # Save file
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+             shutil.copyfileobj(file.file, buffer)
             
+        # Store old avatar to delete later
+        old_avatar_url = current_user.avatar_url
+
         # Update user record
         # In a real app with cloud storage, this would be a URL like S3 or Cloudinary
         # For local, we'll serve it as a static file or just return the path for now
@@ -130,6 +133,17 @@ async def update_avatar(
         avatar_url = f"/static/{filename}"
         current_user.avatar_url = avatar_url
         db.commit()
+
+        # Cleanup old avatar if it exists
+        if old_avatar_url and old_avatar_url.startswith("/static/"):
+             try:
+                 old_filename = old_avatar_url.replace("/static/", "")
+                 old_file_path = os.path.join(STATIC_DIR, old_filename)
+                 if os.path.exists(old_file_path):
+                     os.remove(old_file_path)
+             except Exception as e:
+                 print(f"Error deleting old avatar: {e}")
+                 # Log error but don't fail request
         
         return {"avatar_url": avatar_url}
     except Exception as e:

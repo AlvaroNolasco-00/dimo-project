@@ -44,13 +44,17 @@
       <div class="user-menu-container" #userMenuContainer>
         <button class="user-menu-trigger" (click)="toggleDropdown($event)">
           <div class="user-avatar">
-            <i class="ph ph-user"></i>
+            <img *ngIf="getUserAvatarUrl(); else defaultIcon" [src]="getUserAvatarUrl()" alt="Avatar"
+              class="avatar-img">
+            <ng-template #defaultIcon>
+              <i class="ph ph-user"></i>
+            </ng-template>
           </div>
           <span class="user-name">{{ getUserDisplayName() }}</span>
           <i class="ph ph-caret-down" [class.rotated]="isDropdownOpen()"></i>
         </button>
         <div class="user-dropdown" *ngIf="isDropdownOpen()">
-          <a class="dropdown-item" routerLink="/utilidades/profile" (click)="closeDropdown()">
+          <a class="dropdown-item" routerLink="/profile" (click)="closeDropdown()">
             <i class="ph ph-user-circle"></i>
             <span>Ver perfil</span>
           </a>

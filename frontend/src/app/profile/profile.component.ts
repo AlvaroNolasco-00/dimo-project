@@ -46,7 +46,7 @@ export class ProfileComponent {
 
     isRegularAccount = true; // Hardcoded for now
 
-    get userAvatarUrl(): string {
+    get userAvatarUrl(): string | null {
         const u = this.user();
         if (u?.avatar_url) {
             // Check if it's a full URL or relative path
@@ -56,7 +56,7 @@ export class ProfileComponent {
             return `${environment.apiUrl}${u.avatar_url}`;
         }
         // Default dummy
-        return 'assets/images/default-avatar.png'; // Make sure this exists or use a placeholder URL
+        return null;
     }
 
     passwordMatchValidator(g: FormGroup) {

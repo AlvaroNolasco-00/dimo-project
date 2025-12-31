@@ -8,7 +8,10 @@
         <div class="profile-card user-card">
             <div class="avatar-wrapper" (click)="triggerFileInput()">
                 <div class="avatar-container">
-                    <img [src]="userAvatarUrl" alt="Avatar" class="avatar-image">
+                    <img *ngIf="userAvatarUrl" [src]="userAvatarUrl" alt="Avatar" class="avatar-image">
+                    <div *ngIf="!userAvatarUrl" class="default-avatar">
+                        <i class="ph ph-user"></i>
+                    </div>
                     <div class="avatar-overlay">
                         <i class="ph ph-camera"></i>
                     </div>
