@@ -14,7 +14,8 @@
       <i class="ph ph-eraser"></i>
       <span class="btn-text" *ngIf="!isCollapsed()">Quitar Fondo</span>
     </button>
-    <button class="nav-btn" routerLink="/utilidades/remove-objects" routerLinkActive="active" [title]="'Borrar Objetos'">
+    <button class="nav-btn" routerLink="/utilidades/remove-objects" routerLinkActive="active"
+      [title]="'Borrar Objetos'">
       <i class="ph ph-magic-wand"></i>
       <span class="btn-text" *ngIf="!isCollapsed()">Borrar Objetos</span>
     </button>
@@ -34,6 +35,10 @@
       [title]="'Recorte de Contorno'">
       <i class="ph ph-scissors"></i>
       <span class="btn-text" *ngIf="!isCollapsed()">Recorte de Contorno</span>
+    </button>
+    <button class="nav-btn" routerLink="/utilidades/watermark" routerLinkActive="active" [title]="'Marca de Agua'">
+      <i class="ph ph-stamp"></i>
+      <span class="btn-text" *ngIf="!isCollapsed()">Marca de Agua</span>
     </button>
   </nav>
 </aside>

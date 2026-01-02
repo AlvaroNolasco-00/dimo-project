@@ -471,3 +471,22 @@ def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str = 'manu
         img_rgba[:, :, 3] = alpha_blurred
 
     return pil_to_bytes(Image.fromarray(img_rgba))
+
+def apply_watermark(base_bytes: bytes, watermark_bytes: bytes, x: int, y: int) -> bytes:
+    """
+    Overlays a watermark image onto a base image at specific coordinates.
+    """
+    base_img = read_image_file(base_bytes).convert("RGBA")
+    watermark_img = read_image_file(watermark_bytes).convert("RGBA")
+    
+    # Create a transparent layer the size of the base image
+    transparent_layer = Image.new('RGBA', base_img.size, (0, 0, 0, 0))
+    transparent_layer.paste(watermark_img, (x, y), mask=watermark_img)
+    
+    # Composite the images
+    combined_img = Image.alpha_composite(base_img, transparent_layer)
+    
+    # Convert back to original mode if not RGBA originally? 
+    # Usually we want to return PNG (RGBA support) so keeping as RGBA is fine.
+    
+    return pil_to_bytes(combined_img)

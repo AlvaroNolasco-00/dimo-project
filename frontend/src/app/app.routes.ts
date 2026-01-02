@@ -49,6 +49,7 @@ export const routes: Routes = [
             { path: 'upscale', component: EditorComponent },
             { path: 'halftone', component: EditorComponent },
             { path: 'contour-clip', component: EditorComponent },
+            { path: 'watermark', loadComponent: () => import('./editor/watermark/watermark.component').then(m => m.WatermarkComponent) },
         ]
     },
 

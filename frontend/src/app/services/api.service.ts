@@ -89,4 +89,13 @@ export class ApiService {
         }
         return this.http.post(`${environment.apiUrl}/contour-clip`, formData, { responseType: 'blob' });
     }
+
+    applyWatermark(baseImage: Blob, watermarkImage: Blob, x: number, y: number): Observable<Blob> {
+        const formData = new FormData();
+        formData.append('base_image', baseImage);
+        formData.append('watermark_image', watermarkImage);
+        formData.append('x', x.toString());
+        formData.append('y', y.toString());
+        return this.http.post(`${environment.apiUrl}/watermark`, formData, { responseType: 'blob' });
+    }
 }
