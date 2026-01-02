@@ -187,13 +187,15 @@ async def api_watermark(
     watermark_image: UploadFile = File(...),
     x: int = Form(...),
     y: int = Form(...),
+    scale: float = Form(1.0),
+    shape: str = Form("original"),
     user: models.User = Depends(get_approved_user)
 ):
     try:
         base_bytes = await base_image.read()
         watermark_bytes = await watermark_image.read()
         
-        result = processing.apply_watermark(base_bytes, watermark_bytes, x, y)
+        result = processing.apply_watermark(base_bytes, watermark_bytes, x, y, scale, shape)
         return Response(content=result, media_type="image/png")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

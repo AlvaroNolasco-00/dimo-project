@@ -472,21 +472,86 @@ def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str = 'manu
 
     return pil_to_bytes(Image.fromarray(img_rgba))
 
-def apply_watermark(base_bytes: bytes, watermark_bytes: bytes, x: int, y: int) -> bytes:
+def apply_watermark(base_bytes: bytes, watermark_bytes: bytes, x: int, y: int, scale: float = 1.0, shape: str = "original") -> bytes:
     """
     Overlays a watermark image onto a base image at specific coordinates.
+    scale: resizing factor relative to the watermark size
+    shape: 'original', 'circle', 'square', 'rect-4-3', 'rect-3-4'
     """
     base_img = read_image_file(base_bytes).convert("RGBA")
     watermark_img = read_image_file(watermark_bytes).convert("RGBA")
     
-    # Create a transparent layer the size of the base image
+    # 1. Apply Shape Crop/Mask (before resize for better quality)
+    w, h = watermark_img.size
+    
+    if shape == "circle":
+        # Crop to square
+        size = min(w, h)
+        left = (w - size) // 2
+        top = (h - size) // 2
+        watermark_img = watermark_img.crop((left, top, left + size, top + size))
+        
+        # Apply circle mask
+        mask = Image.new("L", (size, size), 0)
+        from PIL import ImageDraw
+        draw = ImageDraw.Draw(mask)
+        draw.ellipse((0, 0, size, size), fill=255)
+        
+        # Apply mask to alpha channel
+        existing_alpha = watermark_img.split()[3]
+        combined_mask = Image.fromarray(np.minimum(np.array(existing_alpha), np.array(mask)))
+        watermark_img.putalpha(combined_mask)
+        
+    elif shape == "square":
+        size = min(w, h)
+        left = (w - size) // 2
+        top = (h - size) // 2
+        watermark_img = watermark_img.crop((left, top, left + size, top + size))
+        
+    elif shape == "rect-4-3":
+        # Width should be 4/3 of Height OR Height should be 3/4 of Width?
+        # Target aspect ratio 1.333
+        current_ar = w / h
+        target_ar = 4/3
+        
+        if current_ar > target_ar:
+            # Too wide, crop width
+            new_w = int(h * target_ar)
+            left = (w - new_w) // 2
+            watermark_img = watermark_img.crop((left, 0, left + new_w, h))
+        else:
+            # Too tall, crop height
+            new_h = int(w / target_ar)
+            top = (h - new_h) // 2
+            watermark_img = watermark_img.crop((0, top, w, top + new_h))
+
+    elif shape == "rect-3-4":
+        # Target aspect ratio 0.75
+        current_ar = w / h
+        target_ar = 3/4
+        
+        if current_ar > target_ar:
+            # Too wide, crop width
+            new_w = int(h * target_ar)
+            left = (w - new_w) // 2
+            watermark_img = watermark_img.crop((left, 0, left + new_w, h))
+        else:
+            # Too tall, crop height
+            new_h = int(w / target_ar)
+            top = (h - new_h) // 2
+            watermark_img = watermark_img.crop((0, top, w, top + new_h))
+    
+    # 2. Resize
+    if scale != 1.0:
+        new_w = int(watermark_img.width * scale)
+        new_h = int(watermark_img.height * scale)
+        # Use high quality resizing
+        watermark_img = watermark_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    
+    # 3. Paste
     transparent_layer = Image.new('RGBA', base_img.size, (0, 0, 0, 0))
     transparent_layer.paste(watermark_img, (x, y), mask=watermark_img)
     
-    # Composite the images
     combined_img = Image.alpha_composite(base_img, transparent_layer)
-    
-    # Convert back to original mode if not RGBA originally? 
-    # Usually we want to return PNG (RGBA support) so keeping as RGBA is fine.
     
     return pil_to_bytes(combined_img)

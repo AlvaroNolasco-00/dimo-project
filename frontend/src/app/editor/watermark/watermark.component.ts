@@ -24,8 +24,7 @@ export class WatermarkComponent implements AfterViewInit {
 
     // Blobs for processing
     baseImageBlob: Blob | null = null;
-    watermarkImageBlob: Blob | null = null; // This will continue to hold original blob until processed? 
-    // Actually, we need to send the RESIZED watermark blob to backend.
+    watermarkImageBlob: Blob | null = null;
 
     // Images for canvas drawing
     baseImgObj: HTMLImageElement | null = null;
@@ -34,17 +33,20 @@ export class WatermarkComponent implements AfterViewInit {
     // Canvas State
     canvasCtx: CanvasRenderingContext2D | null = null;
 
-    // Watermark Position
+    // Watermark Position & Props
     wmX = 0;
     wmY = 0;
     wmWidth = 0;
     wmHeight = 0;
+    wmScale = signal(1.0);
+    wmShape = signal<string>('original'); // 'original', 'circle', 'square', 'rect-4-3', 'rect-3-4'
 
     isDragging = false;
     dragOffsetX = 0;
     dragOffsetY = 0;
 
     isLoading = signal(false);
+    downloadFilename = signal('watermark-result.png');
 
     ngAfterViewInit() {
         if (this.canvasRef) {
@@ -67,6 +69,7 @@ export class WatermarkComponent implements AfterViewInit {
             this.baseImageBlob = file;
             const url = URL.createObjectURL(file);
             this.baseImageSrc.set(url);
+            this.resultImageSrc.set(null);
 
             const img = new Image();
             img.onload = () => {
@@ -82,6 +85,7 @@ export class WatermarkComponent implements AfterViewInit {
         if (input.files?.length) {
             const file = input.files[0];
             const url = URL.createObjectURL(file);
+            this.resultImageSrc.set(null);
 
             // Minify logic: Load image, resize if needed, create new blob/url
             const img = new Image();
@@ -130,12 +134,7 @@ export class WatermarkComponent implements AfterViewInit {
 
     calculateAspectRatioFit(srcWidth: number, srcHeight: number, maxWidth: number, maxHeight: number) {
         const ratio = Math.min(maxWidth / srcWidth, maxHeight / srcHeight);
-        // If image is smaller than max, keep original size? Or upscale?
-        // Requirement said "maximo de 300px". So if smaller, we can keep it or let ratio handle it.
-        // If ratio > 1 (image is smaller), we probably just want to keep original size unless user wants it bigger?
-        // Usually "max 300px" implies downscaling only.
         const finalRatio = ratio < 1 ? ratio : 1;
-
         return { width: Math.round(srcWidth * finalRatio), height: Math.round(srcHeight * finalRatio) };
     }
 
@@ -152,13 +151,63 @@ export class WatermarkComponent implements AfterViewInit {
 
         // Clear
         this.canvasCtx.clearRect(0, 0, this.canvasRef.nativeElement.width, this.canvasRef.nativeElement.height);
+        this.canvasCtx.save();
 
         // Draw Base
         this.canvasCtx.drawImage(this.baseImgObj, 0, 0);
+        this.canvasCtx.restore();
 
         // Draw Watermark
         if (this.watermarkImgObj) {
-            this.canvasCtx.drawImage(this.watermarkImgObj, this.wmX, this.wmY, this.wmWidth, this.wmHeight);
+            this.canvasCtx.save();
+
+            // Calculate scaled dimensions
+            const scaledW = this.wmWidth * this.wmScale();
+            const scaledH = this.wmHeight * this.wmScale();
+
+            // Define drawing area
+            // We need to apply shape clipping
+            this.canvasCtx.beginPath();
+            const centerX = this.wmX + scaledW / 2;
+            const centerY = this.wmY + scaledH / 2;
+
+            switch (this.wmShape()) {
+                case 'circle':
+                    const radius = Math.min(scaledW, scaledH) / 2;
+                    this.canvasCtx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                    this.canvasCtx.clip();
+                    break;
+                case 'square':
+                    const size = Math.min(scaledW, scaledH);
+                    this.canvasCtx.rect(centerX - size / 2, centerY - size / 2, size, size);
+                    this.canvasCtx.clip();
+                    break;
+                case 'rect-4-3':
+                    let w43 = scaledW;
+                    let h43 = scaledW / (4 / 3);
+                    if (h43 > scaledH) {
+                        h43 = scaledH;
+                        w43 = scaledH * (4 / 3);
+                    }
+                    this.canvasCtx.rect(centerX - w43 / 2, centerY - h43 / 2, w43, h43);
+                    this.canvasCtx.clip();
+                    break;
+                case 'rect-3-4':
+                    let w34 = scaledW;
+                    let h34 = scaledW / (3 / 4);
+                    if (h34 > scaledH) {
+                        h34 = scaledH;
+                        w34 = scaledH * (3 / 4);
+                    }
+                    this.canvasCtx.rect(centerX - w34 / 2, centerY - h34 / 2, w34, h34);
+                    this.canvasCtx.clip();
+                    break;
+                default:
+                    break;
+            }
+
+            this.canvasCtx.drawImage(this.watermarkImgObj, this.wmX, this.wmY, scaledW, scaledH);
+            this.canvasCtx.restore();
         }
     }
 
@@ -167,10 +216,12 @@ export class WatermarkComponent implements AfterViewInit {
         if (!this.watermarkImgObj) return;
 
         const { offsetX, offsetY } = this.getMousePos(event);
+        const scaledW = this.wmWidth * this.wmScale();
+        const scaledH = this.wmHeight * this.wmScale();
 
         // Check if clicked exactly on watermark
-        if (offsetX >= this.wmX && offsetX <= this.wmX + this.wmWidth &&
-            offsetY >= this.wmY && offsetY <= this.wmY + this.wmHeight) {
+        if (offsetX >= this.wmX && offsetX <= this.wmX + scaledW &&
+            offsetY >= this.wmY && offsetY <= this.wmY + scaledH) {
             this.isDragging = true;
             this.dragOffsetX = offsetX - this.wmX;
             this.dragOffsetY = offsetY - this.wmY;
@@ -187,12 +238,14 @@ export class WatermarkComponent implements AfterViewInit {
         // Type checking for safety although baseImgObj check is above
         const baseW = this.baseImgObj.width;
         const baseH = this.baseImgObj.height;
+        const scaledW = this.wmWidth * this.wmScale();
+        const scaledH = this.wmHeight * this.wmScale();
 
         // Constrain to bounds
         if (newX < 0) newX = 0;
         if (newY < 0) newY = 0;
-        if (newX + this.wmWidth > baseW) newX = baseW - this.wmWidth;
-        if (newY + this.wmHeight > baseH) newY = baseH - this.wmHeight;
+        if (newX + scaledW > baseW) newX = baseW - scaledW;
+        if (newY + scaledH > baseH) newY = baseH - scaledH;
 
         this.wmX = newX;
         this.wmY = newY;
@@ -219,11 +272,23 @@ export class WatermarkComponent implements AfterViewInit {
 
         this.isLoading.set(true);
 
-        this.api.applyWatermark(this.baseImageBlob, this.watermarkImageBlob, Math.round(this.wmX), Math.round(this.wmY)).subscribe({
+        this.api.applyWatermark(
+            this.baseImageBlob,
+            this.watermarkImageBlob,
+            Math.round(this.wmX),
+            Math.round(this.wmY),
+            this.wmScale(),
+            this.wmShape()
+        ).subscribe({
             next: (resBlob) => {
                 const url = URL.createObjectURL(resBlob);
                 this.resultImageSrc.set(url);
                 this.isLoading.set(false);
+
+                // Generate filename with timestamp
+                const now = new Date();
+                const timestamp = now.toISOString().replace(/[-:T.]/g, '').slice(0, 14); // YYYYMMDDHHMMSS
+                this.downloadFilename.set(`watermark-result-${timestamp}.png`);
             },
             error: (err) => {
                 console.error(err);

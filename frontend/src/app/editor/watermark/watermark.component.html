@@ -22,34 +22,61 @@
             <p class="hint" *ngIf="watermarkImageSrc()">El logo se ha redimensionado automáticamente (max 300px).</p>
         </div>
 
+        <!-- Enhance Controls -->
+        <div class="control-group" *ngIf="baseImageSrc() && watermarkImageSrc()">
+            <label>3. Ajustes</label>
+
+            <div class="sub-control">
+                <label>Tamaño ({{ (wmScale() * 100).toFixed(0) }}%)</label>
+                <input type="range" min="0.1" max="1.5" step="0.05" [ngModel]="wmScale()"
+                    (ngModelChange)="wmScale.set($event); drawCanvas()">
+            </div>
+
+            <div class="sub-control">
+                <label>Forma</label>
+                <select [ngModel]="wmShape()" (ngModelChange)="wmShape.set($event); drawCanvas()">
+                    <option value="original">Original</option>
+                    <option value="circle">Círculo</option>
+                    <option value="square">Cuadrado</option>
+                    <option value="rect-4-3">Rectángulo (4:3)</option>
+                    <option value="rect-3-4">Rectángulo (3:4)</option>
+                </select>
+            </div>
+        </div>
+
         <div class="action-buttons" *ngIf="baseImageSrc() && watermarkImageSrc()">
-            <button class="btn primary full-width" (click)="process()" [disabled]="isLoading()">
+            <button class="btn primary full-width" (click)="process()" [disabled]="isLoading() || !!resultImageSrc()">
+                <i class="ph ph-spinner spinner" *ngIf="isLoading()"></i>
                 {{ isLoading() ? 'Procesando...' : 'Aplicar Marca' }}
             </button>
+
+            <!-- Moved Actions -->
+            <div class="post-process-actions" *ngIf="resultImageSrc() || isLoading()">
+                <a [href]="resultImageSrc()" [download]="downloadFilename()" class="btn download full-width"
+                    [class.disabled]="!resultImageSrc()">
+                    <i class="ph ph-download"></i> Descargar
+                </a>
+                <button class="btn secondary full-width" (click)="resultImageSrc.set(null)" [disabled]="isLoading()">
+                    <i class="ph ph-arrow-left"></i> Volver a Editar
+                </button>
+            </div>
         </div>
     </div>
 
     <div class="preview-area">
         <!-- Canvas/Preview Container -->
-         <div class="canvas-container" [class.hidden]="resultImageSrc()">
+        <div class="canvas-container" [class.hidden]="resultImageSrc()">
             <p *ngIf="!baseImageSrc()" class="empty-state">Sube una imagen base para comenzar</p>
-            <canvas #editorCanvas 
-                (mousedown)="onMouseDown($event)" 
-                (mousemove)="onMouseMove($event)" 
-                (mouseup)="onMouseUp()"
-                (mouseleave)="onMouseUp()"
+            <canvas #editorCanvas (mousedown)="onMouseDown($event)" (mousemove)="onMouseMove($event)"
+                (mouseup)="onMouseUp()" (mouseleave)="onMouseUp()"
                 [style.cursor]="watermarkImageSrc() ? 'move' : 'default'">
             </canvas>
-         </div>
+        </div>
 
-         <!-- Result View -->
-         <div class="result-container" *ngIf="resultImageSrc()">
-             <h3>Resultado</h3>
-             <img [src]="resultImageSrc()" alt="Resultado">
-             <div class="result-actions">
-                 <a [href]="resultImageSrc()" download="watermark-result.png" class="btn download">Descargar</a>
-                 <button class="btn secondary" (click)="resultImageSrc.set(null)">Volver a Editar</button>
-             </div>
-         </div>
+        <!-- Result View -->
+        <div class="result-container" *ngIf="resultImageSrc()">
+            <h3>Resultado</h3>
+            <img [src]="resultImageSrc()" alt="Resultado">
+        </div>
     </div>
 </div>
