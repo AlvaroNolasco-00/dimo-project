@@ -1,5 +1,5 @@
 
-import { Component, Input, Output, EventEmitter, inject, OnInit, signal, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, Output, EventEmitter, inject, OnInit, signal, effect, input, untracked, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Project, ProjectUpdate } from '../../../../interfaces/project.interface';
@@ -11,15 +11,17 @@ import { ProjectService } from '../../../../services/project.service';
     standalone: true,
     imports: [CommonModule, FormsModule],
     templateUrl: './project-edit.component.html',
-    styleUrls: ['./project-edit.component.scss']
+    styleUrls: ['./project-edit.component.scss'],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ProjectEditComponent implements OnInit, OnChanges {
-    @Input() project: Project | null = null;
+export class ProjectEditComponent implements OnInit {
+    project = input<Project | null>(null);
     @Output() close = new EventEmitter<void>();
     @Output() saved = new EventEmitter<Project>();
 
     private apiService = inject(ApiService);
     private projectService = inject(ProjectService);
+    private cdr = inject(ChangeDetectorRef);
 
     editProjectName = '';
     editProjectDesc = '';
@@ -29,68 +31,84 @@ export class ProjectEditComponent implements OnInit, OnChanges {
     projectStatesConfig: { [key: number]: boolean } = {};
     isLoadingStates = false;
 
+    constructor() {
+        effect(() => {
+            const currentProject = this.project();
+            if (currentProject) {
+                untracked(() => this.initializeForm());
+            }
+        });
+    }
+
     ngOnInit() {
         this.loadAllOrderStates();
     }
 
-    ngOnChanges(changes: SimpleChanges): void {
-        if (changes['project'] && this.project) {
-            this.initializeForm();
-        }
-    }
-
     initializeForm() {
-        if (!this.project) return;
-        this.editProjectName = this.project.name;
-        this.editProjectDesc = this.project.description || '';
+        const p = this.project();
+        if (!p) return;
+        this.editProjectName = p.name;
+        this.editProjectDesc = p.description || '';
 
         // Reset config
         this.projectStatesConfig = {};
 
         this.loadProjectStates();
+        this.cdr.markForCheck();
     }
 
     loadAllOrderStates() {
         this.apiService.getAllOrderStates().subscribe(states => {
             this.allOrderStates = states;
-            // If we already have a project, we might need to re-apply logic if needed, 
-            // but typically project states load after this or in parallel. 
-            // The display depends on allOrderStates loop.
+            this.cdr.markForCheck();
         });
     }
 
     loadProjectStates() {
-        if (!this.project) return;
+        const p = this.project();
+        if (!p) return;
         this.isLoadingStates = true;
-        this.apiService.getProjectOrderStates(this.project.id).subscribe({
+        this.cdr.markForCheck();
+
+        this.apiService.getProjectOrderStates(p.id).subscribe({
             next: (activeStates) => {
                 activeStates.forEach(s => {
                     this.projectStatesConfig[s.id] = true;
                 });
                 this.isLoadingStates = false;
+                this.cdr.markForCheck();
             },
-            error: () => this.isLoadingStates = false
+            error: () => {
+                this.isLoadingStates = false;
+                this.cdr.markForCheck();
+            }
         });
     }
 
     toggleState(stateId: number) {
         this.projectStatesConfig[stateId] = !this.projectStatesConfig[stateId];
+        // Note: Change detection is triggered automatically by the (change) event in HTML
     }
 
     onSave() {
-        if (!this.project || !this.editProjectName) return;
+        const p = this.project();
+        if (!p || !this.editProjectName) return;
 
         const payload: ProjectUpdate = {
             name: this.editProjectName,
             description: this.editProjectDesc
         };
 
-        this.projectService.updateProject(this.project.id, payload).subscribe({
+        this.projectService.updateProject(p.id, payload).subscribe({
             next: (updated) => {
                 this.saveProjectStates(updated.id);
                 this.saved.emit(updated);
+                this.cdr.markForCheck();
             },
-            error: (e) => alert('Error updating project: ' + e.error?.detail)
+            error: (e) => {
+                alert('Error updating project: ' + e.error?.detail);
+                this.cdr.markForCheck();
+            }
         });
     }
 
@@ -100,8 +118,14 @@ export class ProjectEditComponent implements OnInit, OnChanges {
             .map(s => s.id);
 
         this.apiService.updateProjectOrderStates(projectId, activeIds).subscribe({
-            next: () => console.log('States updated'),
-            error: (e) => console.error('Error updating states', e)
+            next: () => {
+                console.log('States updated');
+                this.cdr.markForCheck();
+            },
+            error: (e) => {
+                console.error('Error updating states', e);
+                this.cdr.markForCheck();
+            }
         });
     }
 
