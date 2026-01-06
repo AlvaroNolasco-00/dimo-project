@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, OnInit } from '@angular/core';
+import { Component, AfterViewInit, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -33,13 +33,23 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
 
   // Item management
   items: any[] = [];
+
+  // New Item (The Composite Item)
   newItem = {
-    description: '',
     quantity: 1,
     unit_price: 0,
-    attributes: {},   // e.g. { size: 'L', position: 'Back' }
+    description: '', // Can be auto-generated or manual
+    subItems: [] as any[] // List of { description, quantity, unit_price, cost_type_id, operative_cost_id, attributes }
+  };
+
+  // Temporary Sub-Item (The part being added to the Composite Item)
+  tempSubItem = {
+    quantity: 1,
+    unit_price: 0,
     cost_type_id: null as number | null,
-    operative_cost_id: null as number | null
+    operative_cost_id: null as number | null,
+    description: '',
+    attributes: {}
   };
 
   // Totals
@@ -58,7 +68,8 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
 
   constructor(
     private router: Router,
-    private apiService: ApiService
+    private apiService: ApiService,
+    private cd: ChangeDetectorRef
   ) { }
 
   ngOnInit(): void {
@@ -83,10 +94,12 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
           this.nuevoPedido.current_state_id = defaultState.id;
         }
         this.isLoadingStates = false;
+        this.cd.markForCheck();
       },
       error: (err) => {
         console.error('Error loading states', err);
         this.isLoadingStates = false;
+        this.cd.markForCheck();
       }
     });
   }
@@ -97,71 +110,135 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
       next: (types) => {
         this.costTypes = types;
         this.isLoadingTypes = false;
+        this.cd.markForCheck();
       },
       error: (err) => {
         console.error('Error loading cost types', err);
         this.isLoadingTypes = false;
+        this.cd.markForCheck();
       }
     });
   }
 
   // --- Item Logic ---
 
+  // --- Item Logic ---
+
   onCostTypeChange() {
     // Reset operative cost selection when type changes
-    this.newItem.operative_cost_id = null;
-    this.newItem.unit_price = 0;
+    this.tempSubItem.operative_cost_id = null;
+    this.tempSubItem.unit_price = 0;
     this.availableOperativeCosts = [];
 
-    if (this.newItem.cost_type_id) {
+    if (this.tempSubItem.cost_type_id) {
       this.isLoadingCosts = true;
-      this.apiService.getOperativeCosts(this.newItem.cost_type_id).subscribe({
+      this.apiService.getOperativeCosts(this.tempSubItem.cost_type_id).subscribe({
         next: (costs) => {
           this.availableOperativeCosts = costs;
           this.isLoadingCosts = false;
+          this.cd.markForCheck();
         },
         error: (err) => {
           console.error('Error loading operative costs', err);
           this.isLoadingCosts = false;
+          this.cd.markForCheck();
         }
       });
     }
   }
 
   onOperativeCostChange() {
-    const selectedCost = this.availableOperativeCosts.find(c => c.id == this.newItem.operative_cost_id);
+    const selectedCost = this.availableOperativeCosts.find(c => c.id == this.tempSubItem.operative_cost_id);
 
     if (selectedCost) {
-      this.newItem.unit_price = parseFloat(selectedCost.base_cost);
-
-      // Optionally auto-fill description with cost name + type? 
-      // Since OperativeCost doesn't have a name itself (it's linked to CostType + attributes), 
-      // we might want to construct a description or just rely on the user.
-      // However, the requirement says "el item del tipo de costo".
-      // If OperativeCost has attributes like 'Size: L', we can format that.
+      this.tempSubItem.unit_price = parseFloat(selectedCost.base_cost);
 
       let desc = '';
-      const type = this.costTypes.find(t => t.id == this.newItem.cost_type_id);
+      const type = this.costTypes.find(t => t.id == this.tempSubItem.cost_type_id);
       if (type) desc += type.name;
 
       if (selectedCost.attributes) {
+        // Clone attributes to tempSubItem so we can save them
+        this.tempSubItem.attributes = { ...selectedCost.attributes };
         const attrs = Object.values(selectedCost.attributes).join(' ');
         if (attrs) desc += ` - ${attrs}`;
+      } else {
+        this.tempSubItem.attributes = {};
       }
-      this.newItem.description = desc;
+      this.tempSubItem.description = desc;
     } else {
-      this.newItem.unit_price = 0;
+      this.tempSubItem.unit_price = 0;
+      this.tempSubItem.description = '';
+      this.tempSubItem.attributes = {};
     }
   }
 
+  addSubItem() {
+    if (!this.tempSubItem.operative_cost_id || this.tempSubItem.quantity <= 0) return;
+
+    // Add to subItems list
+    this.newItem.subItems.push({ ...this.tempSubItem });
+
+    // Update composite item price
+    this.updateCompositeItemPrice();
+
+    // Reset temp sub-item, but keep cost type logic if desired? 
+    // Best to reset fully to allow adding a different type next
+    this.resetTempSubItem();
+  }
+
+  removeSubItem(index: number) {
+    this.newItem.subItems.splice(index, 1);
+    this.updateCompositeItemPrice();
+  }
+
+  updateCompositeItemPrice() {
+    // The unit price of the Composite Item is the sum of (subItem.price * subItem.qty)
+    const compositeUnitPrice = this.newItem.subItems.reduce((acc, sub) => acc + (sub.unit_price * sub.quantity), 0);
+    this.newItem.unit_price = compositeUnitPrice;
+
+    // Auto-generate description if empty or simple
+    this.generateCompositeDescription();
+  }
+
+  generateCompositeDescription() {
+    // Example: "2 Camisa M, 1 Estampado"
+    const parts = this.newItem.subItems.map(s => `${s.quantity} ${s.description}`);
+    this.newItem.description = parts.join(', ');
+  }
+
+  resetTempSubItem() {
+    this.tempSubItem = {
+      quantity: 1,
+      unit_price: 0,
+      cost_type_id: null,
+      operative_cost_id: null,
+      description: '',
+      attributes: {}
+    };
+    // Don't necessarily clear availableOperativeCosts if we want to keep selecting from same type, 
+    // but looking at UI flow, valid to reset.
+    this.availableOperativeCosts = [];
+  }
+
   addItem() {
-    if (!this.newItem.description || this.newItem.quantity <= 0) return;
+    if (this.newItem.subItems.length === 0 || this.newItem.quantity <= 0) return;
 
     const subtotal = this.newItem.quantity * this.newItem.unit_price;
 
     this.items.push({
-      ...this.newItem,
-      subtotal: subtotal
+      description: this.newItem.description,
+      quantity: this.newItem.quantity,
+      unit_price: this.newItem.unit_price,
+      subtotal: subtotal,
+      // We store the subItems structure in 'attributes' to persist it without backend changes
+      attributes: {
+        is_composite: true,
+        sub_items: this.newItem.subItems
+      },
+      // These are null because it's a composite item, not a single operative cost
+      cost_type_id: null,
+      operative_cost_id: null
     });
 
     this.calculateTotal();
@@ -179,14 +256,12 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
 
   resetNewItem() {
     this.newItem = {
-      description: '',
       quantity: 1,
       unit_price: 0,
-      attributes: {},
-      cost_type_id: null,
-      operative_cost_id: null
+      description: '',
+      subItems: []
     };
-    this.availableOperativeCosts = [];
+    this.resetTempSubItem();
   }
 
   // --- Map Logic ---

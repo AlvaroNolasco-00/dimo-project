@@ -71,19 +71,23 @@
         <h3>Detalle del Pedido</h3>
 
         <!-- Add Item Form -->
+        <!-- Composite Item Builder -->
         <div class="add-item-container">
-          <div class="add-item-grid">
+          <h4>Construir Item Compuesto</h4>
+          <p class="helper-text-sm">Agrega los componentes que conforman este item (ej. 1 Camisa + 1 Estampado)</p>
+
+          <!-- Sub-item Form -->
+          <div class="add-item-grid sub-item-grid">
             <div class="form-group grid-type">
               <label>Tipo de Costo</label>
               <div class="input-wrapper">
                 <i class="ph ph-tag"></i>
-                <select [(ngModel)]="newItem.cost_type_id" name="costType" (change)="onCostTypeChange()"
+                <select [(ngModel)]="tempSubItem.cost_type_id" name="subCostType" (change)="onCostTypeChange()"
                   [disabled]="isLoadingTypes">
-                  <option [ngValue]="null" disabled selected>Selecciona un tipo</option>
-                  <option *ngIf="isLoadingTypes" [ngValue]="null" disabled>Cargando tipos...</option>
+                  <option [ngValue]="null" disabled selected>Tipo</option>
+                  <option *ngIf="isLoadingTypes" [ngValue]="null" disabled>Cargando...</option>
                   <option *ngFor="let type of costTypes" [value]="type.id">{{ type.name }}</option>
                 </select>
-                <i class="ph ph-caret-down select-icon"></i>
               </div>
             </div>
 
@@ -91,10 +95,10 @@
               <label>Item / Costo</label>
               <div class="input-wrapper">
                 <i class="ph ph-package"></i>
-                <select [(ngModel)]="newItem.operative_cost_id" name="opCost"
-                  [disabled]="!newItem.cost_type_id || isLoadingCosts" (change)="onOperativeCostChange()">
-                  <option [ngValue]="null" disabled selected>Selecciona una opción</option>
-                  <option *ngIf="isLoadingCosts" [ngValue]="null" disabled>Cargando costos...</option>
+                <select [(ngModel)]="tempSubItem.operative_cost_id" name="subOpCost"
+                  [disabled]="!tempSubItem.cost_type_id || isLoadingCosts" (change)="onOperativeCostChange()">
+                  <option [ngValue]="null" disabled selected>Selecciona opción</option>
+                  <option *ngIf="isLoadingCosts" [ngValue]="null" disabled>Cargando...</option>
                   <option *ngFor="let cost of availableOperativeCosts" [ngValue]="cost.id">
                     {{ cost.base_cost | currency }}
                     <span *ngIf="cost.attributes">
@@ -102,7 +106,6 @@
                     </span>
                   </option>
                 </select>
-                <i class="ph ph-caret-down select-icon"></i>
               </div>
             </div>
 
@@ -110,23 +113,49 @@
               <label>Cant.</label>
               <div class="input-wrapper">
                 <i class="ph ph-hash"></i>
-                <input type="number" placeholder="0" [(ngModel)]="newItem.quantity" name="itemQty" min="1">
-              </div>
-            </div>
-
-            <div class="form-group grid-price">
-              <label>Precio Unit.</label>
-              <div class="input-wrapper">
-                <i class="ph ph-currency-dollar"></i>
-                <input type="number" placeholder="0.00" [(ngModel)]="newItem.unit_price" name="itemPrice" min="0"
-                  readonly>
+                <input type="number" placeholder="1" [(ngModel)]="tempSubItem.quantity" name="subItemQty" min="1">
               </div>
             </div>
 
             <div class="form-group grid-button">
               <label>&nbsp;</label>
-              <button type="button" class="btn-add-item" (click)="addItem()">
-                <i class="ph ph-plus"></i> Agregar
+              <button type="button" class="btn-secondary" (click)="addSubItem()"
+                [disabled]="!tempSubItem.operative_cost_id || tempSubItem.quantity <= 0">
+                <i class="ph ph-plus"></i> Componente
+              </button>
+            </div>
+          </div>
+
+          <!-- Current Composite Item Preview -->
+          <div class="composite-preview" *ngIf="newItem.subItems.length > 0">
+            <div class="sub-items-list">
+              <h5>Componentes del Item:</h5>
+              <ul>
+                <li *ngFor="let sub of newItem.subItems; let i = index">
+                  <span>{{ sub.quantity }}x {{ sub.description }} ({{ sub.unit_price | currency }})</span>
+                  <button type="button" class="btn-icon-danger small" (click)="removeSubItem(i)">
+                    <i class="ph ph-x"></i>
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div class="composite-actions">
+              <div class="form-group">
+                <label>Cantidad de Items Compuestos</label>
+                <div class="input-wrapper">
+                  <i class="ph ph-copy"></i>
+                  <input type="number" [(ngModel)]="newItem.quantity" name="compositeQty" min="1">
+                </div>
+              </div>
+
+              <div class="composite-summary">
+                <p><strong>Precio Unitario (Compuesto):</strong> {{ newItem.unit_price | currency }}</p>
+                <p><strong>Subtotal Total:</strong> {{ newItem.quantity * newItem.unit_price | currency }}</p>
+              </div>
+
+              <button type="button" class="btn-add-item primary" (click)="addItem()">
+                <i class="ph ph-check"></i> Agregar al Pedido
               </button>
             </div>
           </div>
@@ -146,7 +175,14 @@
             </thead>
             <tbody>
               <tr *ngFor="let item of items; let i = index">
-                <td>{{ item.description }}</td>
+                <td>
+                  <strong>{{ item.description }}</strong>
+                  <div class="item-details-small" *ngIf="item.attributes?.sub_items">
+                    <span *ngFor="let sub of item.attributes.sub_items">
+                      • {{ sub.quantity }}x {{ sub.description }} <br>
+                    </span>
+                  </div>
+                </td>
                 <td>{{ item.quantity }}</td>
                 <td>${{ item.unit_price | number:'1.2-2' }}</td>
                 <td>${{ item.subtotal | number:'1.2-2' }}</td>
