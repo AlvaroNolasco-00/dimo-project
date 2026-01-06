@@ -1,3 +1,4 @@
+from sqlalchemy import UniqueConstraint
 from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Numeric, func, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSON
@@ -33,14 +34,21 @@ class Project(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     users = relationship("User", secondary=user_projects, back_populates="projects")
+    orders = relationship("Order", back_populates="project", cascade="all, delete-orphan")
+    order_states_config = relationship("ProjectOrderState", back_populates="project", cascade="all, delete-orphan")
 
 class CostType(Base):
     __tablename__ = "cost_types"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, nullable=False)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String, nullable=False)
     description = Column(String)
     created_at = Column(DateTime, server_default=func.now())
+
+    __table_args__ = (
+        UniqueConstraint('name', 'project_id', name='uq_cost_type_name_project'),
+    )
 
 class OperativeCost(Base):
     __tablename__ = "operative_costs"
@@ -52,3 +60,75 @@ class OperativeCost(Base):
     created_at = Column(DateTime, server_default=func.now())
 
     cost_type = relationship("CostType")
+
+# --- Order System Models ---
+
+class OrderState(Base):
+    __tablename__ = "order_states"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(50), unique=True, nullable=False)
+    description = Column(String)
+    is_system_default = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+class ProjectOrderState(Base):
+    __tablename__ = "project_order_states"
+
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
+    order_state_id = Column(Integer, ForeignKey("order_states.id", ondelete="CASCADE"), primary_key=True)
+    is_active = Column(Boolean, default=True)
+    is_visible = Column(Boolean, default=True)
+    display_order = Column(Integer, default=0)
+
+    # Relationships
+    project = relationship("Project", back_populates="order_states_config")
+    state = relationship("OrderState")
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    
+    client_name = Column(String, nullable=False)
+    delivery_date = Column(DateTime, nullable=True)
+    shipping_address = Column(String, nullable=True)
+    location_lat = Column(Numeric(10, 6), nullable=True)
+    location_lng = Column(Numeric(10, 6), nullable=True)
+    
+    current_state_id = Column(Integer, ForeignKey("order_states.id"), nullable=True)
+    total_amount = Column(Numeric(12, 2), default=0.00)
+    notes = Column(String, nullable=True)
+    
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    project = relationship("Project", back_populates="orders")
+    state = relationship("OrderState")
+    items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    
+    description = Column(String, nullable=False)
+    quantity = Column(Integer, default=1)
+    unit_price = Column(Numeric(10, 2), default=0.00)
+    subtotal = Column(Numeric(12, 2), default=0.00)
+    
+    operative_cost_id = Column(Integer, ForeignKey("operative_costs.id", ondelete="SET NULL"), nullable=True)
+    attributes = Column(JSON, default={})
+    
+    created_at = Column(DateTime, server_default=func.now())
+
+    # Relationships
+    order = relationship("Order", back_populates="items")
+    operative_cost = relationship("OperativeCost")
+
+# Add back_populates relationships to existing models
+# Project model update needed to support back_populates
+

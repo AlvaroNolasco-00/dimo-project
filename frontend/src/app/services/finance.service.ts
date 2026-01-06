@@ -25,11 +25,13 @@ export class FinanceService {
     private http = inject(HttpClient);
     private apiUrl = `${environment.apiUrl}/finance`;
 
-    getCostTypes(): Observable<CostType[]> {
-        return this.http.get<CostType[]>(`${this.apiUrl}/cost-types`);
+    getCostTypes(projectId?: number): Observable<CostType[]> {
+        let params: any = {};
+        if (projectId) params.project_id = projectId;
+        return this.http.get<CostType[]>(`${this.apiUrl}/cost-types`, { params });
     }
 
-    createCostType(costType: { name: string, description: string }): Observable<CostType> {
+    createCostType(costType: { name: string, description: string, project_id: number }): Observable<CostType> {
         return this.http.post<CostType>(`${this.apiUrl}/cost-types`, costType);
     }
 
@@ -47,5 +49,9 @@ export class FinanceService {
 
     updateCost(id: number, cost: { base_cost?: number, attributes?: any }): Observable<OperativeCost> {
         return this.http.put<OperativeCost>(`${this.apiUrl}/costs/${id}`, cost);
+    }
+
+    deleteCost(id: number): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/costs/${id}`);
     }
 }

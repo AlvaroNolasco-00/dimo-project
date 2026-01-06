@@ -2,13 +2,14 @@ import { Component, signal, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ProjectService } from '../../services/project.service';
-import { Project, ProjectCreate, ProjectUpdate, ProjectUser } from '../../interfaces/project.interface';
+import { Project, ProjectCreate, ProjectUser } from '../../interfaces/project.interface';
 import { UserService } from '../../services/user.service';
+import { ProjectEditComponent } from './components/project-edit/project-edit.component';
 
 @Component({
     selector: 'app-proyectos',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, ProjectEditComponent],
     templateUrl: './proyectos.component.html',
     styleUrl: './proyectos.component.scss'
 })
@@ -29,8 +30,6 @@ export class ProyectosComponent implements OnInit {
     newProjectDesc = '';
 
     editingProject: Project | null = null;
-    editProjectName = '';
-    editProjectDesc = '';
 
     selectedProjectForUsers: Project | null = null;
     projectUsers = signal<ProjectUser[]>([]);
@@ -86,8 +85,6 @@ export class ProyectosComponent implements OnInit {
     // --- Edit ---
     openEditModal(p: Project) {
         this.editingProject = p;
-        this.editProjectName = p.name;
-        this.editProjectDesc = p.description || '';
         this.showEditModal.set(true);
     }
 
@@ -96,21 +93,9 @@ export class ProyectosComponent implements OnInit {
         this.editingProject = null;
     }
 
-    updateProject() {
-        if (!this.editingProject || !this.editProjectName) return;
-
-        const payload: ProjectUpdate = {
-            name: this.editProjectName,
-            description: this.editProjectDesc
-        };
-
-        this.projectService.updateProject(this.editingProject.id, payload).subscribe({
-            next: (updated) => {
-                this.projects.update(list => list.map(p => p.id === updated.id ? updated : p));
-                this.closeEditModal();
-            },
-            error: (e) => alert('Error updating project: ' + e.error?.detail)
-        });
+    onProjectUpdated(updated: Project) {
+        this.projects.update(list => list.map(p => p.id === updated.id ? updated : p));
+        this.closeEditModal();
     }
 
     // --- Delete ---

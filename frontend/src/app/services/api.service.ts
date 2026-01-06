@@ -100,4 +100,27 @@ export class ApiService {
         formData.append('shape', shape);
         return this.http.post(`${environment.apiUrl}/watermark`, formData, { responseType: 'blob' });
     }
+
+    // --- Orders ---
+
+    getProjectOrderStates(projectId: number): Observable<any[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}/projects/${projectId}/order-states`);
+    }
+
+    getAllOrderStates(): Observable<any[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}/order-states`);
+    }
+
+    updateProjectOrderStates(projectId: number, activeStateIds: number[]): Observable<any> {
+        return this.http.put(`${environment.apiUrl}/projects/${projectId}/order-states`, activeStateIds);
+    }
+
+    createOrder(projectId: number, orderData: any): Observable<any> {
+        return this.http.post<any>(`${environment.apiUrl}/projects/${projectId}/orders`, orderData);
+    }
+
+    getProjectOrders(projectId: number): Observable<any[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}/projects/${projectId}/orders`);
+    }
 }
+

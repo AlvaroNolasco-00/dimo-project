@@ -29,6 +29,8 @@
               <td>{{ cost.base_cost | currency }}</td>
               <td class="text-right">
                 <button class="btn-edit" (click)="editCost(cost)">Editar</button>
+                <button *ngIf="isAdmin" class="btn-danger" (click)="deleteCost(cost.id)"
+                  style="margin-left: 8px;">Eliminar</button>
               </td>
             </tr>
             <tr *ngIf="!groupedCosts[type.id] || groupedCosts[type.id].length === 0">
@@ -68,7 +70,7 @@
 <!-- Modal: New Cost -->
 <div class="modal-backdrop" *ngIf="showCostModal">
   <div class="modal-content">
-    <h2>Agregar Costo</h2>
+    <h2>{{ editingCostId ? 'Editar' : 'Agregar' }} Costo</h2>
     <div class="form-group">
       <label>Costo Base</label>
       <input type="number" [(ngModel)]="newCostBase" class="form-control">

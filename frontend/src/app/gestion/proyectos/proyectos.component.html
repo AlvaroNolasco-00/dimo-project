@@ -73,28 +73,9 @@
 </div>
 
 <!-- Edit Modal -->
-<div class="modal-overlay" *ngIf="showEditModal()">
-    <div class="modal">
-        <div class="modal-header">
-            <h2>Editar Proyecto</h2>
-            <button class="close-btn" (click)="closeEditModal()"><i class="ph ph-x"></i></button>
-        </div>
-        <div class="modal-body">
-            <div class="form-group">
-                <label>Nombre</label>
-                <input type="text" [(ngModel)]="editProjectName" class="form-control">
-            </div>
-            <div class="form-group">
-                <label>Descripción</label>
-                <textarea [(ngModel)]="editProjectDesc" class="form-control"></textarea>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button class="btn-secondary" (click)="closeEditModal()">Cancelar</button>
-            <button class="btn-primary" (click)="updateProject()" [disabled]="!editProjectName">Guardar</button>
-        </div>
-    </div>
-</div>
+<app-project-edit *ngIf="showEditModal()" [project]="editingProject" (close)="closeEditModal()"
+    (saved)="onProjectUpdated($event)">
+</app-project-edit>
 
 <!-- Users Modal -->
 <div class="modal-overlay" *ngIf="showUsersModal()">

@@ -20,11 +20,20 @@ def create_cost_type(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    db_cost_type = db.query(models.CostType).filter(models.CostType.name == cost_type.name).first()
-    if db_cost_type:
-        raise HTTPException(status_code=400, detail="Cost type already exists")
+    # Check if exists for this project
+    db_cost_type = db.query(models.CostType).filter(
+        models.CostType.name == cost_type.name,
+        models.CostType.project_id == cost_type.project_id
+    ).first()
     
-    new_cost_type = models.CostType(name=cost_type.name, description=cost_type.description)
+    if db_cost_type:
+        raise HTTPException(status_code=400, detail="Cost type already exists in this project")
+    
+    new_cost_type = models.CostType(
+        name=cost_type.name, 
+        description=cost_type.description,
+        project_id=cost_type.project_id
+    )
     db.add(new_cost_type)
     db.commit()
     db.refresh(new_cost_type)
@@ -32,12 +41,17 @@ def create_cost_type(
 
 @router.get("/cost-types", response_model=List[schemas.CostType])
 def read_cost_types(
+    project_id: int = None,
     skip: int = 0, 
     limit: int = 100, 
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    cost_types = db.query(models.CostType).offset(skip).limit(limit).all()
+    query = db.query(models.CostType)
+    if project_id:
+        query = query.filter(models.CostType.project_id == project_id)
+    
+    cost_types = query.offset(skip).limit(limit).all()
     return cost_types
 
 # --- OPERATIVE COSTS ---
@@ -93,12 +107,25 @@ def update_operative_cost(
         db_cost.base_cost = cost_update.base_cost
     
     if cost_update.attributes is not None:
-        # Update attributes - simplistic replace or merge? 
-        # Typically replace is safer for full flexibility, or merge if partial.
-        # User asked "poder editar los costos e informacion". Let's assume replace for now or merge
-        # But JSON update in SQLA is tricky depending on DB. Replacing the dict is standard.
         db_cost.attributes = cost_update.attributes
 
     db.commit()
     db.refresh(db_cost)
     return db_cost
+
+@router.delete("/costs/{cost_id}")
+def delete_operative_cost(
+    cost_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    if not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db_cost = db.query(models.OperativeCost).filter(models.OperativeCost.id == cost_id).first()
+    if not db_cost:
+        raise HTTPException(status_code=404, detail="Cost not found")
+    
+    db.delete(db_cost)
+    db.commit()
+    return {"ok": True}

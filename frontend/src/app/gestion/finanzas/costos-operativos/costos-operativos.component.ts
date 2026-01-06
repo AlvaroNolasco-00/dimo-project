@@ -1,7 +1,9 @@
-import { Component, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, inject, ChangeDetectorRef, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FinanceService, CostType, OperativeCost } from '../../../services/finance.service';
+import { AuthService } from '../../../services/auth.service';
+import Swal from 'sweetalert2';
 
 export interface CamisaCost {
   talla: string;
@@ -38,19 +40,32 @@ export class CostosOperativosComponent {
   newTypeDesc = '';
 
   selectedTypeId: number | null = null;
+  editingCostId: number | null = null;
   newCostBase: number = 0;
   newCostAttributes: { key: string, value: string }[] = [];
 
   private financeService = inject(FinanceService);
+  private authService = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
 
-  ngOnInit() {
-    this.loadData();
+  constructor() {
+    effect(() => {
+      const project = this.authService.currentProject();
+      if (project) {
+        this.loadData(project.id);
+      } else {
+        this.costTypes = [];
+        this.groupedCosts = {};
+      }
+    });
   }
 
-  loadData() {
-    this.financeService.getCostTypes().subscribe((types: CostType[]) => {
+  loadData(projectId: number) {
+    this.financeService.getCostTypes(projectId).subscribe((types: CostType[]) => {
       this.costTypes = types;
+      this.groupedCosts = {}; // Clear previous data
+      this.typeColumns = {};
+
       this.costTypes.forEach(type => {
         this.financeService.getCosts(type.id).subscribe((costs: OperativeCost[]) => {
           this.groupedCosts[type.id] = costs;
@@ -84,9 +99,16 @@ export class CostosOperativosComponent {
 
   saveType() {
     if (!this.newTypeName) return;
-    this.financeService.createCostType({ name: this.newTypeName, description: this.newTypeDesc })
+    const project = this.authService.currentProject();
+    if (!project) return;
+
+    this.financeService.createCostType({
+      name: this.newTypeName,
+      description: this.newTypeDesc,
+      project_id: project.id
+    })
       .subscribe(() => {
-        this.loadData();
+        this.loadData(project.id);
         this.closeTypeModal();
       });
   }
@@ -94,6 +116,7 @@ export class CostosOperativosComponent {
   // --- Cost Logic ---
   openCostModal(typeId: number) {
     this.selectedTypeId = typeId;
+    this.editingCostId = null;
     this.newCostBase = 0;
 
     // Pre-fill attributes based on existing columns
@@ -108,6 +131,7 @@ export class CostosOperativosComponent {
   closeCostModal() {
     this.showCostModal = false;
     this.selectedTypeId = null;
+    this.editingCostId = null;
   }
 
   addAttribute() {
@@ -118,7 +142,7 @@ export class CostosOperativosComponent {
     this.newCostAttributes.splice(index, 1);
   }
 
-  saveCost() {
+  async saveCost() {
     if (!this.selectedTypeId) return;
 
     const attributes: any = {};
@@ -126,21 +150,89 @@ export class CostosOperativosComponent {
       if (attr.key) attributes[attr.key] = attr.value;
     });
 
-    this.financeService.createCost({
+    const payload = {
       cost_type_id: this.selectedTypeId,
       base_cost: this.newCostBase,
       attributes: attributes
-    }).subscribe(() => {
-      // Reload specific type logic could be optimized, but reloading all is safer for now
-      this.loadData();
-      this.closeCostModal();
-    });
+    };
+
+    if (this.editingCostId) {
+      // Edit Mode
+      const result = await Swal.fire({
+        title: '¿Confirmar edición?',
+        text: "Se actualizarán los datos del costo.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Sí, guardar',
+        cancelButtonText: 'Cancelar'
+      });
+
+      if (result.isConfirmed) {
+        this.financeService.updateCost(this.editingCostId, payload).subscribe(() => {
+          Swal.fire('Guardado', 'El costo ha sido actualizado.', 'success');
+          this.refreshData();
+          this.closeCostModal();
+        });
+      }
+    } else {
+      // Create Mode
+      this.financeService.createCost(payload).subscribe(() => {
+        this.refreshData();
+        this.closeCostModal();
+      });
+    }
   }
 
-  // --- Edit Logic (Placeholder for now) ---
-  editCost(cost: any) {
-    // Ideally open simple prompt or reuse modal
-    alert('Edit functionality ID: ' + cost.id);
+  async deleteCost(costId: number) {
+    const result = await Swal.fire({
+      title: '¿Estás seguro?',
+      text: "No podrás revertir esta acción",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    });
+
+    if (result.isConfirmed) {
+      this.financeService.deleteCost(costId).subscribe(() => {
+        Swal.fire('Eliminado!', 'El costo ha sido eliminado.', 'success');
+        this.refreshData();
+      });
+    }
+  }
+
+  private refreshData() {
+    const project = this.authService.currentProject();
+    if (project) this.loadData(project.id);
+  }
+
+  get isAdmin() {
+    return this.authService.isAdmin();
+  }
+
+  editCost(cost: OperativeCost) {
+    this.selectedTypeId = cost.cost_type_id;
+    this.editingCostId = cost.id;
+    this.newCostBase = cost.base_cost;
+
+    // Convert attributes object to array for form
+    this.newCostAttributes = [];
+    if (cost.attributes) {
+      Object.keys(cost.attributes).forEach(key => {
+        this.newCostAttributes.push({ key, value: cost.attributes[key] });
+      });
+    }
+
+    // Ensure at least one empty if none
+    if (this.newCostAttributes.length === 0) {
+      this.newCostAttributes.push({ key: '', value: '' });
+    }
+
+    this.showCostModal = true;
   }
 }
 

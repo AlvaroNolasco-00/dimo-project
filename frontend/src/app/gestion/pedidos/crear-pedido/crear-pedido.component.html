@@ -50,16 +50,73 @@
         </div>
       </div>
 
+      <!-- STATES SECTION -->
       <div class="form-row">
         <div class="form-group">
           <label for="etapa">Etapa Inicial</label>
           <div class="input-wrapper">
             <i class="ph ph-steps"></i>
-            <select id="etapa" [(ngModel)]="nuevoPedido.etapa" name="etapa" required>
-              <option *ngFor="let etapa of etapas" [value]="etapa">{{ etapa }}</option>
+            <select id="etapa" [(ngModel)]="nuevoPedido.current_state_id" name="etapa" required>
+              <option *ngFor="let state of projectStates" [value]="state.id">{{ state.name }}</option>
             </select>
             <i class="ph ph-caret-down select-icon"></i>
           </div>
+        </div>
+      </div>
+
+      <!-- ITEMS SECTION -->
+      <div class="form-group full-width items-section">
+        <h3>Detalle del Pedido</h3>
+
+        <!-- Add Item Form -->
+        <div class="add-item-row">
+          <div class="item-input description">
+            <input type="text" placeholder="Descripción (ej. Camisa L)" [(ngModel)]="newItem.description"
+              name="itemDesc">
+          </div>
+          <div class="item-input qty">
+            <input type="number" placeholder="Cant." [(ngModel)]="newItem.quantity" name="itemQty" min="1">
+          </div>
+          <div class="item-input price">
+            <input type="number" placeholder="Precio Unit." [(ngModel)]="newItem.unit_price" name="itemPrice" min="0">
+          </div>
+          <button type="button" class="btn-add-item" (click)="addItem()">
+            <i class="ph ph-plus"></i> Agregar
+          </button>
+        </div>
+
+        <!-- Items List -->
+        <div class="items-table-wrapper" *ngIf="items.length > 0">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Descripción</th>
+                <th>Cant.</th>
+                <th>Precio</th>
+                <th>Subtotal</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of items; let i = index">
+                <td>{{ item.description }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>${{ item.unit_price | number:'1.2-2' }}</td>
+                <td>${{ item.subtotal | number:'1.2-2' }}</td>
+                <td>
+                  <button type="button" class="btn-icon-danger" (click)="removeItem(i)">
+                    <i class="ph ph-trash"></i>
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td colspan="3" class="text-right"><strong>Total:</strong></td>
+                <td colspan="2" class="total-amount">${{ totalAmount | number:'1.2-2' }}</td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
 
@@ -76,7 +133,7 @@
         <button type="button" class="btn-cancel" (click)="cancelar()">
           Cancelar
         </button>
-        <button type="submit" class="btn-save">
+        <button type="submit" class="btn-save" [disabled]="items.length === 0">
           <i class="ph ph-floppy-disk"></i>
           Guardar Pedido
         </button>

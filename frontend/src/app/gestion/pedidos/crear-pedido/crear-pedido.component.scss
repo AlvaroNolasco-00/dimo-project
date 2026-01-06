@@ -216,10 +216,137 @@
       border: 1px solid transparent;
       color: white;
 
-      &:hover {
+      &:disabled {
+          background: var(--surface-border); // Adjust color as needed for disabled state
+          cursor: not-allowed;
+          opacity: 0.7;
+      }
+
+      &:hover:not(:disabled) {
         background: var(--accent-hover);
         box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
       }
     }
   }
+}
+
+// Items Section Styles
+.items-section {
+    background: var(--surface-ground);
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+
+    h3 {
+        margin: 0 0 1.5rem 0;
+        font-size: 1.1rem;
+        color: var(--text-primary);
+    }
+}
+
+.add-item-row {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-light); // Separator
+
+    @media (max-width: 768px) {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .item-input {
+        &.description { flex: 3; }
+        &.qty { flex: 1; }
+        &.price { flex: 1; }
+
+        input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius);
+            background: var(--surface-card);
+            color: var(--text-primary);
+            
+            &:focus {
+                outline: none;
+                border-color: var(--accent-color);
+            }
+        }
+    }
+
+    .btn-add-item {
+        background: var(--primary-color); // Or a generic 'Action' color
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--radius);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+        white-space: nowrap;
+
+        &:hover {
+            background: var(--primary-hover);
+        }
+    }
+}
+
+.items-table-wrapper {
+    overflow-x: auto;
+}
+
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+
+    th, td {
+        padding: 0.75rem 1rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-light);
+        color: var(--text-primary);
+    }
+
+    th {
+        font-weight: 600;
+        color: var(--text-secondary);
+        background: var(--surface-ground); // Ensure header stays distinct
+    }
+
+    .btn-icon-danger {
+        background: transparent;
+        border: none;
+        color: var(--danger-color, #e74c3c); // Fallback color
+        cursor: pointer;
+        padding: 0.5rem;
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        &:hover {
+            background: rgba(231, 76, 60, 0.1);
+        }
+    }
+    
+    .total-amount {
+        font-weight: bold;
+        font-size: 1.1rem;
+        color: var(--accent-color);
+    }
+
+    tfoot td {
+        border-top: 2px solid var(--border-color);
+        border-bottom: none;
+        padding-top: 1rem;
+    }
+    
+    .text-right {
+        text-align: right;
+    }
 }
