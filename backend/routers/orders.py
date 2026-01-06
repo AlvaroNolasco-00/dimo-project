@@ -5,6 +5,7 @@ from sqlalchemy import func
 from .. import models, schemas, database
 
 router = APIRouter(
+    prefix="/api",
     tags=["orders"]
 )
 
