@@ -30,8 +30,61 @@
   h2 {
     color: var(--text-primary);
     font-size: 1.25rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0;
     font-weight: 600;
+  }
+}
+
+.section-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.filters {
+  display: flex;
+  gap: 1rem;
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 250px;
+
+  i {
+    position: absolute;
+    left: 1rem;
+    color: var(--text-tertiary);
+    font-size: 1.1rem;
+    pointer-events: none;
+  }
+
+  .select-icon {
+    left: auto;
+    right: 1rem;
+  }
+
+  select {
+    width: 100%;
+    padding: 0.6rem 1rem 0.6rem 2.8rem;
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    appearance: none;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:focus {
+      outline: none;
+      border-color: var(--accent-color);
+      box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+    }
   }
 }
 
@@ -131,6 +184,27 @@
     color: var(--text-secondary);
     font-weight: 500;
     font-size: 0.9rem;
+  }
+
+  th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+
+    &:hover {
+      background: var(--surface-card-hover); // Assuming this variable exists or slightly lighter/darker
+      color: var(--text-primary);
+    }
+
+    i {
+      margin-left: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--text-tertiary);
+    }
+
+    &:hover i {
+      color: var(--accent-color);
+    }
   }
 
   tr:last-child td {

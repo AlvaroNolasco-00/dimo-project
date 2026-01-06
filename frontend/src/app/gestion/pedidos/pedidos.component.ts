@@ -1,82 +1,141 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { ApiService } from '../../services/api.service';
 
 export interface Pedido {
-  id: string;
-  cliente: string;
-  fechaEntrega: Date;
-  fechaCreacion: Date;
-  etapa: 'Producción' | 'Diseño' | 'Empaquetado' | 'Enviado';
-  notas: string;
+  id: number;
+  client_name: string;
+  delivery_date: string;
+  created_at: string;
+  current_state_id: number;
+  state?: {
+    name: string;
+  };
+  notes: string;
+  total_amount: number;
 }
 
 @Component({
   selector: 'app-pedidos',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, FormsModule],
   templateUrl: './pedidos.component.html',
   styleUrl: './pedidos.component.scss'
 })
 export class PedidosComponent implements OnInit {
-  pedidos: Pedido[] = [
-    {
-      id: 'PED-001',
-      cliente: 'Empresas Polar',
-      fechaEntrega: new Date('2024-06-15'),
-      fechaCreacion: new Date('2024-06-01'),
-      etapa: 'Producción',
-      notas: 'Entrega urgente antes del mediodía'
-    },
-    {
-      id: 'PED-002',
-      cliente: 'Farmatodo',
-      fechaEntrega: new Date('2024-06-12'),
-      fechaCreacion: new Date('2024-05-28'),
-      etapa: 'Empaquetado',
-      notas: 'Incluir etiqueta promocional'
-    },
-    {
-      id: 'PED-003',
-      cliente: 'Locatel',
-      fechaEntrega: new Date('2024-06-20'),
-      fechaCreacion: new Date('2024-06-05'),
-      etapa: 'Diseño',
-      notas: 'Pendiente aprobación de boceto'
-    },
-    {
-      id: 'PED-004',
-      cliente: 'Cines Unidos',
-      fechaEntrega: new Date('2024-06-18'),
-      fechaCreacion: new Date('2024-06-02'),
-      etapa: 'Producción',
-      notas: 'Sin notas adicionales'
-    },
-    {
-      id: 'PED-005',
-      cliente: 'Banco Mercantil',
-      fechaEntrega: new Date('2024-06-10'),
-      fechaCreacion: new Date('2024-05-30'),
-      etapa: 'Enviado',
-      notas: 'Confirmar recepción con el gerente'
-    }
-  ];
-
+  // Data
+  allOrders: Pedido[] = [];
+  filteredOrders: Pedido[] = [];
   top3Entregas: Pedido[] = [];
-  pedidosActivos: Pedido[] = [];
+
+  // Filter State
+  projectStates: any[] = [];
+  selectedStateId: number | null = null;
+  projectId: number = 1; // Default or fetched
+
+  // Sort State
+  sortField: 'delivery_date' | 'created_at' | 'id' | 'client_name' = 'delivery_date';
+  sortOrder: 'asc' | 'desc' = 'asc';
+
+  isLoading = false;
+
+  constructor(
+    private apiService: ApiService,
+    private cd: ChangeDetectorRef
+  ) { }
 
   ngOnInit() {
-    this.processPedidos();
+    const storedProjId = localStorage.getItem('currentProjectId');
+    if (storedProjId) {
+      this.projectId = parseInt(storedProjId, 10);
+    }
+
+    this.loadData();
   }
 
-  processPedidos() {
-    // Top 3 closest deliveries
-    this.top3Entregas = [...this.pedidos]
-      .sort((a, b) => a.fechaEntrega.getTime() - b.fechaEntrega.getTime())
-      .slice(0, 3);
+  loadData() {
+    this.isLoading = true;
 
-    // Active orders (mock logic: all are active for now)
-    this.pedidosActivos = this.pedidos;
+    // Load States for Filter
+    this.apiService.getProjectOrderStates(this.projectId).subscribe({
+      next: (states) => {
+        this.projectStates = states;
+      },
+      error: (err) => console.error('Error loading states', err)
+    });
+
+    // Load Orders
+    this.apiService.getProjectOrders(this.projectId).subscribe({
+      next: (orders) => {
+        this.allOrders = orders;
+        this.applyFilters();
+        this.updateTop3();
+        this.isLoading = false;
+        this.cd.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error loading orders', err);
+        this.isLoading = false;
+      }
+    });
+  }
+
+  applyFilters() {
+    let result = [...this.allOrders];
+
+    if (this.selectedStateId) {
+      result = result.filter(o => o.current_state_id == this.selectedStateId);
+    }
+
+    this.sortOrders(result);
+    this.filteredOrders = result;
+    this.cd.markForCheck();
+  }
+
+  sortOrders(list: Pedido[]) {
+    list.sort((a, b) => {
+      let valA: any = a[this.sortField];
+      let valB: any = b[this.sortField];
+
+      // Handle dates
+      if (this.sortField === 'delivery_date' || this.sortField === 'created_at') {
+        valA = new Date(valA).getTime();
+        valB = new Date(valB).getTime();
+      }
+
+      if (valA < valB) return this.sortOrder === 'asc' ? -1 : 1;
+      if (valA > valB) return this.sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  onSort(field: 'delivery_date' | 'created_at' | 'id' | 'client_name') {
+    if (this.sortField === field) {
+      this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.sortField = field;
+      this.sortOrder = 'asc'; // Default new sort to asc
+    }
+    this.applyFilters(); // Re-apply sort
+  }
+
+  onFilterChange() {
+    this.applyFilters();
+  }
+
+  updateTop3() {
+    // Top 3 closest future deliveries
+    const now = new Date().getTime();
+    this.top3Entregas = [...this.allOrders]
+      .filter(o => o.delivery_date && new Date(o.delivery_date).getTime() >= now)
+      .sort((a, b) => new Date(a.delivery_date).getTime() - new Date(b.delivery_date).getTime())
+      .slice(0, 3);
+  }
+
+  getStateName(order: Pedido): string {
+    return order.state?.name || 'Desconocido';
   }
 }
 

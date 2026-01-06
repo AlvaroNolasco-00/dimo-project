@@ -18,14 +18,14 @@
         <div class="card-header">
           <span class="delivery-date">
             <i class="ph ph-calendar-blank"></i>
-            {{ pedido.fechaEntrega | date:'dd MMM yyyy' }}
+            {{ pedido.delivery_date | date:'dd MMM yyyy' }}
           </span>
-          <span class="status-badge" [ngClass]="pedido.etapa.toLowerCase()">
-            {{ pedido.etapa }}
+          <span class="status-badge" [ngClass]="getStateName(pedido).toLowerCase()">
+            {{ getStateName(pedido) }}
           </span>
         </div>
         <div class="card-body">
-          <h3>{{ pedido.cliente }}</h3>
+          <h3>{{ pedido.client_name }}</h3>
           <p class="order-id">#{{ pedido.id }}</p>
         </div>
         <div class="card-footer">
@@ -40,40 +40,70 @@
 
   <!-- Pedidos Activos Section -->
   <div class="section-container">
-    <h2>Pedidos Activos</h2>
-    <div class="table-responsive">
-      <table class="pedidos-table">
-        <thead>
-          <tr>
-            <th>Pedido</th>
-            <th>Cliente</th>
-            <th>Fecha Creación</th>
-            <th>Fecha Entrega</th>
-            <th>Etapa</th>
-            <th>Notas</th>
-            <th>Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let pedido of pedidosActivos">
-            <td class="fw-bold">#{{ pedido.id }}</td>
-            <td>{{ pedido.cliente }}</td>
-            <td>{{ pedido.fechaCreacion | date:'shortDate' }}</td>
-            <td>{{ pedido.fechaEntrega | date:'shortDate' }}</td>
-            <td>
-              <span class="status-badge" [ngClass]="pedido.etapa.toLowerCase()">
-                {{ pedido.etapa }}
-              </span>
-            </td>
-            <td class="notes-cell" title="{{ pedido.notas }}">{{ pedido.notas }}</td>
-            <td>
-              <button class="btn-icon" title="Ver detalle">
-                <i class="ph ph-eye"></i>
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="section-container">
+      <div class="section-header-row">
+        <h2>Pedidos Activos</h2>
+
+        <div class="filters">
+          <div class="input-wrapper small">
+            <i class="ph ph-funnel"></i>
+            <select [(ngModel)]="selectedStateId" (change)="onFilterChange()">
+              <option [ngValue]="null">Todos los estados</option>
+              <option *ngFor="let state of projectStates" [value]="state.id">{{ state.name }}</option>
+            </select>
+            <i class="ph ph-caret-down select-icon"></i>
+          </div>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="pedidos-table">
+          <thead>
+            <tr>
+              <th (click)="onSort('id')" class="sortable">
+                Pedido
+                <i class="ph"
+                  [ngClass]="{'ph-caret-up': sortField === 'id' && sortOrder === 'asc', 'ph-caret-down': sortField === 'id' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'id'}"></i>
+              </th>
+              <th (click)="onSort('client_name')" class="sortable">
+                Cliente
+                <i class="ph"
+                  [ngClass]="{'ph-caret-up': sortField === 'client_name' && sortOrder === 'asc', 'ph-caret-down': sortField === 'client_name' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'client_name'}"></i>
+              </th>
+              <th (click)="onSort('created_at')" class="sortable">
+                Fecha Creación
+                <i class="ph"
+                  [ngClass]="{'ph-caret-up': sortField === 'created_at' && sortOrder === 'asc', 'ph-caret-down': sortField === 'created_at' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'created_at'}"></i>
+              </th>
+              <th (click)="onSort('delivery_date')" class="sortable">
+                Fecha Entrega
+                <i class="ph"
+                  [ngClass]="{'ph-caret-up': sortField === 'delivery_date' && sortOrder === 'asc', 'ph-caret-down': sortField === 'delivery_date' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'delivery_date'}"></i>
+              </th>
+              <th>Etapa</th>
+              <th>Notas</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let pedido of filteredOrders">
+              <td class="fw-bold">#{{ pedido.id }}</td>
+              <td>{{ pedido.client_name }}</td>
+              <td>{{ pedido.created_at | date:'shortDate' }}</td>
+              <td>{{ pedido.delivery_date | date:'shortDate' }}</td>
+              <td>
+                <span class="status-badge" [ngClass]="getStateName(pedido).toLowerCase()">
+                  {{ getStateName(pedido) }}
+                </span>
+              </td>
+              <td class="notes-cell" title="{{ pedido.notes }}">{{ pedido.notes }}</td>
+              <td>
+                <button class="btn-icon" title="Ver detalle">
+                  <i class="ph ph-eye"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
-</div>
