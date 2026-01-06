@@ -42,6 +42,8 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
     subItems: [] as any[] // List of { description, quantity, unit_price, cost_type_id, operative_cost_id, attributes }
   };
 
+  editingItemIndex: number | null = null;
+
   // Temporary Sub-Item (The part being added to the Composite Item)
   tempSubItem = {
     quantity: 1,
@@ -226,7 +228,7 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
 
     const subtotal = this.newItem.quantity * this.newItem.unit_price;
 
-    this.items.push({
+    const itemPayload = {
       description: this.newItem.description,
       quantity: this.newItem.quantity,
       unit_price: this.newItem.unit_price,
@@ -239,9 +241,43 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
       // These are null because it's a composite item, not a single operative cost
       cost_type_id: null,
       operative_cost_id: null
-    });
+    };
+
+    if (this.editingItemIndex !== null) {
+      // Update existing item
+      this.items[this.editingItemIndex] = itemPayload;
+    } else {
+      // Add new item
+      this.items.push(itemPayload);
+    }
 
     this.calculateTotal();
+    this.resetNewItem();
+  }
+
+  editItem(index: number) {
+    const item = this.items[index];
+
+    // Copy main item props
+    this.newItem = {
+      description: item.description,
+      quantity: item.quantity,
+      unit_price: item.unit_price,
+      // Deep copy sub-items to avoid reference issues while editing
+      subItems: JSON.parse(JSON.stringify(item.attributes.sub_items || []))
+    };
+
+    this.editingItemIndex = index;
+
+    // Reset temp sub builder
+    this.resetTempSubItem();
+
+    // Scroll to form (optional UX improvement)
+    const form = document.querySelector('.add-item-container');
+    if (form) form.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  cancelEdit() {
     this.resetNewItem();
   }
 
@@ -261,6 +297,7 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
       description: '',
       subItems: []
     };
+    this.editingItemIndex = null;
     this.resetTempSubItem();
   }
 

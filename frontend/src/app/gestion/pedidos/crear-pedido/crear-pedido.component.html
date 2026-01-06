@@ -154,9 +154,17 @@
                 <p><strong>Subtotal Total:</strong> {{ newItem.quantity * newItem.unit_price | currency }}</p>
               </div>
 
-              <button type="button" class="btn-add-item primary" (click)="addItem()">
-                <i class="ph ph-check"></i> Agregar al Pedido
-              </button>
+              <div class="action-buttons-wrapper">
+                <button *ngIf="editingItemIndex !== null" type="button" class="btn-cancel-edit" (click)="cancelEdit()">
+                  <i class="ph ph-x"></i> Cancelar Edición
+                </button>
+
+                <button type="button" class="btn-add-item primary" (click)="addItem()">
+                  <i class="ph" [class.ph-check]="editingItemIndex === null"
+                    [class.ph-pencil-simple]="editingItemIndex !== null"></i>
+                  {{ editingItemIndex !== null ? 'Actualizar Item' : 'Agregar al Pedido' }}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -187,9 +195,14 @@
                 <td>${{ item.unit_price | number:'1.2-2' }}</td>
                 <td>${{ item.subtotal | number:'1.2-2' }}</td>
                 <td>
-                  <button type="button" class="btn-icon-danger" (click)="removeItem(i)">
-                    <i class="ph ph-trash"></i>
-                  </button>
+                  <div class="table-actions">
+                    <button type="button" class="btn-icon-secondary" (click)="editItem(i)">
+                      <i class="ph ph-pencil-simple"></i>
+                    </button>
+                    <button type="button" class="btn-icon-danger" (click)="removeItem(i)">
+                      <i class="ph ph-trash"></i>
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
