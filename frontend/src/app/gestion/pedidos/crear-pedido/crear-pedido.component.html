@@ -95,7 +95,7 @@
                   [disabled]="!newItem.cost_type_id || isLoadingCosts" (change)="onOperativeCostChange()">
                   <option [ngValue]="null" disabled selected>Selecciona una opción</option>
                   <option *ngIf="isLoadingCosts" [ngValue]="null" disabled>Cargando costos...</option>
-                  <option *ngFor="let cost of availableOperativeCosts" [value]="cost.id">
+                  <option *ngFor="let cost of availableOperativeCosts" [ngValue]="cost.id">
                     {{ cost.base_cost | currency }}
                     <span *ngIf="cost.attributes">
                       - <span *ngFor="let attr of cost.attributes | keyvalue">{{ attr.key }}: {{ attr.value }} </span>

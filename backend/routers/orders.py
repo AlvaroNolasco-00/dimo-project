@@ -27,28 +27,29 @@ def get_all_order_states(db: Session = Depends(get_db)):
 def get_project_order_states(project_id: int, db: Session = Depends(get_db)):
     """
     Get effective order states for a project.
-    Returns states that are active for this project.
-    Logic:
-    1. Fetch all system states.
-    2. Fetch project specific config.
-    3. If config exists, respect `is_active`.
-    4. If no config, default to `is_system_default`.
+    Optimized to use a single query.
     """
-    # 1. Get all states
-    all_states = db.query(models.OrderState).all()
+    # Query: Select all OrderStates, join with ProjectOrderState for this project.
+    # We want:
+    # 1. States that have a config entry with is_active = True
+    # 2. States that have NO config entry BUT are system defaults (is_system_default = True)
     
-    # 2. Get project config
-    configs = db.query(models.ProjectOrderState).filter(models.ProjectOrderState.project_id == project_id).all()
-    config_map = {c.order_state_id: c for c in configs}
+    # Aliased for clarity, though not strictly needed if we access columns directly
     
+    results = db.query(models.OrderState, models.ProjectOrderState)\
+        .outerjoin(models.ProjectOrderState, 
+                   (models.OrderState.id == models.ProjectOrderState.order_state_id) & 
+                   (models.ProjectOrderState.project_id == project_id))\
+        .all()
+        
     active_states = []
-    for state in all_states:
-        if state.id in config_map:
-            # Explicit config exists
-            if config_map[state.id].is_active:
+    for state, config in results:
+        if config:
+            # If config exists, respect is_active
+            if config.is_active:
                 active_states.append(state)
         else:
-            # Fallback to system default
+            # If no config, checkout default
             if state.is_system_default:
                 active_states.append(state)
                 
