@@ -17,18 +17,24 @@
 }
 
 .form-header {
-  margin-bottom: 2.5rem;
-  text-align: center;
+  margin-bottom: 3rem;
+  text-align: left;
+  position: relative;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
 
   h1 {
     color: var(--text-primary);
     margin: 0 0 0.5rem 0;
-    font-size: 1.75rem;
+    font-size: 2rem;
+    font-weight: 600;
+    letter-spacing: -0.5px;
   }
 
   p {
     color: var(--text-secondary);
     margin: 0;
+    font-size: 1.1rem;
   }
 }
 
@@ -87,17 +93,26 @@
   }
 
   .btn-search {
-    padding: 0 1.5rem;
-    background: var(--primary-color);
+    padding: 0 2rem;
+    background: var(--accent-color);
     color: white;
     border: none;
     border-radius: var(--radius);
     cursor: pointer;
-    font-weight: 500;
+    font-weight: 600;
     transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 
     &:hover {
-      background: var(--primary-hover);
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(110, 64, 255, 0.3);
+    }
+
+    &:active {
+      transform: translateY(0);
     }
   }
 }
@@ -215,16 +230,23 @@
       background: var(--accent-color);
       border: 1px solid transparent;
       color: white;
+      box-shadow: 0 4px 10px rgba(var(--accent-rgb), 0.2);
 
       &:disabled {
-          background: var(--surface-border); // Adjust color as needed for disabled state
-          cursor: not-allowed;
-          opacity: 0.7;
+        background: var(--border-color);
+        cursor: not-allowed;
+        opacity: 0.5;
+        box-shadow: none;
       }
 
       &:hover:not(:disabled) {
         background: var(--accent-hover);
-        box-shadow: 0 4px 12px rgba(var(--accent-rgb), 0.3);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(110, 64, 255, 0.3);
+      }
+
+      &:active:not(:disabled) {
+        transform: translateY(0);
       }
     }
   }
@@ -232,121 +254,200 @@
 
 // Items Section Styles
 .items-section {
-    background: var(--surface-ground);
-    padding: 1.5rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--border-light);
+  background: var(--surface-card);
+  padding: 2rem;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  margin-top: 1rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 
-    h3 {
-        margin: 0 0 1.5rem 0;
-        font-size: 1.1rem;
-        color: var(--text-primary);
+  h3 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    &::before {
+      content: '';
+      width: 4px;
+      height: 24px;
+      background: var(--accent-color);
+      border-radius: 2px;
     }
+  }
 }
 
-.add-item-row {
+.add-item-container {
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.add-item-grid {
+  display: grid;
+  grid-template-columns: 2fr 100px 140px auto;
+  gap: 1.5rem;
+  align-items: end;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr 1fr;
+
+    .grid-description {
+      grid-column: 1 / -1;
+    }
+
+    .grid-qty {
+      grid-column: 1;
+    }
+
+    .grid-price {
+      grid-column: 2;
+    }
+
+    .grid-button {
+      grid-column: 1 / -1;
+    }
+  }
+
+  .form-group {
+    margin-bottom: 0;
+
+    label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.5rem;
+    }
+  }
+
+  .btn-add-item {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    height: 48px;
+    padding: 0 2rem;
+    border-radius: var(--radius);
+    cursor: pointer;
     display: flex;
-    gap: 1rem;
     align-items: center;
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid var(--border-light); // Separator
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    transition: var(--transition);
+    white-space: nowrap;
+    width: 100%;
 
-    @media (max-width: 768px) {
-        flex-direction: column;
-        align-items: stretch;
+    &:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(110, 64, 255, 0.3);
     }
 
-    .item-input {
-        &.description { flex: 3; }
-        &.qty { flex: 1; }
-        &.price { flex: 1; }
+    &:active {
+      transform: translateY(0);
+    }
+  }
 
-        input {
-            width: 100%;
-            padding: 0.75rem 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius);
-            background: var(--surface-card);
-            color: var(--text-primary);
-            
-            &:focus {
-                outline: none;
-                border-color: var(--accent-color);
-            }
-        }
+  .input-wrapper {
+    input {
+      padding-left: 3rem;
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
+
+      &:focus {
+        background: var(--card-bg);
+      }
     }
 
-    .btn-add-item {
-        background: var(--primary-color); // Or a generic 'Action' color
-        color: white;
-        border: none;
-        padding: 0.75rem 1.5rem;
-        border-radius: var(--radius);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: 500;
-        white-space: nowrap;
-
-        &:hover {
-            background: var(--primary-hover);
-        }
+    i {
+      color: var(--text-secondary);
     }
+  }
 }
 
 .items-table-wrapper {
-    overflow-x: auto;
+  overflow-x: auto;
+  border-radius: 12px;
+  background: var(--bg-color);
 }
 
 .items-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.95rem;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.95rem;
 
-    th, td {
-        padding: 0.75rem 1rem;
-        text-align: left;
-        border-bottom: 1px solid var(--border-light);
-        color: var(--text-primary);
-    }
+  th,
+  td {
+    padding: 1.25rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+  }
 
-    th {
-        font-weight: 600;
-        color: var(--text-secondary);
-        background: var(--surface-ground); // Ensure header stays distinct
-    }
+  th {
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.02);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
 
-    .btn-icon-danger {
-        background: transparent;
-        border: none;
-        color: var(--danger-color, #e74c3c); // Fallback color
-        cursor: pointer;
-        padding: 0.5rem;
-        border-radius: var(--radius);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+  tbody tr {
+    transition: var(--transition);
 
-        &:hover {
-            background: rgba(231, 76, 60, 0.1);
-        }
-    }
-    
-    .total-amount {
-        font-weight: bold;
-        font-size: 1.1rem;
-        color: var(--accent-color);
+    &:hover {
+      background: rgba(255, 255, 255, 0.03);
     }
 
-    tfoot td {
-        border-top: 2px solid var(--border-color);
-        border-bottom: none;
-        padding-top: 1rem;
+    &:last-child td {
+      border-bottom: none;
     }
-    
-    .text-right {
-        text-align: right;
+  }
+
+  .btn-icon-danger {
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px solid rgba(231, 76, 60, 0.2);
+    color: #ff4d4d;
+    cursor: pointer;
+    padding: 0.6rem;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+
+    &:hover {
+      background: #e74c3c;
+      color: white;
+      transform: scale(1.1);
     }
+  }
+
+  .total-amount {
+    font-weight: 600;
+    font-size: 1.5rem;
+    color: var(--accent-color);
+    text-shadow: 0 0 20px rgba(110, 64, 255, 0.3);
+  }
+
+  tfoot td {
+    border-top: 2px solid var(--border-color);
+    padding: 2rem 1rem;
+    background: rgba(255, 255, 255, 0.01);
+  }
+
+  .text-right {
+    text-align: right;
+    padding-right: 2rem;
+  }
+
+  .total-label {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+  }
 }

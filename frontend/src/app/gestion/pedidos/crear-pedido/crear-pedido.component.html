@@ -69,20 +69,39 @@
         <h3>Detalle del Pedido</h3>
 
         <!-- Add Item Form -->
-        <div class="add-item-row">
-          <div class="item-input description">
-            <input type="text" placeholder="Descripción (ej. Camisa L)" [(ngModel)]="newItem.description"
-              name="itemDesc">
+        <div class="add-item-container">
+          <div class="add-item-grid">
+            <div class="form-group grid-description">
+              <label>Descripción</label>
+              <div class="input-wrapper">
+                <i class="ph ph-package"></i>
+                <input type="text" placeholder="Ej. Camisa L" [(ngModel)]="newItem.description" name="itemDesc">
+              </div>
+            </div>
+
+            <div class="form-group grid-qty">
+              <label>Cant.</label>
+              <div class="input-wrapper">
+                <i class="ph ph-hash"></i>
+                <input type="number" placeholder="0" [(ngModel)]="newItem.quantity" name="itemQty" min="1">
+              </div>
+            </div>
+
+            <div class="form-group grid-price">
+              <label>Precio Unit.</label>
+              <div class="input-wrapper">
+                <i class="ph ph-currency-dollar"></i>
+                <input type="number" placeholder="0.00" [(ngModel)]="newItem.unit_price" name="itemPrice" min="0">
+              </div>
+            </div>
+
+            <div class="form-group grid-button">
+              <label>&nbsp;</label>
+              <button type="button" class="btn-add-item" (click)="addItem()">
+                <i class="ph ph-plus"></i> Agregar
+              </button>
+            </div>
           </div>
-          <div class="item-input qty">
-            <input type="number" placeholder="Cant." [(ngModel)]="newItem.quantity" name="itemQty" min="1">
-          </div>
-          <div class="item-input price">
-            <input type="number" placeholder="Precio Unit." [(ngModel)]="newItem.unit_price" name="itemPrice" min="0">
-          </div>
-          <button type="button" class="btn-add-item" (click)="addItem()">
-            <i class="ph ph-plus"></i> Agregar
-          </button>
         </div>
 
         <!-- Items List -->
@@ -112,7 +131,7 @@
             </tbody>
             <tfoot>
               <tr>
-                <td colspan="3" class="text-right"><strong>Total:</strong></td>
+                <td colspan="3" class="text-right"><span class="total-label">Subtotal del Pedido:</span></td>
                 <td colspan="2" class="total-amount">${{ totalAmount | number:'1.2-2' }}</td>
               </tr>
             </tfoot>
