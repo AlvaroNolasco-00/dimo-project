@@ -122,5 +122,15 @@ export class ApiService {
     getProjectOrders(projectId: number): Observable<any[]> {
         return this.http.get<any[]>(`${environment.apiUrl}/projects/${projectId}/orders`);
     }
+
+    // --- Costs ---
+
+    getCostTypes(projectId: number): Observable<any[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}/finance/cost-types?project_id=${projectId}`);
+    }
+
+    getOperativeCosts(costTypeId: number): Observable<any[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}/finance/costs?cost_type_id=${costTypeId}`);
+    }
 }
 

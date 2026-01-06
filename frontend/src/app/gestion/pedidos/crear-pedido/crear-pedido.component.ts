@@ -27,13 +27,19 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
   projectStates: any[] = [];
   projectId: number = 1; // Default or fetch from service/store
 
+  // Cost management
+  costTypes: any[] = [];
+  availableOperativeCosts: any[] = [];
+
   // Item management
   items: any[] = [];
   newItem = {
     description: '',
     quantity: 1,
     unit_price: 0,
-    attributes: {}   // e.g. { size: 'L', position: 'Back' }
+    attributes: {},   // e.g. { size: 'L', position: 'Back' }
+    cost_type_id: null as number | null,
+    operative_cost_id: null as number | null
   };
 
   // Totals
@@ -42,6 +48,13 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
   private map!: L.Map;
   private marker: L.Marker | null = null;
   searchQuery: string = '';
+
+  // Loading States
+  isLoadingStates = false;
+  isLoadingTypes = false;
+  isLoadingCosts = false;
+  isSaving = false;
+  isSearchingAddress = false;
 
   constructor(
     private router: Router,
@@ -56,9 +69,11 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
     }
 
     this.loadProjectStates();
+    this.loadCostTypes();
   }
 
   loadProjectStates() {
+    this.isLoadingStates = true;
     this.apiService.getProjectOrderStates(this.projectId).subscribe({
       next: (states) => {
         this.projectStates = states;
@@ -67,12 +82,77 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
         if (defaultState) {
           this.nuevoPedido.current_state_id = defaultState.id;
         }
+        this.isLoadingStates = false;
       },
-      error: (err) => console.error('Error loading states', err)
+      error: (err) => {
+        console.error('Error loading states', err);
+        this.isLoadingStates = false;
+      }
+    });
+  }
+
+  loadCostTypes() {
+    this.isLoadingTypes = true;
+    this.apiService.getCostTypes(this.projectId).subscribe({
+      next: (types) => {
+        this.costTypes = types;
+        this.isLoadingTypes = false;
+      },
+      error: (err) => {
+        console.error('Error loading cost types', err);
+        this.isLoadingTypes = false;
+      }
     });
   }
 
   // --- Item Logic ---
+
+  onCostTypeChange() {
+    // Reset operative cost selection when type changes
+    this.newItem.operative_cost_id = null;
+    this.newItem.unit_price = 0;
+    this.availableOperativeCosts = [];
+
+    if (this.newItem.cost_type_id) {
+      this.isLoadingCosts = true;
+      this.apiService.getOperativeCosts(this.newItem.cost_type_id).subscribe({
+        next: (costs) => {
+          this.availableOperativeCosts = costs;
+          this.isLoadingCosts = false;
+        },
+        error: (err) => {
+          console.error('Error loading operative costs', err);
+          this.isLoadingCosts = false;
+        }
+      });
+    }
+  }
+
+  onOperativeCostChange() {
+    const selectedCost = this.availableOperativeCosts.find(c => c.id == this.newItem.operative_cost_id);
+
+    if (selectedCost) {
+      this.newItem.unit_price = parseFloat(selectedCost.base_cost);
+
+      // Optionally auto-fill description with cost name + type? 
+      // Since OperativeCost doesn't have a name itself (it's linked to CostType + attributes), 
+      // we might want to construct a description or just rely on the user.
+      // However, the requirement says "el item del tipo de costo".
+      // If OperativeCost has attributes like 'Size: L', we can format that.
+
+      let desc = '';
+      const type = this.costTypes.find(t => t.id == this.newItem.cost_type_id);
+      if (type) desc += type.name;
+
+      if (selectedCost.attributes) {
+        const attrs = Object.values(selectedCost.attributes).join(' ');
+        if (attrs) desc += ` - ${attrs}`;
+      }
+      this.newItem.description = desc;
+    } else {
+      this.newItem.unit_price = 0;
+    }
+  }
 
   addItem() {
     if (!this.newItem.description || this.newItem.quantity <= 0) return;
@@ -102,8 +182,11 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
       description: '',
       quantity: 1,
       unit_price: 0,
-      attributes: {}
+      attributes: {},
+      cost_type_id: null,
+      operative_cost_id: null
     };
+    this.availableOperativeCosts = [];
   }
 
   // --- Map Logic ---
@@ -151,6 +234,7 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
   async searchAddress() {
     if (!this.searchQuery) return;
 
+    this.isSearchingAddress = true;
     try {
       const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(this.searchQuery)}`);
       const data = await response.json();
@@ -166,11 +250,14 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
       }
     } catch (error) {
       console.error('Error searching address:', error);
+    } finally {
+      this.isSearchingAddress = false;
     }
   }
 
   guardarPedido() {
     console.log('Guardando pedido:', this.nuevoPedido);
+    this.isSaving = true;
 
     // Construct payload
     const payload = {
@@ -188,11 +275,13 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
     this.apiService.createOrder(this.projectId, payload).subscribe({
       next: (res) => {
         console.log('Order created', res);
+        this.isSaving = false;
         this.router.navigate(['/gestion/pedidos']);
       },
       error: (err) => {
         console.error('Error creating order', err);
         // Ideally show a toast/alert here
+        this.isSaving = false;
       }
     });
   }

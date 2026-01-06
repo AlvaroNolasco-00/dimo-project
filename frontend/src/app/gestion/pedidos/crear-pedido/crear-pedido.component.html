@@ -56,7 +56,9 @@
           <label for="etapa">Etapa Inicial</label>
           <div class="input-wrapper">
             <i class="ph ph-steps"></i>
-            <select id="etapa" [(ngModel)]="nuevoPedido.current_state_id" name="etapa" required>
+            <select id="etapa" [(ngModel)]="nuevoPedido.current_state_id" name="etapa" required
+              [disabled]="isLoadingStates">
+              <option *ngIf="isLoadingStates" [ngValue]="null">Cargando etapas...</option>
               <option *ngFor="let state of projectStates" [value]="state.id">{{ state.name }}</option>
             </select>
             <i class="ph ph-caret-down select-icon"></i>
@@ -71,11 +73,36 @@
         <!-- Add Item Form -->
         <div class="add-item-container">
           <div class="add-item-grid">
-            <div class="form-group grid-description">
-              <label>Descripción</label>
+            <div class="form-group grid-type">
+              <label>Tipo de Costo</label>
+              <div class="input-wrapper">
+                <i class="ph ph-tag"></i>
+                <select [(ngModel)]="newItem.cost_type_id" name="costType" (change)="onCostTypeChange()"
+                  [disabled]="isLoadingTypes">
+                  <option [ngValue]="null" disabled selected>Selecciona un tipo</option>
+                  <option *ngIf="isLoadingTypes" [ngValue]="null" disabled>Cargando tipos...</option>
+                  <option *ngFor="let type of costTypes" [value]="type.id">{{ type.name }}</option>
+                </select>
+                <i class="ph ph-caret-down select-icon"></i>
+              </div>
+            </div>
+
+            <div class="form-group grid-item">
+              <label>Item / Costo</label>
               <div class="input-wrapper">
                 <i class="ph ph-package"></i>
-                <input type="text" placeholder="Ej. Camisa L" [(ngModel)]="newItem.description" name="itemDesc">
+                <select [(ngModel)]="newItem.operative_cost_id" name="opCost"
+                  [disabled]="!newItem.cost_type_id || isLoadingCosts" (change)="onOperativeCostChange()">
+                  <option [ngValue]="null" disabled selected>Selecciona una opción</option>
+                  <option *ngIf="isLoadingCosts" [ngValue]="null" disabled>Cargando costos...</option>
+                  <option *ngFor="let cost of availableOperativeCosts" [value]="cost.id">
+                    {{ cost.base_cost | currency }}
+                    <span *ngIf="cost.attributes">
+                      - <span *ngFor="let attr of cost.attributes | keyvalue">{{ attr.key }}: {{ attr.value }} </span>
+                    </span>
+                  </option>
+                </select>
+                <i class="ph ph-caret-down select-icon"></i>
               </div>
             </div>
 
@@ -91,7 +118,8 @@
               <label>Precio Unit.</label>
               <div class="input-wrapper">
                 <i class="ph ph-currency-dollar"></i>
-                <input type="number" placeholder="0.00" [(ngModel)]="newItem.unit_price" name="itemPrice" min="0">
+                <input type="number" placeholder="0.00" [(ngModel)]="newItem.unit_price" name="itemPrice" min="0"
+                  readonly>
               </div>
             </div>
 
@@ -149,11 +177,13 @@
       </div>
 
       <div class="form-actions">
-        <button type="button" class="btn-cancel" (click)="cancelar()">
+        <button type="button" class="btn-cancel" (click)="cancelar()" [disabled]="isSaving">
           Cancelar
         </button>
-        <button type="submit" class="btn-save" [disabled]="items.length === 0">
-          <i class="ph ph-floppy-disk"></i>
+        <button type="submit" class="btn-save" [disabled]="items.length === 0 || isSaving"
+          [class.btn-loading]="isSaving">
+          <span class="spinner" *ngIf="isSaving"></span>
+          <i class="ph ph-floppy-disk" *ngIf="!isSaving"></i>
           Guardar Pedido
         </button>
       </div>
