@@ -60,24 +60,32 @@
           <thead>
             <tr>
               <th (click)="onSort('id')" class="sortable">
-                Pedido
-                <i class="ph"
-                  [ngClass]="{'ph-caret-up': sortField === 'id' && sortOrder === 'asc', 'ph-caret-down': sortField === 'id' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'id'}"></i>
+                <div class="th-content">
+                  <span>Pedido</span>
+                  <i class="ph"
+                    [ngClass]="{'ph-caret-up': sortField === 'id' && sortOrder === 'asc', 'ph-caret-down': sortField === 'id' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'id'}"></i>
+                </div>
               </th>
               <th (click)="onSort('client_name')" class="sortable">
-                Cliente
-                <i class="ph"
-                  [ngClass]="{'ph-caret-up': sortField === 'client_name' && sortOrder === 'asc', 'ph-caret-down': sortField === 'client_name' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'client_name'}"></i>
+                <div class="th-content">
+                  <span>Cliente</span>
+                  <i class="ph"
+                    [ngClass]="{'ph-caret-up': sortField === 'client_name' && sortOrder === 'asc', 'ph-caret-down': sortField === 'client_name' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'client_name'}"></i>
+                </div>
               </th>
               <th (click)="onSort('created_at')" class="sortable">
-                Fecha Creación
-                <i class="ph"
-                  [ngClass]="{'ph-caret-up': sortField === 'created_at' && sortOrder === 'asc', 'ph-caret-down': sortField === 'created_at' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'created_at'}"></i>
+                <div class="th-content">
+                  <span>Fecha Creación</span>
+                  <i class="ph"
+                    [ngClass]="{'ph-caret-up': sortField === 'created_at' && sortOrder === 'asc', 'ph-caret-down': sortField === 'created_at' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'created_at'}"></i>
+                </div>
               </th>
               <th (click)="onSort('delivery_date')" class="sortable">
-                Fecha Entrega
-                <i class="ph"
-                  [ngClass]="{'ph-caret-up': sortField === 'delivery_date' && sortOrder === 'asc', 'ph-caret-down': sortField === 'delivery_date' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'delivery_date'}"></i>
+                <div class="th-content">
+                  <span>Fecha Entrega</span>
+                  <i class="ph"
+                    [ngClass]="{'ph-caret-up': sortField === 'delivery_date' && sortOrder === 'asc', 'ph-caret-down': sortField === 'delivery_date' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'delivery_date'}"></i>
+                </div>
               </th>
               <th>Etapa</th>
               <th>Notas</th>
@@ -91,13 +99,13 @@
               <td>{{ pedido.created_at | date:'shortDate' }}</td>
               <td>{{ pedido.delivery_date | date:'shortDate' }}</td>
               <td>
-                <span class="status-badge" [ngClass]="getStateName(pedido).toLowerCase()">
+                <span class="status-badge" [ngClass]="getStateClass(pedido)">
                   {{ getStateName(pedido) }}
                 </span>
               </td>
               <td class="notes-cell" title="{{ pedido.notes }}">{{ pedido.notes }}</td>
               <td>
-                <button class="btn-icon" title="Ver detalle">
+                <button class="btn-icon" title="Ver detalle" (click)="viewOrder(pedido.id)">
                   <i class="ph ph-eye"></i>
                 </button>
               </td>

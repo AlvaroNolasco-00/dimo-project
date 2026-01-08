@@ -8,11 +8,31 @@
     --card-bg: hsl(240, 10%, 18%);
     --text-primary: hsl(0, 0%, 100%);
     --text-secondary: hsl(240, 10%, 70%);
+    --text-secondary-rgb: 179, 179, 179;
+
     --accent-color: hsl(260, 100%, 65%);
     --accent-hover: hsl(260, 100%, 75%);
+    --accent-rgb: 138, 76, 255;
+
     --border-color: hsl(240, 10%, 25%);
     --radius: 12px;
     --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Status Colors */
+    --warning: hsl(35, 90%, 60%);
+    --warning-rgb: 247, 169, 53;
+
+    --info: hsl(210, 90%, 60%);
+    --info-rgb: 66, 153, 225;
+
+    --success: hsl(150, 80%, 45%);
+    --success-rgb: 46, 204, 113;
+
+    --danger: hsl(0, 80%, 65%);
+    --danger-rgb: 239, 68, 68;
+
+    --primary: var(--accent-color);
+    --primary-rgb: var(--accent-rgb);
 }
 
 body {

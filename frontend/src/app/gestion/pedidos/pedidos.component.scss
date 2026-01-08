@@ -192,19 +192,32 @@
     transition: background-color 0.2s;
 
     &:hover {
-      background: var(--surface-card-hover); // Assuming this variable exists or slightly lighter/darker
+      background: var(--surface-card-hover);
       color: var(--text-primary);
+    }
+  }
+
+  .th-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+
+    span {
+      vertical-align: middle;
     }
 
     i {
-      margin-left: 0.5rem;
       font-size: 0.8rem;
       color: var(--text-tertiary);
+      display: flex;
+      /* Ensure icon centers vertically */
     }
+  }
 
-    &:hover i {
-      color: var(--accent-color);
-    }
+  th.sortable:hover .th-content i {
+    color: var(--accent-color);
   }
 
   tr:last-child td {
@@ -228,25 +241,59 @@
   border-radius: 2rem;
   font-size: 0.85rem;
   font-weight: 500;
+  text-transform: capitalize; // Ensure visuals look good even if lowercase class
 
-  &.producción {
-    background: rgba(var(--warning-rgb), 0.1);
+  // Creado - Info/Neutral
+  &.creado {
+    background: rgba(var(--text-secondary-rgb), 0.15); // Increased opacity slightly
+    color: var(--text-secondary);
+    border: 1px solid rgba(var(--text-secondary-rgb), 0.2);
+  }
+
+  // Produccion / En Proceso - Warning
+  &.producción,
+  &.en-proceso,
+  &.produccion {
+    background: rgba(var(--warning-rgb), 0.15);
     color: var(--warning);
+    border: 1px solid rgba(var(--warning-rgb), 0.2);
   }
 
-  &.diseño {
-    background: rgba(var(--info-rgb), 0.1);
+  // Diseño - Info
+  &.diseño,
+  &.diseno,
+  &.design {
+    background: rgba(var(--info-rgb), 0.15);
     color: var(--info);
+    border: 1px solid rgba(var(--info-rgb), 0.2);
   }
 
-  &.empaquetado {
-    background: rgba(var(--success-rgb), 0.1);
+  // Empaquetado / Terminado - Success
+  &.empaquetado,
+  &.terminado {
+    background: rgba(var(--success-rgb), 0.15);
     color: var(--success);
+    border: 1px solid rgba(var(--success-rgb), 0.2);
   }
 
+  // Enviado / Entregado - Primary/Purple (or distinct)
   &.enviado {
-    background: rgba(var(--primary-rgb), 0.1);
+    background: rgba(var(--primary-rgb), 0.15);
     color: var(--primary);
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+  }
+
+  &.entregado {
+    background: rgba(var(--primary-rgb), 0.15);
+    color: var(--primary);
+    border: 1px solid rgba(var(--primary-rgb), 0.2);
+  }
+
+  // Cancelado - Danger
+  &.cancelado {
+    background: rgba(var(--danger-rgb), 0.15);
+    color: var(--danger);
+    border: 1px solid rgba(var(--danger-rgb), 0.2);
   }
 }
 

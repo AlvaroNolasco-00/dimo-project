@@ -1,6 +1,6 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 
@@ -43,7 +43,8 @@ export class PedidosComponent implements OnInit {
 
   constructor(
     private apiService: ApiService,
-    private cd: ChangeDetectorRef
+    private cd: ChangeDetectorRef,
+    private router: Router
   ) { }
 
   ngOnInit() {
@@ -136,6 +137,17 @@ export class PedidosComponent implements OnInit {
 
   getStateName(order: Pedido): string {
     return order.state?.name || 'Desconocido';
+  }
+
+  getStateClass(order: Pedido): string {
+    const state = this.getStateName(order).toLowerCase();
+    return state
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // Remove accents
+      .replace(/\s+/g, '-'); // Replace spaces with hyphens
+  }
+
+  viewOrder(id: number) {
+    this.router.navigate(['/gestion/pedidos', id]);
   }
 }
 
