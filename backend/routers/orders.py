@@ -163,3 +163,58 @@ def create_order(project_id: int, order_data: schemas.OrderCreate, db: Session =
 def get_project_orders(project_id: int, db: Session = Depends(get_db)):
     orders = db.query(models.Order).filter(models.Order.project_id == project_id).all()
     return orders
+
+@router.get("/projects/{project_id}/orders/{order_id}", response_model=schemas.Order)
+def get_order(project_id: int, order_id: int, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(
+        models.Order.project_id == project_id,
+        models.Order.id == order_id
+    ).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return order
+
+@router.put("/projects/{project_id}/orders/{order_id}", response_model=schemas.Order)
+def update_order(project_id: int, order_id: int, order_update: schemas.OrderUpdate, db: Session = Depends(get_db)):
+    order = db.query(models.Order).filter(
+        models.Order.project_id == project_id,
+        models.Order.id == order_id
+    ).first()
+    
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+        
+    # Update fields
+    if order_update.current_state_id is not None:
+        order.current_state_id = order_update.current_state_id
+        
+    if order_update.notes is not None:
+        order.notes = order_update.notes
+        
+    # Update items if provided (Full replacement strategy)
+    if order_update.items is not None:
+        # Delete existing items
+        db.query(models.OrderItem).filter(models.OrderItem.order_id == order_id).delete()
+        
+        # Add new items
+        total_amount = 0
+        for item in order_update.items:
+            subtotal = item.quantity * item.unit_price
+            total_amount += subtotal
+            
+            new_item = models.OrderItem(
+                order_id=order.id,
+                description=item.description,
+                quantity=item.quantity,
+                unit_price=item.unit_price,
+                subtotal=subtotal,
+                operative_cost_id=item.operative_cost_id,
+                attributes=item.attributes
+            )
+            db.add(new_item)
+            
+        order.total_amount = total_amount
+        
+    db.commit()
+    db.refresh(order)
+    return order

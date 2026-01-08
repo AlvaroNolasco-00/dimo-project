@@ -43,6 +43,12 @@ body {
     overflow: hidden;
 }
 
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;

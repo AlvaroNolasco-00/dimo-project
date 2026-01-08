@@ -1,5 +1,140 @@
-<div class="detalle-pedido-container">
-  <h1>Detalle del Pedido</h1>
-  <p>Aquí podrás ver los detalles completos de un pedido específico.</p>
-</div>
+<div class="container fade-in">
+  <!-- Header -->
+  <div class="header-actions mb-4">
+    <button class="btn-secondary" routerLink="/gestion/pedidos">
+      <i class="ph ph-arrow-left"></i>
+      Volver
+    </button>
+    <div class="spacer"></div>
+    <button class="btn-primary" (click)="saveGeneralChanges()" [disabled]="isSaving">
+      <i class="ph ph-floppy-disk"></i>
+      {{ isSaving ? 'Guardando...' : 'Guardar Cambios' }}
+    </button>
+  </div>
 
+  <div class="loading-state" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <p>Cargando pedido...</p>
+  </div>
+
+  <div class="details-grid" *ngIf="!isLoading && order">
+    <!-- Left Column: General Info & Items -->
+    <div class="main-content">
+
+      <!-- Order Info Card -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h2>Pedido #{{ order.id }}</h2>
+          <span class="date">{{ order.created_at | date:'medium' }}</span>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Cliente</label>
+            <input type="text" [value]="order.client_name" disabled class="input-field">
+          </div>
+          <div class="form-group">
+            <label>Fecha de Entrega</label>
+            <input type="text" [value]="order.delivery_date | date:'shortDate'" disabled class="input-field">
+          </div>
+        </div>
+
+        <div class="form-group mt-3">
+          <label>Estado (Etapa)</label>
+          <div class="select-wrapper">
+            <select [(ngModel)]="order.current_state_id" class="input-field">
+              <option *ngFor="let state of projectStates" [value]="state.id">
+                {{ state.name }}
+              </option>
+            </select>
+            <i class="ph ph-caret-down"></i>
+          </div>
+        </div>
+
+        <div class="form-group mt-3">
+          <label>Notas Adicionales</label>
+          <textarea [(ngModel)]="order.notes" rows="4" class="input-field" placeholder="Notas del pedido..."></textarea>
+        </div>
+      </div>
+
+      <!-- Items Card -->
+      <div class="card">
+        <div class="card-header">
+          <h3>Items del Pedido</h3>
+          <button class="btn-secondary small" (click)="saveItems()">
+            Actualizar Items
+          </button>
+        </div>
+
+        <div class="items-list">
+          <div class="item-row" *ngFor="let item of order.items; let i = index">
+            <div class="item-info">
+              <span class="item-qty">{{ item.quantity }}x</span>
+              <div class="item-desc">
+                <strong>{{ item.description }}</strong>
+
+                <!-- Attributes -->
+                <div class="item-attrs" *ngIf="item.attributes && getKeys(item.attributes).length > 0">
+                  <div *ngFor="let key of getKeys(item.attributes)">
+                    <span class="attr-tag" *ngIf="key !== 'sub_items' && key !== 'is_composite'">
+                      {{ key }}: {{ item.attributes[key] }}
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Sub Items (Composite) -->
+                <div class="sub-items-list" *ngIf="item.attributes?.is_composite && item.attributes?.sub_items">
+                  <div class="sub-item" *ngFor="let sub of item.attributes.sub_items">
+                    <i class="ph ph-arrow-elbow-down-right"></i>
+                    <span>{{ sub.quantity }}x {{ sub.description }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="item-price">
+              {{ item.unit_price | currency }}
+            </div>
+            <div class="item-actions">
+              <button class="btn-icon danger" (click)="deleteItem(i)">
+                <i class="ph ph-trash"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="empty-state" *ngIf="order.items.length === 0">
+            <p>No hay items en este pedido.</p>
+          </div>
+        </div>
+
+        <div class="order-total mt-4">
+          <span>Total</span>
+          <span class="amount">{{ order.total_amount | currency }}</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right Column: Files -->
+    <div class="sidebar-content">
+      <div class="card file-upload-card">
+        <h3>Archivos y Diseños</h3>
+        <p class="text-secondary text-sm mb-3">Sube imágenes de referencia o diseños finales.</p>
+
+        <div class="upload-zone" (click)="fileInput.click()">
+          <input #fileInput type="file" hidden (change)="onFileSelected($event)">
+          <i class="ph ph-upload-simple"></i>
+          <p>Click o arrastra archivos aquí</p>
+        </div>
+
+        <div class="file-list mt-3">
+          <!-- Mock Files -->
+          <div class="file-item mock">
+            <i class="ph ph-file-image"></i>
+            <span>diseño_final.png</span>
+            <button class="btn-icon small"><i class="ph ph-x"></i></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

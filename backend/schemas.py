@@ -128,3 +128,11 @@ class Order(OrderBase):
     class Config:
         from_attributes = True
 
+class OrderUpdate(BaseModel):
+    current_state_id: Optional[int] = None
+    notes: Optional[str] = None
+    items: Optional[List[OrderItemCreate]] = None # Use OrderItemCreate for simplicity in full alignment
+    # If items are sent, we replace them or merge logic in router 
+
+    class Config:
+        from_attributes = True

@@ -123,6 +123,14 @@ export class ApiService {
         return this.http.get<any[]>(`${environment.apiUrl}/projects/${projectId}/orders`);
     }
 
+    getOrder(projectId: number, orderId: number): Observable<any> {
+        return this.http.get<any>(`${environment.apiUrl}/projects/${projectId}/orders/${orderId}`);
+    }
+
+    updateOrder(projectId: number, orderId: number, data: any): Observable<any> {
+        return this.http.put<any>(`${environment.apiUrl}/projects/${projectId}/orders/${orderId}`, data);
+    }
+
     // --- Costs ---
 
     getCostTypes(projectId: number): Observable<any[]> {
