@@ -101,12 +101,32 @@ export class PedidosComponent implements OnInit {
       let valA: any = a[this.sortField];
       let valB: any = b[this.sortField];
 
+      // If both are null/undefined/empty, they are equal
+      const isAEmpty = valA === null || valA === undefined || valA === '';
+      const isBEmpty = valB === null || valB === undefined || valB === '';
+
+      if (isAEmpty && isBEmpty) return 0;
+      if (isAEmpty) return 1; // Push empty values to the bottom
+      if (isBEmpty) return -1;
+
       // Handle dates
       if (this.sortField === 'delivery_date' || this.sortField === 'created_at') {
-        valA = new Date(valA).getTime();
-        valB = new Date(valB).getTime();
+        const timeA = new Date(valA).getTime();
+        const timeB = new Date(valB).getTime();
+
+        const isANaN = isNaN(timeA);
+        const isBNaN = isNaN(timeB);
+
+        if (isANaN && isBNaN) return 0;
+        if (isANaN) return 1;
+        if (isBNaN) return -1;
+
+        if (timeA < timeB) return this.sortOrder === 'asc' ? -1 : 1;
+        if (timeA > timeB) return this.sortOrder === 'asc' ? 1 : -1;
+        return 0;
       }
 
+      // Default string/number sorting
       if (valA < valB) return this.sortOrder === 'asc' ? -1 : 1;
       if (valA > valB) return this.sortOrder === 'asc' ? 1 : -1;
       return 0;
