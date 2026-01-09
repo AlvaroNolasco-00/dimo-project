@@ -1,8 +1,11 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
+import shutil
+import os
 from .. import models, schemas, database
+from ..deps import get_db, get_current_user
 
 router = APIRouter(
     prefix="/api",
@@ -104,7 +107,7 @@ def update_project_order_states(project_id: int, state_ids: List[int], db: Sessi
 
 
 @router.post("/projects/{project_id}/orders", response_model=schemas.Order)
-def create_order(project_id: int, order_data: schemas.OrderCreate, db: Session = Depends(get_db)):
+def create_order(project_id: int, order_data: schemas.OrderCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     # Verify project
     project = db.query(models.Project).filter(models.Project.id == project_id).first()
     if not project:
@@ -141,6 +144,16 @@ def create_order(project_id: int, order_data: schemas.OrderCreate, db: Session =
         subtotal = item.quantity * item.unit_price
         total_amount += subtotal
         
+        # Prepare details
+        details_objects = []
+        if item.details:
+            for d in item.details:
+                details_objects.append(models.OrderItemDetail(
+                    description=d.description,
+                    quantity=d.quantity,
+                    image_path=d.image_path
+                ))
+
         new_item = models.OrderItem(
             order_id=new_order.id,
             description=item.description,
@@ -148,12 +161,23 @@ def create_order(project_id: int, order_data: schemas.OrderCreate, db: Session =
             unit_price=item.unit_price,
             subtotal=subtotal,
             operative_cost_id=item.operative_cost_id,
-            attributes=item.attributes
+            attributes=item.attributes,
+            details=details_objects
         )
         db.add(new_item)
 
     # Update total
     new_order.total_amount = total_amount
+    
+    # Log History
+    history = models.OrderHistory(
+        order_id=new_order.id,
+        user_id=current_user.id,
+        action_type="CREATED",
+        description=f"Pedido creado por {current_user.full_name}"
+    )
+    db.add(history)
+    
     db.commit()
     db.refresh(new_order)
     
@@ -166,16 +190,19 @@ def get_project_orders(project_id: int, db: Session = Depends(get_db)):
 
 @router.get("/projects/{project_id}/orders/{order_id}", response_model=schemas.Order)
 def get_order(project_id: int, order_id: int, db: Session = Depends(get_db)):
-    order = db.query(models.Order).filter(
-        models.Order.project_id == project_id,
-        models.Order.id == order_id
-    ).first()
+    # Use joinedload to fetch details efficiently
+    order = db.query(models.Order)\
+        .options(joinedload(models.Order.items).joinedload(models.OrderItem.details))\
+        .filter(
+            models.Order.project_id == project_id,
+            models.Order.id == order_id
+        ).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return order
 
 @router.put("/projects/{project_id}/orders/{order_id}", response_model=schemas.Order)
-def update_order(project_id: int, order_id: int, order_update: schemas.OrderUpdate, db: Session = Depends(get_db)):
+def update_order(project_id: int, order_id: int, order_update: schemas.OrderUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
     order = db.query(models.Order).filter(
         models.Order.project_id == project_id,
         models.Order.id == order_id
@@ -185,14 +212,41 @@ def update_order(project_id: int, order_id: int, order_update: schemas.OrderUpda
         raise HTTPException(status_code=404, detail="Order not found")
         
     # Update fields
-    if order_update.current_state_id is not None:
+    if order_update.current_state_id is not None and order.current_state_id != order_update.current_state_id:
+        old_state_name = order.state.name if order.state else "N/A"
+        new_state = db.query(models.OrderState).get(order_update.current_state_id)
+        new_state_name = new_state.name if new_state else "Unknown"
+        
+        history = models.OrderHistory(
+            order_id=order.id,
+            user_id=current_user.id,
+            action_type="STATUS_CHANGE",
+            description=f"Estado de la orden actualizado: {old_state_name} -> {new_state_name}"
+        )
+        db.add(history)
         order.current_state_id = order_update.current_state_id
         
-    if order_update.notes is not None:
+    if order_update.notes is not None and order.notes != order_update.notes:
+        history = models.OrderHistory(
+            order_id=order.id,
+            user_id=current_user.id,
+            action_type="UPDATE_DETAILS",
+            description="Información adicional actualizada"
+        )
+        db.add(history)
         order.notes = order_update.notes
         
     # Update items if provided (Full replacement strategy)
     if order_update.items is not None:
+        # Log history
+        history = models.OrderHistory(
+            order_id=order.id,
+            user_id=current_user.id,
+            action_type="UPDATE_ITEMS",
+            description="Items de la orden actualizados"
+        )
+        db.add(history)
+
         # Delete existing items
         db.query(models.OrderItem).filter(models.OrderItem.order_id == order_id).delete()
         
@@ -202,6 +256,16 @@ def update_order(project_id: int, order_id: int, order_update: schemas.OrderUpda
             subtotal = item.quantity * item.unit_price
             total_amount += subtotal
             
+            # Prepare details
+            details_objects = []
+            if item.details:
+                for d in item.details:
+                    details_objects.append(models.OrderItemDetail(
+                        description=d.description,
+                        quantity=d.quantity,
+                        image_path=d.image_path
+                    ))
+
             new_item = models.OrderItem(
                 order_id=order.id,
                 description=item.description,
@@ -209,7 +273,8 @@ def update_order(project_id: int, order_id: int, order_update: schemas.OrderUpda
                 unit_price=item.unit_price,
                 subtotal=subtotal,
                 operative_cost_id=item.operative_cost_id,
-                attributes=item.attributes
+                attributes=item.attributes,
+                details=details_objects
             )
             db.add(new_item)
             
@@ -218,3 +283,32 @@ def update_order(project_id: int, order_id: int, order_update: schemas.OrderUpda
     db.commit()
     db.refresh(order)
     return order
+
+
+@router.post("/orders/{order_id}/upload")
+async def upload_order_file(order_id: int, file: UploadFile = File(...)):
+    # Define upload directory for this order
+    upload_dir = f"backend/static/uploads/orders/{order_id}"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Secure filename (basic)
+    filename = file.filename.replace(" ", "_")
+    file_path = os.path.join(upload_dir, filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    # Construct URL (relative to API base or static mount)
+    # Mounted at /api/static
+    url = f"/api/static/uploads/orders/{order_id}/{filename}"
+    
+    return {"url": url, "filename": filename}
+
+@router.get("/orders/{order_id}/history", response_model=List[schemas.OrderHistory])
+def get_order_history(order_id: int, db: Session = Depends(get_db)):
+    history = db.query(models.OrderHistory)\
+        .options(joinedload(models.OrderHistory.user))\
+        .filter(models.OrderHistory.order_id == order_id)\
+        .order_by(models.OrderHistory.created_at.asc())\
+        .all()
+    return history

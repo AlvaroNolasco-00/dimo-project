@@ -64,6 +64,7 @@ class OrderStateBase(BaseModel):
     name: str
     description: Optional[str] = None
     is_system_default: bool = False
+    color: Optional[str] = "#6c757d"
 
 class OrderState(OrderStateBase):
     id: int
@@ -83,6 +84,25 @@ class ProjectOrderState(BaseModel):
     class Config:
         from_attributes = True
 
+    class Config:
+        from_attributes = True
+
+class OrderItemDetailBase(BaseModel):
+    description: str
+    quantity: int = 1
+    image_path: Optional[str] = None
+
+class OrderItemDetailCreate(OrderItemDetailBase):
+    pass
+
+class OrderItemDetail(OrderItemDetailBase):
+    id: int
+    order_item_id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
 class OrderItemBase(BaseModel):
     description: str
     quantity: int = 1
@@ -91,6 +111,7 @@ class OrderItemBase(BaseModel):
     
 class OrderItemCreate(OrderItemBase):
     operative_cost_id: Optional[int] = None
+    details: List[OrderItemDetailCreate] = []
 
 class OrderItem(OrderItemBase):
     id: int
@@ -98,6 +119,7 @@ class OrderItem(OrderItemBase):
     subtotal: float
     created_at: datetime
     operative_cost_id: Optional[int] = None
+    details: List[OrderItemDetail] = []
 
     class Config:
         from_attributes = True
@@ -133,6 +155,29 @@ class OrderUpdate(BaseModel):
     notes: Optional[str] = None
     items: Optional[List[OrderItemCreate]] = None # Use OrderItemCreate for simplicity in full alignment
     # If items are sent, we replace them or merge logic in router 
+
+    class Config:
+        from_attributes = True
+
+# --- Order History ---
+
+class UserBasic(BaseModel):
+    id: int
+    full_name: str
+    
+    class Config:
+        from_attributes = True
+
+class OrderHistoryBase(BaseModel):
+    action_type: str
+    description: str
+    created_at: datetime
+
+class OrderHistory(OrderHistoryBase):
+    id: int
+    order_id: int
+    user_id: Optional[int] = None
+    user: Optional[UserBasic] = None
 
     class Config:
         from_attributes = True

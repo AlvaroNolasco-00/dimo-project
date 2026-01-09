@@ -82,13 +82,38 @@
                   </div>
                 </div>
 
-                <!-- Sub Items (Composite) -->
-                <div class="sub-items-list" *ngIf="item.attributes?.is_composite && item.attributes?.sub_items">
-                  <div class="sub-item" *ngFor="let sub of item.attributes.sub_items">
-                    <i class="ph ph-arrow-elbow-down-right"></i>
-                    <span>{{ sub.quantity }}x {{ sub.description }}</span>
+                <!-- Sub Items (Composite) with File Upload -->
+                <div class="sub-items-container mt-3"
+                  *ngIf="item.attributes?.is_composite && item.attributes?.sub_items">
+                  <div class="sub-item-row" *ngFor="let sub of item.attributes.sub_items; let subIndex = index">
+
+                    <div class="sub-item-info">
+                      <i class="ph ph-arrow-elbow-down-right"></i>
+                      <span class="qty">{{ sub.quantity }}x</span>
+                      <span class="desc">{{ sub.description }}</span>
+                    </div>
+
+                    <div class="sub-item-actions">
+                      <!-- View Image if exists -->
+                      <button *ngIf="sub.image_url" (click)="openImageViewer(sub.image_url)" class="action-btn view"
+                        title="Ver imagen">
+                        <i class="ph ph-image"></i> Ver Foto
+                      </button>
+
+                      <!-- Upload Button -->
+                      <div class="upload-wrapper">
+                        <input type="file" [id]="'file-'+i+'-'+subIndex" hidden
+                          (change)="uploadSubItemFile(i, subIndex, $event)">
+                        <label [for]="'file-'+i+'-'+subIndex" class="action-btn upload" title="Cargar imagen">
+                          <i class="ph ph-upload-simple"></i>
+                          {{ sub.image_url ? 'Cambiar' : 'Cargar Imagen' }}
+                        </label>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
+
               </div>
             </div>
             <div class="item-price">
@@ -96,6 +121,8 @@
             </div>
             <div class="item-actions">
               <button class="btn-icon danger" (click)="deleteItem(i)">
+                <!-- <i class="ph ph-trash"></i> -->
+                <!-- Item delete disabled to prevent accidental loss of details if not intended, or keep it enable -->
                 <i class="ph ph-trash"></i>
               </button>
             </div>
@@ -112,29 +139,39 @@
         </div>
       </div>
 
-    </div>
-
-    <!-- Right Column: Files -->
-    <div class="sidebar-content">
-      <div class="card file-upload-card">
-        <h3>Archivos y Diseños</h3>
-        <p class="text-secondary text-sm mb-3">Sube imágenes de referencia o diseños finales.</p>
-
-        <div class="upload-zone" (click)="fileInput.click()">
-          <input #fileInput type="file" hidden (change)="onFileSelected($event)">
-          <i class="ph ph-upload-simple"></i>
-          <p>Click o arrastra archivos aquí</p>
+      <!-- History Card -->
+      <div class="card mt-4" *ngIf="history && history.length > 0">
+        <div class="card-header">
+          <h3>Historial de Cambios</h3>
         </div>
-
-        <div class="file-list mt-3">
-          <!-- Mock Files -->
-          <div class="file-item mock">
-            <i class="ph ph-file-image"></i>
-            <span>diseño_final.png</span>
-            <button class="btn-icon small"><i class="ph ph-x"></i></button>
+        <div class="history-list">
+          <div class="history-item" *ngFor="let item of history">
+            <div class="history-timeline">
+              <div class="history-dot"></div>
+            </div>
+            <div class="history-content">
+              <div class="history-header">
+                <span class="history-desc">{{ item.description }}</span>
+                <span class="history-time text-secondary">{{ item.created_at | date:'short' }}</span>
+              </div>
+              <div class="history-user text-sm text-secondary" *ngIf="item.user">
+                <i class="ph ph-user"></i> {{ item.user.full_name }}
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
     </div>
+  </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div class="image-viewer-overlay" *ngIf="showImageViewer" (click)="closeImageViewer()">
+  <div class="image-viewer-content" (click)="$event.stopPropagation()">
+    <button class="close-btn" (click)="closeImageViewer()">
+      <i class="ph ph-x"></i>
+    </button>
+    <img [src]="currentImageUrl" alt="Vista previa" *ngIf="currentImageUrl">
   </div>
 </div>

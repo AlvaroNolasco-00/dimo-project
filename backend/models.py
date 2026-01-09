@@ -70,6 +70,7 @@ class OrderState(Base):
     name = Column(String(50), unique=True, nullable=False)
     description = Column(String)
     is_system_default = Column(Boolean, default=False)
+    color = Column(String(7), default="#6c757d")
     created_at = Column(DateTime, server_default=func.now())
 
 class ProjectOrderState(Base):
@@ -108,6 +109,7 @@ class Order(Base):
     project = relationship("Project", back_populates="orders")
     state = relationship("OrderState")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
+    history = relationship("OrderHistory", back_populates="order", cascade="all, delete-orphan")
 
 class OrderItem(Base):
     __tablename__ = "order_items"
@@ -125,10 +127,38 @@ class OrderItem(Base):
     
     created_at = Column(DateTime, server_default=func.now())
 
+
     # Relationships
     order = relationship("Order", back_populates="items")
     operative_cost = relationship("OperativeCost")
+    details = relationship("OrderItemDetail", back_populates="item", cascade="all, delete-orphan")
 
-# Add back_populates relationships to existing models
-# Project model update needed to support back_populates
+class OrderItemDetail(Base):
+    __tablename__ = "order_item_details"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_item_id = Column(Integer, ForeignKey("order_items.id", ondelete="CASCADE"), nullable=False)
+    description = Column(String, nullable=False)
+    quantity = Column(Integer, default=1)
+    image_path = Column(String, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    item = relationship("OrderItem", back_populates="details")
+
+class OrderHistory(Base):
+    __tablename__ = "order_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    
+    action_type = Column(String, nullable=False) # STATUS_CHANGE, DETAILS_UPDATE, NOTE_ADDED
+    description = Column(String, nullable=False)
+    
+    created_at = Column(DateTime, server_default=func.now())
+
+    # Relationships
+    order = relationship("Order", back_populates="history")
+    user = relationship("User")
+
 

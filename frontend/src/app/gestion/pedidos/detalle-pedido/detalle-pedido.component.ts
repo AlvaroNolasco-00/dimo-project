@@ -31,6 +31,9 @@ export class DetallePedidoComponent implements OnInit {
   };
   tempSubItem: any = { description: '', quantity: 1, unit_price: 0 };
 
+  // History
+  history: any[] = [];
+
   constructor(
     private route: ActivatedRoute,
     private apiService: ApiService,
@@ -62,6 +65,7 @@ export class DetallePedidoComponent implements OnInit {
         next: (data) => {
           this.order = data;
           this.isLoading = false;
+          this.loadHistory();
           this.cd.markForCheck();
         },
         error: (err) => {
@@ -85,6 +89,7 @@ export class DetallePedidoComponent implements OnInit {
       next: (updated) => {
         this.order = updated;
         this.isSaving = false;
+        this.loadHistory();
         alert('Cambios guardados correctamente');
       },
       error: (err) => {
@@ -113,28 +118,54 @@ export class DetallePedidoComponent implements OnInit {
         description: item.description,
         quantity: item.quantity,
         unit_price: item.unit_price,
-        attributes: item.attributes,
+        attributes: item.attributes, // sub_items with image_url will be here
         operative_cost_id: item.operative_cost_id
       }))
     };
 
+    console.log('Saving items payload:', payload);
+
     this.apiService.updateOrder(this.projectId, this.orderId, payload).subscribe({
       next: (updated) => {
         this.order = updated; // Refresh to get recalculated totals
+        this.loadHistory();
         this.cd.markForCheck();
       },
       error: (err) => console.error('Error saving items', err)
     });
   }
 
-  // File Upload Mock
-  onFileSelected(event: any) {
+  // --- Sub-Item Attachment Management ---
+
+  uploadSubItemFile(itemIndex: number, subItemIndex: number, event: any) {
     const file = event.target.files[0];
-    if (file) {
-      console.log('File selected:', file.name);
-      alert(`Archivo "${file.name}" seleccionado (Simulación)`);
-    }
+    if (!file || !this.orderId) return;
+
+    this.isSaving = true;
+    this.apiService.uploadOrderFile(this.orderId, file).subscribe({
+      next: (res) => {
+        // Update the specific sub-item in the attributes
+        const item = this.order.items[itemIndex];
+        if (item.attributes && item.attributes.sub_items && item.attributes.sub_items[subItemIndex]) {
+          item.attributes.sub_items[subItemIndex].image_url = res.url;
+          this.saveItems(); // This persists the changes via attributes update
+        }
+        this.isSaving = false;
+        alert("Archivo subido y asociado correctamente");
+      },
+      error: (err) => {
+        console.error("Upload failed", err);
+        alert("Error al subir archivo");
+        this.isSaving = false;
+      }
+    });
   }
+
+  // Remove Detail logic is no longer relevant as we attach to existing sub-items
+  // Users delete sub-items via editing the item itself in current flow (or we assume sub-items come from creation)
+
+
+  // Helper for Status Color
 
   // Helper for Status Color
   getStateClass(stateName: string | undefined): string {
@@ -146,6 +177,31 @@ export class DetallePedidoComponent implements OnInit {
 
   getKeys(obj: any): string[] {
     return obj ? Object.keys(obj) : [];
+  }
+
+  loadHistory() {
+    if (!this.orderId) return;
+    this.apiService.getOrderHistory(this.orderId).subscribe({
+      next: (data) => {
+        this.history = data;
+        this.cd.markForCheck();
+      },
+      error: (err) => console.error('Error loading history', err)
+    });
+  }
+
+  // --- Image Viewer ---
+  showImageViewer = false;
+  currentImageUrl: string | null = null;
+
+  openImageViewer(url: string) {
+    this.currentImageUrl = url;
+    this.showImageViewer = true;
+  }
+
+  closeImageViewer() {
+    this.showImageViewer = false;
+    this.currentImageUrl = null;
   }
 }
 

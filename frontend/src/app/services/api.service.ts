@@ -131,6 +131,16 @@ export class ApiService {
         return this.http.put<any>(`${environment.apiUrl}/projects/${projectId}/orders/${orderId}`, data);
     }
 
+    getOrderHistory(orderId: number): Observable<any[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}/orders/${orderId}/history`);
+    }
+
+    uploadOrderFile(orderId: number, file: File): Observable<{ url: string, filename: string }> {
+        const formData = new FormData();
+        formData.append('file', file);
+        return this.http.post<{ url: string, filename: string }>(`${environment.apiUrl}/orders/${orderId}/upload`, formData);
+    }
+
     // --- Costs ---
 
     getCostTypes(projectId: number): Observable<any[]> {

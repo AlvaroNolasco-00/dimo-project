@@ -12,6 +12,7 @@ export interface Pedido {
   current_state_id: number;
   state?: {
     name: string;
+    color?: string;
   };
   notes: string;
   total_amount: number;
