@@ -1,7 +1,9 @@
 import { Component, ElementRef, ViewChild, signal, inject, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ApiService } from '../../services/api.service';
+import { ImagePersistenceService, SessionImage } from '../../services/image-persistence.service';
 
 @Component({
     selector: 'app-watermark',
@@ -12,6 +14,8 @@ import { ApiService } from '../../services/api.service';
 })
 export class WatermarkComponent implements AfterViewInit {
     private api = inject(ApiService);
+    private imageService = inject(ImagePersistenceService);
+    private sanitizer = inject(DomSanitizer);
 
     @ViewChild('editorCanvas') canvasRef?: ElementRef<HTMLCanvasElement>;
     @ViewChild('fileInputBase') fileInputBase?: ElementRef<HTMLInputElement>;
@@ -47,10 +51,76 @@ export class WatermarkComponent implements AfterViewInit {
 
     isLoading = signal(false);
     downloadFilename = signal('watermark-result.png');
+    sessionGallery = signal<SessionImage[]>([]);
 
     ngAfterViewInit() {
         if (this.canvasRef) {
             this.canvasCtx = this.canvasRef.nativeElement.getContext('2d');
+        }
+        this.loadGallery();
+    }
+
+    async loadGallery() {
+        try {
+            const images = await this.imageService.getAllImages();
+            this.sessionGallery.set(images);
+        } catch (err) {
+            console.error('Error loading gallery', err);
+        }
+    }
+
+    getSafeUrl(blob: Blob): SafeUrl {
+        return this.sanitizer.bypassSecurityTrustUrl(URL.createObjectURL(blob));
+    }
+
+    async addToGallery() {
+        const src = this.resultImageSrc();
+        if (!src) return;
+
+        let blob: Blob | null = null;
+        try {
+            const resp = await fetch(src);
+            blob = await resp.blob();
+        } catch (e) {
+            console.error('Error fetching blob from URL', e);
+        }
+
+        if (!blob) return;
+
+        // Generate a name
+        const name = `Watermark ${this.sessionGallery().length + 1}`;
+
+        try {
+            const saved = await this.imageService.saveImage(blob, name);
+            this.sessionGallery.update(prev => [saved, ...prev]);
+        } catch (e) {
+            console.error(e);
+            alert('No se pudo guardar en la galería');
+        }
+    }
+
+    loadFromGallery(item: SessionImage) {
+        // Load as BASE image
+        this.baseImageBlob = item.blob;
+        const url = URL.createObjectURL(item.blob);
+        this.baseImageSrc.set(url);
+        this.resultImageSrc.set(null);
+
+        const img = new Image();
+        img.onload = () => {
+            this.baseImgObj = img;
+            this.initCanvas();
+        };
+        img.src = url;
+    }
+
+    async deleteFromGallery(id: string, event: Event) {
+        event.stopPropagation();
+        try {
+            await this.imageService.deleteImage(id);
+            this.sessionGallery.update(prev => prev.filter(img => img.id !== id));
+        } catch (e) {
+            console.error(e);
         }
     }
 

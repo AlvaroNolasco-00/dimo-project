@@ -4,6 +4,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../../services/api.service';
 
+import Swal from 'sweetalert2';
+
 @Component({
   selector: 'app-detalle-pedido',
   standalone: true,
@@ -52,6 +54,10 @@ export class DetallePedidoComponent implements OnInit {
     });
   }
 
+  get isCancelled(): boolean {
+    return this.order?.state?.name === 'Cancelado';
+  }
+
   loadData() {
     this.isLoading = true;
     // Load States
@@ -78,6 +84,36 @@ export class DetallePedidoComponent implements OnInit {
 
   saveGeneralChanges() {
     if (!this.orderId || !this.order) return;
+
+    // Check if switching TO Cancelled
+    const newState = this.projectStates.find(s => s.id == this.order.current_state_id);
+    if (newState && newState.name === 'Cancelado' && this.order.state?.name !== 'Cancelado') {
+      Swal.fire({
+        title: '¿Cancelar Pedido?',
+        text: "Una vez cancelado, ya no se podrán realizar más cambios en el pedido (excepto agregar notas).",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, cancelar pedido',
+        cancelButtonText: 'No, mantener'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          this.performSave();
+        } else {
+          // Revert selection if user cancelled? 
+          // Currently we just don't save. User has to manually change it back in UI if they want to save something else.
+          // Or we could reload order to reset. Let's just do nothing, user sees the dropdown on 'Cancelado' but it's not saved.
+        }
+      });
+      return;
+    }
+
+    this.performSave();
+  }
+
+  performSave() {
+    if (!this.orderId || !this.order) return;
     this.isSaving = true;
 
     const payload = {
@@ -90,11 +126,23 @@ export class DetallePedidoComponent implements OnInit {
         this.order = updated;
         this.isSaving = false;
         this.loadHistory();
-        alert('Cambios guardados correctamente');
+        Swal.fire({
+          title: 'Guardado',
+          text: 'Cambios guardados correctamente',
+          icon: 'success',
+          timer: 1500,
+          showConfirmButton: false
+        });
       },
       error: (err) => {
         console.error('Error updating order', err);
         this.isSaving = false;
+        // If it was a backend logic error (e.g. trying to change cancelled order)
+        if (err.status === 400 || err.status === 403) {
+          Swal.fire('Error', err.error.detail || 'Operación no permitida', 'error');
+        } else {
+          Swal.fire('Error', 'Error al guardar los cambios', 'error');
+        }
       }
     });
   }

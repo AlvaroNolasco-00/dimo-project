@@ -212,6 +212,38 @@ def update_order(project_id: int, order_id: int, order_update: schemas.OrderUpda
         raise HTTPException(status_code=404, detail="Order not found")
         
     # Update fields
+    # Update fields
+    # Check if order is currently Cancelled
+    current_state_name = order.state.name if order.state else "N/A"
+    if current_state_name == "Cancelado":
+        # Allow ONLY notes update
+        # If trying to change state OR items OR other fields, forbid it
+        # Exception: We verify what is actually being changed.
+        
+        # Check if state change is attempted (and it's not staying the same)
+        if order_update.current_state_id is not None and order_update.current_state_id != order.current_state_id:
+             raise HTTPException(status_code=400, detail="No se puede cambiar el estado de un pedido cancelado.")
+        
+        # Check if items are being updated
+        if order_update.items is not None:
+             raise HTTPException(status_code=400, detail="No se pueden modificar items de un pedido cancelado.")
+
+        # Notes are allowed
+        if order_update.notes is not None and order.notes != order_update.notes:
+            history = models.OrderHistory(
+                order_id=order.id,
+                user_id=current_user.id,
+                action_type="UPDATE_DETAILS",
+                description="Información adicional actualizada (Pedido Cancelado)"
+            )
+            db.add(history)
+            order.notes = order_update.notes
+        
+        db.commit()
+        db.refresh(order)
+        return order
+
+
     if order_update.current_state_id is not None and order.current_state_id != order_update.current_state_id:
         old_state_name = order.state.name if order.state else "N/A"
         new_state = db.query(models.OrderState).get(order_update.current_state_id)

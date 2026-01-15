@@ -3,11 +3,24 @@
     flex-direction: column;
     height: 100%;
     color: var(--text-primary);
+    overflow: hidden;
+    /* Prevent body scroll if content fits */
+}
+
+/* Layout Update for Gallery */
+.workspace-container {
+    display: flex;
+    gap: 1.5rem;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
 }
 
 header {
     padding: 1.5rem 2rem;
     border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
 }
 
 h1 {
@@ -25,6 +38,7 @@ p {
     display: flex;
     flex: 1;
     overflow: hidden;
+    min-width: 0;
 }
 
 .controls-sidebar {
@@ -38,6 +52,127 @@ p {
     gap: 2rem;
     overflow-y: auto;
     overflow-x: hidden;
+}
+
+/* Session Sidebar */
+.session-sidebar {
+    width: 280px;
+    background: var(--bg-secondary);
+    /* or sidebar-bg var if exists */
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    gap: 1.5rem;
+    overflow-y: auto;
+    flex-shrink: 0;
+    background: rgba(30, 30, 35, 0.6);
+    backdrop-filter: blur(10px);
+}
+
+.gallery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .count {
+        background: var(--primary-color);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+}
+
+.gallery-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.gallery-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--primary-color);
+        transform: translateY(-2px);
+    }
+}
+
+.thumb-wrapper {
+    position: relative;
+    width: 100%;
+    height: 140px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 0.8rem;
+    background: #000;
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .delete-btn {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        backdrop-filter: blur(4px);
+        opacity: 0;
+        transition: opacity 0.2s;
+
+        &:hover {
+            background: #ff4444;
+        }
+    }
+}
+
+.gallery-item:hover .delete-btn {
+    opacity: 1;
+}
+
+.gallery-item .meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+
+    .name {
+        font-size: 0.9rem;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .time {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
 }
 
 .control-group {
@@ -80,7 +215,6 @@ canvas {
     display: block;
     max-width: 100%;
     max-height: 80vh;
-    /* Maintain aspect ratio in css logic if needed, but usually handled by max-width */
 }
 
 .empty-state {
@@ -138,6 +272,25 @@ canvas {
     color: var(--text-primary);
     border: 1px solid var(--border-color);
 }
+
+.btn.session {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid var(--border-color);
+
+    i {
+        font-size: 1.1rem;
+    }
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: var(--primary-color);
+    }
+}
+
 
 .action-buttons {
     display: flex;

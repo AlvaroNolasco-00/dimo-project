@@ -1,3 +1,10 @@
+@import "cropperjs/dist/cropper.css";
+
+/* Darker shadow for better silhouette */
+::ng-deep .cropper-modal {
+    opacity: 0.8 !important;
+}
+
 :host {
     display: flex;
     flex-direction: column;
@@ -235,6 +242,12 @@ input[type='range'] {
     &:hover {
         background: hsla(0, 0%, 100%, 0.1);
     }
+
+    &.active {
+        background-color: var(--accent-color);
+        color: white;
+        border-color: var(--accent-color);
+    }
 }
 
 .mode-selector {
@@ -386,5 +399,180 @@ select {
         width: 18px;
         height: 18px;
         accent-color: var(--accent-color);
+    }
+}
+
+/* Crop Mode Styles */
+.aspect-ratios {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.aspect-ratios button {
+    flex: 1;
+    min-width: 60px;
+}
+
+
+/* Layout Update for Gallery */
+.workspace-container {
+    display: flex;
+    gap: 1.5rem;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    /* Fix flex overflow */
+}
+
+/* Adjust Editor Area to fit in wrapper */
+.editor-area {
+    flex: 1;
+    /* Maintain existing styles but ensure it takes available width */
+    min-width: 0;
+}
+
+/* Session Sidebar */
+.session-sidebar {
+    width: 280px;
+    background: var(--sidebar-bg);
+    /* Use existing var or card-bg */
+    border-left: 1px solid var(--border-color);
+    /* Separator */
+    border-radius: var(--radius);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    gap: 1.5rem;
+    overflow-y: auto;
+    /* Optional: Glass effect if main bg is image based, but sidebar-bg is solid usually */
+    background: rgba(30, 30, 35, 0.6);
+    /* Approximate dark glass */
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+}
+
+.gallery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin: 0;
+    }
+
+    .count {
+        background: var(--accent-color);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+}
+
+.gallery-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.gallery-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 0.8rem;
+    cursor: pointer;
+    transition: var(--transition);
+    border: 1px solid transparent;
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: var(--accent-color);
+        transform: translateY(-2px);
+    }
+}
+
+.thumb-wrapper {
+    position: relative;
+    width: 100%;
+    height: 140px;
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 0.8rem;
+    background: #000;
+
+    img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .delete-btn {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        backdrop-filter: blur(4px);
+        opacity: 0;
+        transition: opacity 0.2s;
+
+        &:hover {
+            background: #ff4444;
+        }
+    }
+}
+
+.gallery-item:hover .delete-btn {
+    opacity: 1;
+}
+
+.gallery-item .meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+
+    .name {
+        font-size: 0.9rem;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .time {
+        font-size: 0.75rem;
+        color: var(--text-secondary);
+    }
+}
+
+/* New Button Style */
+.btn.session {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: 1px solid var(--border-color);
+
+    i {
+        font-size: 1.1rem;
+    }
+
+    &:hover {
+        background: rgba(255, 255, 255, 0.2);
+        border-color: var(--accent-color);
     }
 }

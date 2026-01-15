@@ -42,7 +42,7 @@
         <div class="form-group mt-3">
           <label>Estado (Etapa)</label>
           <div class="select-wrapper">
-            <select [(ngModel)]="order.current_state_id" class="input-field">
+            <select [(ngModel)]="order.current_state_id" class="input-field" [disabled]="isCancelled">
               <option *ngFor="let state of projectStates" [value]="state.id">
                 {{ state.name }}
               </option>
@@ -61,7 +61,7 @@
       <div class="card">
         <div class="card-header">
           <h3>Items del Pedido</h3>
-          <button class="btn-secondary small" (click)="saveItems()">
+          <button class="btn-secondary small" (click)="saveItems()" [disabled]="isCancelled">
             Actualizar Items
           </button>
         </div>
@@ -101,7 +101,7 @@
                       </button>
 
                       <!-- Upload Button -->
-                      <div class="upload-wrapper">
+                      <div class="upload-wrapper" *ngIf="!isCancelled">
                         <input type="file" [id]="'file-'+i+'-'+subIndex" hidden
                           (change)="uploadSubItemFile(i, subIndex, $event)">
                         <label [for]="'file-'+i+'-'+subIndex" class="action-btn upload" title="Cargar imagen">
@@ -120,7 +120,7 @@
               {{ item.unit_price | currency }}
             </div>
             <div class="item-actions">
-              <button class="btn-icon danger" (click)="deleteItem(i)">
+              <button class="btn-icon danger" (click)="deleteItem(i)" [disabled]="isCancelled">
                 <!-- <i class="ph ph-trash"></i> -->
                 <!-- Item delete disabled to prevent accidental loss of details if not intended, or keep it enable -->
                 <i class="ph ph-trash"></i>

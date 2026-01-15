@@ -1,20 +1,26 @@
-import { Component, computed, signal, inject, effect, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, computed, signal, inject, effect, ViewChild, ElementRef, AfterViewInit, OnDestroy, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../services/api.service';
 import { FormsModule } from '@angular/forms';
+import Cropper from 'cropperjs';
+import { ImagePersistenceService, SessionImage } from '../services/image-persistence.service';
 
 @Component({
   selector: 'app-editor',
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './editor.component.html',
-  styleUrl: './editor.component.css'
+  styleUrl: './editor.component.scss',
+  encapsulation: ViewEncapsulation.None
 })
-export class EditorComponent implements AfterViewInit {
+export class EditorComponent implements AfterViewInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private api = inject(ApiService);
+  private imageService = inject(ImagePersistenceService);
+  private sanitizer = inject(DomSanitizer);
 
   @ViewChild('maskCanvas') maskCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('originalImage') originalImage?: ElementRef<HTMLImageElement>;
@@ -23,6 +29,7 @@ export class EditorComponent implements AfterViewInit {
   currentImageBlob = signal<Blob | null>(null);
   currentImageSource = signal<string | null>(null); // URL for preview
   processedImageSource = signal<string | null>(null);
+  sessionGallery = signal<SessionImage[]>([]);
 
   isLoading = signal(false);
   isDragging = signal(false);
@@ -59,9 +66,15 @@ export class EditorComponent implements AfterViewInit {
   customFilename = '';
   canvasHistory = signal<ImageData[]>([]);
 
+  // Cropper params
+  private cropperInstance: Cropper | null = null;
+  cropAspectRatio = signal<number>(NaN); // NaN for free/custom
+
   mode = signal('remove-bg');
 
   // Computeds for Title/Desc
+  protected readonly isNaN = isNaN;
+  protected readonly NaN = NaN;
   title = computed(() => {
     switch (this.mode()) {
       case 'remove-bg': return 'Quitar Fondo';
@@ -70,6 +83,7 @@ export class EditorComponent implements AfterViewInit {
       case 'upscale': return 'Upscaling';
       case 'halftone': return 'Semitonos';
       case 'contour-clip': return 'Recorte de Contorno';
+      case 'crop': return 'Recortar Foto';
       default: return 'Editor';
     }
   });
@@ -82,6 +96,7 @@ export class EditorComponent implements AfterViewInit {
       case 'upscale': return `Aumenta la resolución de tu imagen hasta ${this.upscaleFactor()}x.`;
       case 'halftone': return 'Convierte tu foto en arte de semitonos profesionales.';
       case 'contour-clip': return 'Recorta el contorno de un objeto seleccionándolo manualmente o de forma automática.';
+      case 'crop': return 'Recorta tu imagen con proporciones predefinidas o personalizadas.';
       default: return '';
     }
   });
@@ -124,16 +139,159 @@ export class EditorComponent implements AfterViewInit {
         this.processedImageSource.set(null);
       }
     });
+
+    // Re-init cropper when mode changes to 'crop'
+    effect(() => {
+      const currentMode = this.mode();
+      if (currentMode === 'crop') {
+        // Use setTimeout to allow view to update (if ngIf changes)
+        setTimeout(() => {
+          if (this.originalImage?.nativeElement && this.currentImageSource()) {
+            this.initCropper(this.originalImage.nativeElement);
+          }
+        });
+      } else {
+        this.destroyCropper();
+      }
+    });
   }
 
   ngAfterViewInit() {
     // Canvas will be initialized when image loads
+    this.loadGallery();
   }
 
+  async loadGallery() {
+    try {
+      const images = await this.imageService.getAllImages();
+      this.sessionGallery.set(images);
+
+      // Generate URLs for thumbnails (optional, but needed for img src)
+      // Note: We might want to revoke these eventually, but for a session cache it's okay-ish.
+      // A better approach is to create ObjectURLs only when rendering or on load.
+      // For now, let's just rely on the template creating URLs or create them here.
+      // Actually, Angular templates re-running createObjectURL is bad.
+      // Let's attach ephemeral URLs to the objects in the signal if needed,
+      // or just use a method in the template (efficient enough for small lists).
+    } catch (err) {
+      console.error('Error loading gallery', err);
+    }
+  }
+
+  // Helper for template to avoid constant re-creation, though simple method call is easier for now.
+  // Ideally we map the Blobs to URLs once.
+  getSafeUrl(blob: Blob): SafeUrl {
+    return this.sanitizer.bypassSecurityTrustUrl(URL.createObjectURL(blob));
+  }
+
+  async addToGallery() {
+    // Prefer processed image, fallback to current
+    const src = this.processedImageSource();
+    let blob: Blob | null = null;
+
+    if (src) {
+      // If we have a URL, we need to fetch the blob again OR use the underlying blob if we stored it?
+      // We do not store the processed blob in a variable, only the URL.
+      // So we fetch it from the blob URL.
+      try {
+        const resp = await fetch(src);
+        blob = await resp.blob();
+      } catch (e) {
+        console.error('Error fetching blob from URL', e);
+      }
+    } else {
+      blob = this.currentImageBlob();
+    }
+
+    if (!blob) return;
+
+    // Create a name based on mode + time or index
+    const name = `${this.title()} ${this.sessionGallery().length + 1}`;
+
+    try {
+      const saved = await this.imageService.saveImage(blob, name);
+      this.sessionGallery.update(prev => [saved, ...prev]);
+      // Optional: Toast or feedback
+    } catch (e) {
+      console.error(e);
+      alert('No se pudo guardar en la galería');
+    }
+  }
+
+  loadFromGallery(item: SessionImage) {
+    // Set as current image
+    this.handleFile(item.blob as any); // handleFile expects File, but Blob is close enough mostly. 
+    // actually handleFile checks .type and creates objectURL. 
+    // We might need to construct a File object or adjust handleFile.
+    // Let's create a File from Blob to be safe and compatible.
+    const file = new File([item.blob], item.name, { type: item.blob.type });
+    this.handleFile(file);
+  }
+
+  async deleteFromGallery(id: string, event: Event) {
+    event.stopPropagation(); // Prevent clicking the item
+    try {
+      await this.imageService.deleteImage(id);
+      this.sessionGallery.update(prev => prev.filter(img => img.id !== id));
+    } catch (e) {
+      console.error(e);
+    }
+  }
   onImageLoad(event: Event) {
     const img = event.target as HTMLImageElement;
-    if ((this.mode() === 'remove-objects' || (this.mode() === 'remove-bg' && this.bgRemovalMode() === 'draw') || (this.mode() === 'contour-clip' && this.bgRemovalMode() === 'manual')) && this.maskCanvas) {
+    if ((this.mode() === 'remove-objects' && this.removalMethod() !== 'magic-wand') || (this.mode() === 'remove-bg' && this.bgRemovalMode() === 'draw') || (this.mode() === 'contour-clip' && this.bgRemovalMode() === 'manual')) {
       this.initCanvas(img.naturalWidth, img.naturalHeight);
+    }
+    if (this.mode() === 'crop') {
+      this.initCropper(img);
+    }
+  }
+
+  ngOnDestroy() {
+    this.destroyCropper();
+  }
+
+  initCropper(imageElement: HTMLImageElement) {
+    this.destroyCropper();
+
+    // Check if we are in free mode or fixed
+    const isFree = isNaN(this.cropAspectRatio());
+
+    this.cropperInstance = new Cropper(imageElement, {
+      aspectRatio: this.cropAspectRatio(),
+      viewMode: 1,
+      dragMode: 'move',
+      autoCropArea: 0.9, // Make it large
+      zoomable: true,
+      scalable: false,
+
+      // Always allow moving/resizing the box for consistency unless explicitly not desired?
+      // User struggled when it was locked. Let's make it flexible.
+      cropBoxMovable: true,
+      cropBoxResizable: true,
+      toggleDragModeOnDblclick: false,
+
+      background: false,
+      responsive: true,
+      guides: true,
+      center: true,
+      highlight: true,
+      modal: true,
+    });
+  }
+
+  destroyCropper() {
+    if (this.cropperInstance) {
+      this.cropperInstance.destroy();
+      this.cropperInstance = null;
+    }
+  }
+
+  setAspectRatio(ratio: number) {
+    this.cropAspectRatio.set(ratio);
+    // Re-initialize to reset the crop box and options completely
+    if (this.originalImage?.nativeElement) {
+      this.initCropper(this.originalImage.nativeElement);
     }
   }
 
@@ -325,6 +483,7 @@ export class EditorComponent implements AfterViewInit {
     this.canvasHistory.set([]);
     this.canvasInitialized.set(false);
     this.isLoading.set(false);
+    this.destroyCropper();
 
     // Reset file input native element
     if (this.fileInput) {
@@ -443,6 +602,18 @@ export class EditorComponent implements AfterViewInit {
           obs = this.api.contourClip(blob, undefined, 'auto', false, this.selectedColors(), this.colorTolerance());
         }
         break;
+      case 'crop':
+        if (!this.cropperInstance) return;
+        this.cropperInstance.getCroppedCanvas().toBlob((resBlob) => {
+          if (resBlob) {
+            if (this.processedImageSource()) {
+              URL.revokeObjectURL(this.processedImageSource()!);
+            }
+            this.processedImageSource.set(URL.createObjectURL(resBlob));
+          }
+          this.isLoading.set(false);
+        }, 'image/png');
+        return; // Client-side processing done
       default:
         this.isLoading.set(false);
         return;

@@ -36,6 +36,10 @@
       <i class="ph ph-scissors"></i>
       <span class="btn-text" *ngIf="!isCollapsed()">Recorte de Contorno</span>
     </button>
+    <button class="nav-btn" routerLink="/utilidades/crop" routerLinkActive="active" [title]="'Recorte de Foto'">
+      <i class="ph ph-crop"></i>
+      <span class="btn-text" *ngIf="!isCollapsed()">Recorte de Foto</span>
+    </button>
     <button class="nav-btn" routerLink="/utilidades/watermark" routerLinkActive="active" [title]="'Marca de Agua'">
       <i class="ph ph-stamp"></i>
       <span class="btn-text" *ngIf="!isCollapsed()">Marca de Agua</span>
