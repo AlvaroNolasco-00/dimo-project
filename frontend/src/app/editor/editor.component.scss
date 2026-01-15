@@ -5,16 +5,16 @@
     opacity: 0.8 !important;
 }
 
-:host {
+.editor-main-wrapper {
     display: flex;
     flex-direction: column;
-    padding: 2rem 3rem;
+    padding: 3rem 4rem;
     overflow-y: auto;
     height: 100%;
 }
 
 header {
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
 
     h1 {
         font-size: 2rem;
@@ -419,7 +419,7 @@ select {
 /* Layout Update for Gallery */
 .workspace-container {
     display: flex;
-    gap: 1.5rem;
+    gap: 2rem;
     width: 100%;
     height: 100%;
     min-height: 0;
