@@ -5,6 +5,7 @@ export interface SessionImage {
     blob: Blob;
     name: string;
     timestamp: number;
+    projectId?: number;
 }
 
 @Injectable({
@@ -21,7 +22,7 @@ export class ImagePersistenceService {
 
     private initDB(): Promise<IDBDatabase> {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, 1);
+            const request = indexedDB.open(this.dbName, 2); // Increment version to 2
 
             request.onerror = (event) => {
                 console.error('Unified persistence error', event);
@@ -30,8 +31,21 @@ export class ImagePersistenceService {
 
             request.onupgradeneeded = (event: any) => {
                 const db = event.target.result;
+                let store: IDBObjectStore;
+
                 if (!db.objectStoreNames.contains(this.storeName)) {
-                    db.createObjectStore(this.storeName, { keyPath: 'id' });
+                    store = db.createObjectStore(this.storeName, { keyPath: 'id' });
+                } else {
+                    if (!request.transaction) {
+                        reject('Transaction not available during upgrade');
+                        return;
+                    }
+                    store = request.transaction.objectStore(this.storeName);
+                }
+
+                // Create index for projectId if it doesn't exist
+                if (!store.indexNames.contains('projectId')) {
+                    store.createIndex('projectId', 'projectId', { unique: false });
                 }
             };
 
@@ -41,14 +55,15 @@ export class ImagePersistenceService {
         });
     }
 
-    async saveImage(blob: Blob, name: string = 'Imagen Editada'): Promise<SessionImage> {
+    async saveImage(blob: Blob, name: string = 'Imagen Editada', projectId?: number): Promise<SessionImage> {
         const db = await this.dbPromise;
         const id = crypto.randomUUID();
         const image: SessionImage = {
             id,
             blob,
             name,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            projectId
         };
 
         return new Promise((resolve, reject) => {
@@ -61,12 +76,20 @@ export class ImagePersistenceService {
         });
     }
 
-    async getAllImages(): Promise<SessionImage[]> {
+    async getAllImages(projectId?: number): Promise<SessionImage[]> {
         const db = await this.dbPromise;
         return new Promise((resolve, reject) => {
             const transaction = db.transaction([this.storeName], 'readonly');
             const store = transaction.objectStore(this.storeName);
-            const request = store.getAll();
+
+            let request: IDBRequest;
+
+            if (projectId !== undefined) {
+                const index = store.index('projectId');
+                request = index.getAll(projectId);
+            } else {
+                request = store.getAll();
+            }
 
             request.onsuccess = () => {
                 // Sort by timestamp desc

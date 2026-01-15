@@ -6,6 +6,7 @@ import { ApiService } from '../services/api.service';
 import { FormsModule } from '@angular/forms';
 import Cropper from 'cropperjs';
 import { ImagePersistenceService, SessionImage } from '../services/image-persistence.service';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-editor',
@@ -21,6 +22,7 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
   private api = inject(ApiService);
   private imageService = inject(ImagePersistenceService);
   private sanitizer = inject(DomSanitizer);
+  private authService = inject(AuthService);
 
   @ViewChild('maskCanvas') maskCanvas?: ElementRef<HTMLCanvasElement>;
   @ViewChild('originalImage') originalImage?: ElementRef<HTMLImageElement>;
@@ -140,6 +142,17 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
       }
     });
 
+    // Reload gallery when current project changes
+    effect(() => {
+      const project = this.authService.currentProject();
+      if (project) {
+        this.loadGallery();
+      } else {
+        // Ideally clear gallery or show empty
+        this.sessionGallery.set([]);
+      }
+    });
+
     // Re-init cropper when mode changes to 'crop'
     effect(() => {
       const currentMode = this.mode();
@@ -163,7 +176,14 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
 
   async loadGallery() {
     try {
-      const images = await this.imageService.getAllImages();
+      const projectId = this.authService.currentProject()?.id;
+      // If we want strict mode, only load if projectId exists
+      // But maybe for "no-project" it's empty?
+      if (!projectId) {
+        this.sessionGallery.set([]);
+        return;
+      }
+      const images = await this.imageService.getAllImages(projectId);
       this.sessionGallery.set(images);
 
       // Generate URLs for thumbnails (optional, but needed for img src)
@@ -209,8 +229,15 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
     const name = `${this.title()} ${this.sessionGallery().length + 1}`;
 
     try {
-      const saved = await this.imageService.saveImage(blob, name);
-      this.sessionGallery.update(prev => [saved, ...prev]);
+      const projectId = this.authService.currentProject()?.id;
+      const saved = await this.imageService.saveImage(blob, name, projectId);
+
+      // If we saved with a projectId that matches current view, update UI
+      // If we rely on subscription/effect, we might double update or not need this manual update.
+      // But manual update is faster UI feedback.
+      if (projectId === this.authService.currentProject()?.id) {
+        this.sessionGallery.update(prev => [saved, ...prev]);
+      }
       // Optional: Toast or feedback
     } catch (e) {
       console.error(e);

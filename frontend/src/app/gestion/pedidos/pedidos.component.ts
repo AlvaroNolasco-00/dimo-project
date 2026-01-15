@@ -1,8 +1,9 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, inject, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { AuthService } from '../../services/auth.service';
 
 export interface Pedido {
   id: number;
@@ -34,7 +35,7 @@ export class PedidosComponent implements OnInit {
   // Filter State
   projectStates: any[] = [];
   selectedStateId: number | null = null;
-  projectId: number = 1; // Default or fetched
+  projectId: number | null = null;
 
   // Sort State
   sortField: 'delivery_date' | 'created_at' | 'id' | 'client_name' = 'delivery_date';
@@ -42,23 +43,30 @@ export class PedidosComponent implements OnInit {
 
   isLoading = false;
 
+  private authService = inject(AuthService);
+
   constructor(
     private apiService: ApiService,
     private cd: ChangeDetectorRef,
     private router: Router
-  ) { }
+  ) {
+    effect(() => {
+      const project = this.authService.currentProject();
+      if (project) {
+        this.projectId = project.id;
+        this.loadData();
+      }
+    });
+  }
 
   ngOnInit() {
-    const storedProjId = localStorage.getItem('currentProjectId');
-    if (storedProjId) {
-      this.projectId = parseInt(storedProjId, 10);
-    }
-
-    this.loadData();
+    // Initial load handled by effect
   }
 
   loadData() {
     this.isLoading = true;
+
+    if (!this.projectId) return;
 
     // Load States for Filter
     this.apiService.getProjectOrderStates(this.projectId).subscribe({

@@ -1,4 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Response
+from fastapi.concurrency import run_in_threadpool
+
 from typing import Optional
 from .. import models, processing
 from ..deps import get_approved_user
@@ -28,15 +30,15 @@ async def api_remove_objects(
         # Mode 1: Manual mask provided
         if mask is not None:
             mask_bytes = await mask.read()
-            result = processing.remove_objects(image_bytes, mask_bytes)
+            result = await run_in_threadpool(processing.remove_objects, image_bytes, mask_bytes)
             return Response(content=result, media_type="image/png")
         
         # Mode 2: Coordinates provided (flood fill)
         elif x is not None and y is not None:
             # Generate mask from point
-            mask_bytes = processing.create_mask_from_point(image_bytes, x, y, tolerance)
+            mask_bytes = await run_in_threadpool(processing.create_mask_from_point, image_bytes, x, y, tolerance)
             # Apply inpainting with generated mask
-            result = processing.remove_objects(image_bytes, mask_bytes)
+            result = await run_in_threadpool(processing.remove_objects, image_bytes, mask_bytes)
             return Response(content=result, media_type="image/png")
         
         else:
@@ -65,7 +67,7 @@ async def api_remove_background(
         # Mode 1: Manual mask provided
         if mask is not None:
             mask_bytes = await mask.read()
-            result = processing.remove_background_with_mask(image_bytes, mask_bytes, refine)
+            result = await run_in_threadpool(processing.remove_background_with_mask, image_bytes, mask_bytes, refine)
             return Response(content=result, media_type="image/png")
             
         # Mode 2: Specific colors provided
@@ -74,13 +76,13 @@ async def api_remove_background(
             # Expecting colors as a JSON string of list of lists/tuples, e.g. "[[255, 0, 0]]"
             try:
                 colors_list = json.loads(colors)
-                result = processing.remove_specific_colors(image_bytes, colors_list, threshold)
+                result = await run_in_threadpool(processing.remove_specific_colors, image_bytes, colors_list, threshold)
             except Exception as e:
                  raise HTTPException(status_code=400, detail=f"Invalid color format: {str(e)}")
         
         # Mode 3: Automatic background removal (rembg)
         else:
-            result = processing.remove_background(image_bytes)
+            result = await run_in_threadpool(processing.remove_background, image_bytes)
             
         return Response(content=result, media_type="image/png")
     except Exception as e:
@@ -96,7 +98,7 @@ async def api_enhance_quality(
 ):
     try:
         image_bytes = await image.read()
-        result = processing.enhance_quality(image_bytes, contrast, brightness, sharpness)
+        result = await run_in_threadpool(processing.enhance_quality, image_bytes, contrast, brightness, sharpness)
         return Response(content=result, media_type="image/png")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -113,7 +115,7 @@ async def api_upscale(
             raise HTTPException(status_code=400, detail="Upscale factor must be greater than 0")
             
         image_bytes = await image.read()
-        result = processing.upscale_image(image_bytes, factor, detail_boost)
+        result = await run_in_threadpool(processing.upscale_image, image_bytes, factor, detail_boost)
         return Response(content=result, media_type="image/png")
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
@@ -141,7 +143,8 @@ async def api_halftone(
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Invalid color format: {str(e)}")
         
-        result = processing.generate_halftone(
+        result = await run_in_threadpool(
+            processing.generate_halftone,
             image_bytes, 
             dot_size=dot_size, 
             scale=scale, 
@@ -177,7 +180,7 @@ async def api_contour_clip(
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Invalid color format: {str(e)}")
             
-        result = processing.contour_clip(image_bytes, mask_bytes, mode, refine, colors_list, threshold)
+        result = await run_in_threadpool(processing.contour_clip, image_bytes, mask_bytes, mode, refine, colors_list, threshold)
         return Response(content=result, media_type="image/png")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -195,7 +198,7 @@ async def api_watermark(
         base_bytes = await base_image.read()
         watermark_bytes = await watermark_image.read()
         
-        result = processing.apply_watermark(base_bytes, watermark_bytes, x, y, scale, shape)
+        result = await run_in_threadpool(processing.apply_watermark, base_bytes, watermark_bytes, x, y, scale, shape)
         return Response(content=result, media_type="image/png")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

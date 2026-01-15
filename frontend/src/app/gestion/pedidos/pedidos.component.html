@@ -11,7 +11,7 @@
   </div>
 
   <!-- Próximas Entregas Section -->
-  <div class="section-container">
+  <div class="section-container" *ngIf="top3Entregas.length > 0">
     <h2>Próximas Entregas</h2>
     <div class="cards-grid">
       <div class="delivery-card" *ngFor="let pedido of top3Entregas" (click)="viewOrder(pedido.id)"
@@ -42,77 +42,87 @@
 
   <!-- Pedidos Activos Section -->
   <div class="section-container">
-    <div class="section-container">
-      <div class="section-header-row">
-        <h2>Pedidos Activos</h2>
+    <div class="section-header-row">
+      <h2>Pedidos Activos</h2>
 
-        <div class="filters">
-          <div class="input-wrapper small">
-            <i class="ph ph-funnel"></i>
-            <select [(ngModel)]="selectedStateId" (change)="onFilterChange()">
-              <option [ngValue]="null">Todos los estados</option>
-              <option *ngFor="let state of projectStates" [value]="state.id">{{ state.name }}</option>
-            </select>
-            <i class="ph ph-caret-down select-icon"></i>
-          </div>
+      <div class="filters">
+        <div class="input-wrapper small">
+          <i class="ph ph-funnel"></i>
+          <select [(ngModel)]="selectedStateId" (change)="onFilterChange()">
+            <option [ngValue]="null">Todos los estados</option>
+            <option *ngFor="let state of projectStates" [value]="state.id">{{ state.name }}</option>
+          </select>
+          <i class="ph ph-caret-down select-icon"></i>
         </div>
       </div>
-      <div class="table-responsive">
-        <table class="pedidos-table">
-          <thead>
-            <tr>
-              <th (click)="onSort('id')" class="sortable">
-                <div class="th-content">
-                  <span>Pedido</span>
-                  <i class="ph"
-                    [ngClass]="{'ph-caret-up': sortField === 'id' && sortOrder === 'asc', 'ph-caret-down': sortField === 'id' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'id'}"></i>
-                </div>
-              </th>
-              <th (click)="onSort('client_name')" class="sortable">
-                <div class="th-content">
-                  <span>Cliente</span>
-                  <i class="ph"
-                    [ngClass]="{'ph-caret-up': sortField === 'client_name' && sortOrder === 'asc', 'ph-caret-down': sortField === 'client_name' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'client_name'}"></i>
-                </div>
-              </th>
-              <th (click)="onSort('created_at')" class="sortable">
-                <div class="th-content">
-                  <span>Fecha Creación</span>
-                  <i class="ph"
-                    [ngClass]="{'ph-caret-up': sortField === 'created_at' && sortOrder === 'asc', 'ph-caret-down': sortField === 'created_at' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'created_at'}"></i>
-                </div>
-              </th>
-              <th (click)="onSort('delivery_date')" class="sortable">
-                <div class="th-content">
-                  <span>Fecha Entrega</span>
-                  <i class="ph"
-                    [ngClass]="{'ph-caret-up': sortField === 'delivery_date' && sortOrder === 'asc', 'ph-caret-down': sortField === 'delivery_date' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'delivery_date'}"></i>
-                </div>
-              </th>
-              <th>Etapa</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let pedido of filteredOrders">
-              <td class="fw-bold">#{{ pedido.id }}</td>
-              <td>{{ pedido.client_name }}</td>
-              <td>{{ pedido.created_at | date:'shortDate' }}</td>
-              <td>{{ pedido.delivery_date | date:'shortDate' }}</td>
-              <td>
-                <span class="status-badge" [style.background-color]="pedido.state?.color || '#6c757d'"
-                  [style.border-color]="pedido.state?.color || '#6c757d'">
-                  {{ getStateName(pedido) }}
-                </span>
-              </td>
-              <td>
-                <button class="btn-icon" title="Ver detalle" (click)="viewOrder(pedido.id)">
-                  <i class="ph ph-eye"></i>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    </div>
+    <div class="table-responsive" *ngIf="filteredOrders.length > 0">
+      <table class="pedidos-table">
+        <thead>
+          <tr>
+            <th (click)="onSort('id')" class="sortable">
+              <div class="th-content">
+                <span>Pedido</span>
+                <i class="ph"
+                  [ngClass]="{'ph-caret-up': sortField === 'id' && sortOrder === 'asc', 'ph-caret-down': sortField === 'id' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'id'}"></i>
+              </div>
+            </th>
+            <th (click)="onSort('client_name')" class="sortable">
+              <div class="th-content">
+                <span>Cliente</span>
+                <i class="ph"
+                  [ngClass]="{'ph-caret-up': sortField === 'client_name' && sortOrder === 'asc', 'ph-caret-down': sortField === 'client_name' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'client_name'}"></i>
+              </div>
+            </th>
+            <th (click)="onSort('created_at')" class="sortable">
+              <div class="th-content">
+                <span>Fecha Creación</span>
+                <i class="ph"
+                  [ngClass]="{'ph-caret-up': sortField === 'created_at' && sortOrder === 'asc', 'ph-caret-down': sortField === 'created_at' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'created_at'}"></i>
+              </div>
+            </th>
+            <th (click)="onSort('delivery_date')" class="sortable">
+              <div class="th-content">
+                <span>Fecha Entrega</span>
+                <i class="ph"
+                  [ngClass]="{'ph-caret-up': sortField === 'delivery_date' && sortOrder === 'asc', 'ph-caret-down': sortField === 'delivery_date' && sortOrder === 'desc', 'ph-arrows-down-up': sortField !== 'delivery_date'}"></i>
+              </div>
+            </th>
+            <th>Etapa</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let pedido of filteredOrders">
+            <td class="fw-bold">#{{ pedido.id }}</td>
+            <td>{{ pedido.client_name }}</td>
+            <td>{{ pedido.created_at | date:'shortDate' }}</td>
+            <td>{{ pedido.delivery_date | date:'shortDate' }}</td>
+            <td>
+              <span class="status-badge" [style.background-color]="pedido.state?.color || '#6c757d'"
+                [style.border-color]="pedido.state?.color || '#6c757d'">
+                {{ getStateName(pedido) }}
+              </span>
+            </td>
+            <td>
+              <button class="btn-icon" title="Ver detalle" (click)="viewOrder(pedido.id)">
+                <i class="ph ph-eye"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="empty-state" *ngIf="!isLoading && filteredOrders.length === 0">
+      <i class="ph ph-clipboard-text"></i>
+      <h3>No hay pedidos encontrados</h3>
+      <p *ngIf="selectedStateId">Intenta cambiar los filtros de búsqueda</p>
+      <p *ngIf="!selectedStateId">Aún no hay pedidos en este proyecto. ¡Crea el primero!</p>
+      <a routerLink="/gestion/pedidos/crear" class="btn-create" *ngIf="!selectedStateId">
+        <i class="ph ph-plus"></i>
+        Crear Pedido
+      </a>
     </div>
   </div>
+</div>

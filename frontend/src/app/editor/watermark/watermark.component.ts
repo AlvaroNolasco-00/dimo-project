@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ApiService } from '../../services/api.service';
 import { ImagePersistenceService, SessionImage } from '../../services/image-persistence.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
     selector: 'app-watermark',
@@ -15,6 +16,7 @@ import { ImagePersistenceService, SessionImage } from '../../services/image-pers
 export class WatermarkComponent implements AfterViewInit {
     private api = inject(ApiService);
     private imageService = inject(ImagePersistenceService);
+    private authService = inject(AuthService);
     private sanitizer = inject(DomSanitizer);
 
     @ViewChild('editorCanvas') canvasRef?: ElementRef<HTMLCanvasElement>;
@@ -62,7 +64,12 @@ export class WatermarkComponent implements AfterViewInit {
 
     async loadGallery() {
         try {
-            const images = await this.imageService.getAllImages();
+            const projectId = this.authService.currentProject()?.id;
+            if (!projectId) {
+                this.sessionGallery.set([]);
+                return;
+            }
+            const images = await this.imageService.getAllImages(projectId);
             this.sessionGallery.set(images);
         } catch (err) {
             console.error('Error loading gallery', err);
@@ -91,8 +98,12 @@ export class WatermarkComponent implements AfterViewInit {
         const name = `Watermark ${this.sessionGallery().length + 1}`;
 
         try {
-            const saved = await this.imageService.saveImage(blob, name);
-            this.sessionGallery.update(prev => [saved, ...prev]);
+            const projectId = this.authService.currentProject()?.id;
+            const saved = await this.imageService.saveImage(blob, name, projectId);
+
+            if (projectId === this.authService.currentProject()?.id) {
+                this.sessionGallery.update(prev => [saved, ...prev]);
+            }
         } catch (e) {
             console.error(e);
             alert('No se pudo guardar en la galería');

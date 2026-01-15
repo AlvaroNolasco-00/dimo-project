@@ -52,3 +52,4 @@ testem.log
 Thumbs.db
 backend/static/
 frontend/package-lock.json
+backend/master_db_setup.sql
