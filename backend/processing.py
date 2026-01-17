@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter
-from rembg import remove
 import io
 
 def read_image_file(file_bytes: bytes) -> Image.Image:
@@ -143,6 +142,7 @@ def remove_background(image_bytes: bytes) -> bytes:
     Removes background using rembg.
     """
     # rembg expects bytes
+    from rembg import remove
     output_bytes = remove(image_bytes)
     return output_bytes
 
@@ -385,6 +385,7 @@ def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str = 'manu
 
     if mode == 'auto':
         # 1. Get initial mask from rembg
+        from rembg import remove
         rembg_res = remove(image_bytes)
         rembg_pil = Image.open(io.BytesIO(rembg_res)).convert("L")
         rembg_mask = np.array(rembg_pil)
