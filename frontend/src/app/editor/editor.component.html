@@ -363,25 +363,33 @@
 
         <!-- Session Sidebar -->
         @if (sessionGallery().length > 0) {
-        <div class="session-sidebar">
-            <div class="gallery-header">
-                <h3>Trabajos Recientes</h3>
-                <span class="count">{{ sessionGallery().length }}</span>
-            </div>
+        <div class="session-sidebar" [class.collapsed]="isSidebarCollapsed()">
+            <button class="collapse-toggle" (click)="isSidebarCollapsed.set(!isSidebarCollapsed())"
+                [title]="isSidebarCollapsed() ? 'Mostrar trabajos recientes' : 'Ocultar'">
+                <i class="ph" [class.ph-caret-left]="isSidebarCollapsed()"
+                    [class.ph-caret-right]="!isSidebarCollapsed()"></i>
+            </button>
 
-            <div class="gallery-list">
-                @for (item of sessionGallery(); track item.id) {
-                <div class="gallery-item" (click)="loadFromGallery(item)">
-                    <div class="thumb-wrapper">
-                        <img [src]="getSafeUrl(item.blob)" [alt]="item.name">
-                        <button class="delete-btn" (click)="deleteFromGallery(item.id, $event)">×</button>
-                    </div>
-                    <div class="meta">
-                        <span class="name">{{ item.name }}</span>
-                        <span class="time">{{ item.timestamp | date:'shortTime' }}</span>
-                    </div>
+            <div class="sidebar-content">
+                <div class="gallery-header">
+                    <h3>Trabajos Recientes</h3>
+                    <span class="count">{{ sessionGallery().length }}</span>
                 </div>
-                }
+
+                <div class="gallery-list">
+                    @for (item of sessionGallery(); track item.id) {
+                    <div class="gallery-item" (click)="loadFromGallery(item)">
+                        <div class="thumb-wrapper">
+                            <img [src]="getSafeUrl(item.blob)" [alt]="item.name">
+                            <button class="delete-btn" (click)="deleteFromGallery(item.id, $event)">×</button>
+                        </div>
+                        <div class="meta">
+                            <span class="name">{{ item.name }}</span>
+                            <span class="time">{{ item.timestamp | date:'shortTime' }}</span>
+                        </div>
+                    </div>
+                    }
+                </div>
             </div>
         </div>
         }

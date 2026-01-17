@@ -1,3 +1,5 @@
+@import 'app/shared/mixins';
+
 :host {
     display: flex;
     flex-direction: column;
@@ -15,18 +17,32 @@
     height: 100%;
     min-height: 0;
     overflow: hidden;
+
+    @include mobile {
+        flex-direction: column;
+        gap: 0;
+        overflow-y: auto; // Allow scrolling the full page content on mobile
+    }
 }
 
 header {
     padding: 1.5rem 2rem;
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
+
+    @include mobile {
+        padding: 1rem;
+    }
 }
 
 h1 {
     font-size: 1.5rem;
     font-weight: 600;
     margin-bottom: 0.5rem;
+
+    @include mobile {
+        font-size: 1.2rem;
+    }
 }
 
 p {
@@ -39,6 +55,12 @@ p {
     flex: 1;
     overflow: hidden;
     min-width: 0;
+
+    @include mobile {
+        flex: 1;
+        min-height: 40vh;
+        overflow: visible; // Let it flow
+    }
 }
 
 .controls-sidebar {
@@ -52,6 +74,17 @@ p {
     gap: 2rem;
     overflow-y: auto;
     overflow-x: hidden;
+
+    @include mobile {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color); // If it's on top
+        padding: 1rem;
+        max-height: 40vh; // limit height
+        order: 2; // If in flex column, put it below image if image is order 1?
+        // Wait, if it's left sidebar, it might be order 1 by default.
+        // I will check HTML to decide order.
+    }
 }
 
 /* Session Sidebar */
@@ -68,6 +101,34 @@ p {
     flex-shrink: 0;
     background: rgba(30, 30, 35, 0.6);
     backdrop-filter: blur(10px);
+
+    @include mobile {
+        // Keep it as a drawer or hide it? 
+        // Consistent with Editor: off-canvas
+        position: fixed;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        z-index: 60;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+        background: var(--card-bg);
+        width: 80%;
+
+        &.active {
+            // Assuming similar class or structure
+            transform: translateX(0);
+        }
+
+        // Note: Watermark sidebar logic needs to support this.
+        // Does it have a collapsed state in the SCSS? No 'collapsed' class in view_file output?
+        // Ah, line 1 shows :host... line 58 shows .session-sidebar.
+        // It doesn't seem to have the collapsed logic from editor.
+        // It's just a sidebar.
+        // So on mobile, we might just hide it and use a toggle?
+        // Or put it at the bottom?
+        display: none; // Hide for now unless we add a toggle.
+    }
 }
 
 .gallery-header {

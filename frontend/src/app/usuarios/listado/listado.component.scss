@@ -1,3 +1,5 @@
+@import 'app/shared/mixins';
+
 .user-list-container {
   padding: 24px;
   background: var(--card-bg);
@@ -6,6 +8,12 @@
   max-width: 1200px;
   margin: 0 auto;
   color: var(--text-primary);
+
+  @include mobile {
+    padding: 16px;
+    border-radius: 0; // Full width often looks better without radius on edge
+    border: none;
+  }
 }
 
 h2 {
@@ -13,6 +21,11 @@ h2 {
   margin-bottom: 24px;
   font-weight: 600;
   font-size: 1.5rem;
+
+  @include mobile {
+    font-size: 1.25rem;
+    margin-bottom: 16px;
+  }
 }
 
 .controls {
@@ -30,6 +43,12 @@ h2 {
     align-items: center;
     gap: 20px;
     flex-wrap: wrap;
+
+    @include mobile {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
   }
 }
 
@@ -139,6 +158,10 @@ h2 {
 .table-container {
   position: relative;
   min-height: 400px;
+
+  @include mobile {
+    min-height: 200px; // Less height on mobile
+  }
 }
 
 .loader-overlay {

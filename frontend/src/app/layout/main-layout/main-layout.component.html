@@ -1,6 +1,9 @@
 <div class="app-container">
     <app-navbar-top></app-navbar-top>
     <div class="content-wrapper">
+        <div class="sidebar-backdrop" [class.visible]="layoutService.sidebarOpen()"
+            (click)="layoutService.closeSidebar()">
+        </div>
         @if (showSidebar()) {
         <app-sidebar></app-sidebar>
         }

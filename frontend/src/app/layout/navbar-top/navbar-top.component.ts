@@ -2,6 +2,7 @@ import { Component, signal, inject, ElementRef, ViewChild, AfterViewInit, OnDest
 import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { LayoutService } from '../../services/layout.service';
 import { environment } from '../../../environments/environment';
 
 @Component({
@@ -13,6 +14,7 @@ import { environment } from '../../../environments/environment';
 })
 export class NavbarTopComponent implements AfterViewInit, OnDestroy {
   authService = inject(AuthService);
+  layoutService = inject(LayoutService);
   isDropdownOpen = signal(false);
   isProjectDropdownOpen = signal(false);
   @ViewChild('userMenuContainer') userMenuContainer?: ElementRef;
@@ -49,6 +51,10 @@ export class NavbarTopComponent implements AfterViewInit, OnDestroy {
     if (this.clickListener) {
       document.removeEventListener('click', this.clickListener);
     }
+  }
+
+  toggleSidebar() {
+    this.layoutService.toggleSidebar();
   }
 
   toggleDropdown(event: Event) {

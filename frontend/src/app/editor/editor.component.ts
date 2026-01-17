@@ -37,6 +37,7 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
 
   isLoading = signal(false);
   isDragging = signal(false);
+  isSidebarCollapsed = signal(false);
 
   // Enhance params
   contrast = signal(1.2);

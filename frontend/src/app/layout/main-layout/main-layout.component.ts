@@ -4,6 +4,7 @@ import { SidebarComponent } from '../../sidebar/sidebar.component';
 import { NavbarTopComponent } from '../navbar-top/navbar-top.component';
 import { CommonModule } from '@angular/common';
 import { filter } from 'rxjs/operators';
+import { LayoutService } from '../../services/layout.service';
 @Component({
   selector: 'app-main-layout',
   standalone: true,
@@ -14,6 +15,7 @@ import { filter } from 'rxjs/operators';
 })
 export class MainLayoutComponent implements OnInit {
   private router = inject(Router);
+  layoutService = inject(LayoutService);
   private urlSignal = signal('');
 
   ngOnInit() {

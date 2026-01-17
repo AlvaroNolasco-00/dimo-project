@@ -1,8 +1,12 @@
+@use 'app/shared/mixins' as *;
+
 .app-container {
     display: flex;
     flex-direction: column;
     height: 100vh;
     overflow: hidden;
+    position: relative;
+    background-color: var(--body-bg); // Ensure background color
 }
 
 .content-wrapper {
@@ -10,6 +14,7 @@
     flex: 1;
     overflow: hidden;
     height: calc(100vh - 60px);
+    position: relative; // Context for absolute sidebar and backdrop
 }
 
 .main-content {
@@ -18,8 +23,36 @@
     display: flex;
     flex-direction: column;
     width: 100%;
+    transition: width 0.3s ease; // smooth transition matching sidebar
 }
 
 .main-content.with-sidebar {
     width: calc(100% - 260px);
+
+    @include mobile {
+        width: 100%; // Sidebar is overlay, so content is full width
+    }
+}
+
+.sidebar-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 1500; // Below sidebar (2000) but above content
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    backdrop-filter: blur(2px);
+
+    &.visible {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    @media (min-width: 769px) {
+        display: none; // Never show on desktop
+    }
 }
