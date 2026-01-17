@@ -23,6 +23,9 @@ else:
         # Fallback para compatibilidad si no se define _LOCAL
         SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
+if SQLALCHEMY_DATABASE_URL and SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
+    SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 # Validación básica
 if not SQLALCHEMY_DATABASE_URL:
     raise ValueError(f"DATABASE_URL no está configurada para el entorno: {APP_ENV}")
