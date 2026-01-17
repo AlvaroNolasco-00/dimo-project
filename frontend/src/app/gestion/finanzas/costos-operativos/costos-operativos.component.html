@@ -7,7 +7,8 @@
   </div>
 
   <div class="costs-container">
-    <div class="section" *ngFor="let type of costTypes">
+    @for (type of costTypes; track type.id) {
+    <div class="section">
       <div class="section-header">
         <h2>{{ type.name }}</h2>
         <small>{{ type.description }}</small>
@@ -16,28 +17,36 @@
         <table>
           <thead>
             <tr>
-              <th *ngFor="let col of typeColumns[type.id]">{{ col | titlecase }}</th>
+              @for (col of typeColumns[type.id]; track col) {
+              <th>{{ col | titlecase }}</th>
+              }
               <th>Costo Base</th>
               <th class="text-right">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let cost of groupedCosts[type.id]">
-              <td *ngFor="let col of typeColumns[type.id]">
+            @for (cost of groupedCosts[type.id]; track cost.id) {
+            <tr>
+              @for (col of typeColumns[type.id]; track col) {
+              <td>
                 {{ cost.attributes[col] }}
               </td>
+              }
               <td>{{ cost.base_cost | currency }}</td>
               <td class="text-right">
                 <button class="btn-edit" (click)="editCost(cost)">Editar</button>
-                <button *ngIf="isAdmin" class="btn-danger" (click)="deleteCost(cost.id)"
-                  style="margin-left: 8px;">Eliminar</button>
+                @if (isAdmin) {
+                <button class="btn-danger" (click)="deleteCost(cost.id)" style="margin-left: 8px;">Eliminar</button>
+                }
               </td>
             </tr>
-            <tr *ngIf="!groupedCosts[type.id] || groupedCosts[type.id].length === 0">
+            } @empty {
+            <tr>
               <td [attr.colspan]="(typeColumns[type.id]?.length || 0) + 2" class="text-center">
                 No hay costos registrados.
               </td>
             </tr>
+            }
           </tbody>
         </table>
       </div>
@@ -45,11 +54,13 @@
         <button class="btn-add" (click)="openCostModal(type.id)">Agregar costo a {{type.name}}</button>
       </div>
     </div>
+    }
   </div>
 </div>
 
 <!-- Modal: New Cost Type -->
-<div class="modal-backdrop" *ngIf="showTypeModal">
+@if (showTypeModal) {
+<div class="modal-backdrop">
   <div class="modal-content">
     <h2>Nuevo Tipo de Gasto</h2>
     <div class="form-group">
@@ -66,9 +77,11 @@
     </div>
   </div>
 </div>
+}
 
 <!-- Modal: New Cost -->
-<div class="modal-backdrop" *ngIf="showCostModal">
+@if (showCostModal) {
+<div class="modal-backdrop">
   <div class="modal-content">
     <h2>{{ editingCostId ? 'Editar' : 'Agregar' }} Costo</h2>
     <div class="form-group">
@@ -78,11 +91,13 @@
 
     <h3>Atributos</h3>
     <div class="attributes-list">
-      <div class="attribute-row" *ngFor="let attr of newCostAttributes; let i = index">
+      @for (attr of newCostAttributes; track i; let i = $index) {
+      <div class="attribute-row">
         <input type="text" [(ngModel)]="attr.key" placeholder="Nombre (ej: Talla)" class="form-control">
         <input type="text" [(ngModel)]="attr.value" placeholder="Valor (ej: XL)" class="form-control">
         <button (click)="removeAttribute(i)" class="btn-danger">X</button>
       </div>
+      }
       <button (click)="addAttribute()" class="btn-secondary btn-sm">+ Agregar Atributo</button>
     </div>
 
@@ -92,3 +107,4 @@
     </div>
   </div>
 </div>
+}

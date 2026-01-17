@@ -1,8 +1,9 @@
-import { Component, computed, signal, inject, effect, ViewChild, ElementRef, AfterViewInit, OnDestroy, ViewEncapsulation } from '@angular/core';
+import { Component, computed, signal, inject, effect, ViewChild, ElementRef, AfterViewInit, OnDestroy, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ApiService } from '../services/api.service';
+import { lastValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import Cropper from 'cropperjs';
 import { ImagePersistenceService, SessionImage } from '../services/image-persistence.service';
@@ -14,7 +15,8 @@ import { AuthService } from '../services/auth.service';
   imports: [CommonModule, FormsModule],
   templateUrl: './editor.component.html',
   styleUrl: './editor.component.scss',
-  encapsulation: ViewEncapsulation.None
+  encapsulation: ViewEncapsulation.None,
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class EditorComponent implements AfterViewInit, OnDestroy {
   private route = inject(ActivatedRoute);
@@ -518,148 +520,88 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  process() {
+  async process() {
     const blob = this.currentImageBlob();
     if (!blob) return;
 
     this.isLoading.set(true);
-    let obs;
+    let resultBlob: Blob;
 
-    switch (this.mode()) {
-      case 'remove-bg':
-        if (this.bgRemovalMode() === 'draw') {
-          this.canvasToBlob().then((maskBlob) => {
-            if (!maskBlob) {
-              alert('Por favor dibuja una máscara primero');
-              this.isLoading.set(false);
-              return;
-            }
-            this.api.removeBackground(blob, undefined, undefined, maskBlob, this.smartRefine()).subscribe({
-              next: (resBlob) => {
-                if (this.processedImageSource()) {
-                  URL.revokeObjectURL(this.processedImageSource()!);
-                }
-                const url = URL.createObjectURL(resBlob);
-                this.processedImageSource.set(url);
-                this.isLoading.set(false);
-              },
-              error: (err) => {
-                console.error(err);
-                alert('Error al procesar');
-                this.isLoading.set(false);
-              }
-            });
-          });
-          return;
-        } else if (this.bgRemovalMode() === 'manual' && this.selectedColors().length > 0) {
-          obs = this.api.removeBackground(blob, this.selectedColors(), this.colorTolerance());
-        } else {
-          obs = this.api.removeBackground(blob);
-        }
-        break;
-      case 'remove-objects':
-        if (this.removalMethod() === 'magic-wand') {
-          const coords = this.lastClickCoords();
-          if (!coords) {
-            alert('Por favor haz clic en la imagen primero');
+    try {
+      switch (this.mode()) {
+        case 'remove-bg':
+          if (this.bgRemovalMode() === 'draw') {
+            const maskBlob = await this.canvasToBlob();
+            if (!maskBlob) throw new Error('Por favor dibuja una máscara primero');
+            resultBlob = await lastValueFrom(this.api.removeBackground(blob, undefined, undefined, maskBlob, this.smartRefine()));
+          } else if (this.bgRemovalMode() === 'manual' && this.selectedColors().length > 0) {
+            resultBlob = await lastValueFrom(this.api.removeBackground(blob, this.selectedColors(), this.colorTolerance()));
+          } else {
+            resultBlob = await lastValueFrom(this.api.removeBackground(blob));
+          }
+          break;
+
+        case 'remove-objects':
+          if (this.removalMethod() === 'magic-wand') {
+            const coords = this.lastClickCoords();
+            if (!coords) throw new Error('Por favor haz clic en la imagen primero');
+            resultBlob = await lastValueFrom(this.api.removeObjects(blob, undefined, { ...coords, tolerance: this.colorTolerance() }));
+          } else {
+            const maskBlob = await this.canvasToBlob();
+            if (!maskBlob) throw new Error('Por favor dibuja una máscara primero');
+            resultBlob = await lastValueFrom(this.api.removeObjects(blob, maskBlob));
+          }
+          break;
+
+        case 'enhance':
+          resultBlob = await lastValueFrom(this.api.enhanceQuality(blob, this.contrast(), this.brightness(), this.sharpness()));
+          break;
+
+        case 'upscale':
+          resultBlob = await lastValueFrom(this.api.upscale(blob, this.upscaleFactor(), this.upscaleDetailBoost()));
+          break;
+
+        case 'halftone':
+          resultBlob = await lastValueFrom(this.api.halftone(blob, this.dotSize(), this.halftoneScale(), this.selectedColors(), this.colorTolerance(), this.halftoneSpacing()));
+          break;
+
+        case 'contour-clip':
+          if (this.bgRemovalMode() === 'manual') {
+            const maskBlob = await this.canvasToBlob();
+            if (!maskBlob) throw new Error('Por favor marca el objeto primero');
+            resultBlob = await lastValueFrom(this.api.contourClip(blob, maskBlob, 'manual', this.smartRefine()));
+          } else {
+            resultBlob = await lastValueFrom(this.api.contourClip(blob, undefined, 'auto', false, this.selectedColors(), this.colorTolerance()));
+          }
+          break;
+
+        case 'crop':
+          if (!this.cropperInstance) return;
+          const croppedBlob = await new Promise<Blob | null>((resolve) => this.cropperInstance!.getCroppedCanvas().toBlob(resolve, 'image/png'));
+          if (croppedBlob) {
+            resultBlob = croppedBlob;
+          } else {
             this.isLoading.set(false);
             return;
           }
-          obs = this.api.removeObjects(blob, undefined, { ...coords, tolerance: this.colorTolerance() });
-        } else {
-          // Use canvas mask
-          this.canvasToBlob().then((maskBlob) => {
-            if (!maskBlob) {
-              alert('Por favor dibuja una máscara primero');
-              this.isLoading.set(false);
-              return;
-            }
-            this.api.removeObjects(blob, maskBlob).subscribe({
-              next: (resBlob) => {
-                if (this.processedImageSource()) {
-                  URL.revokeObjectURL(this.processedImageSource()!);
-                }
-                const url = URL.createObjectURL(resBlob);
-                this.processedImageSource.set(url);
-                this.isLoading.set(false);
-              },
-              error: (err) => {
-                console.error(err);
-                alert('Error al procesar');
-                this.isLoading.set(false);
-              }
-            });
-          });
-          return; // Exit early since we handle async differently
-        }
-        break;
-      case 'enhance':
-        obs = this.api.enhanceQuality(blob, this.contrast(), this.brightness(), this.sharpness());
-        break;
-      case 'upscale':
-        obs = this.api.upscale(blob, this.upscaleFactor(), this.upscaleDetailBoost());
-        break;
-      case 'halftone':
-        obs = this.api.halftone(blob, this.dotSize(), this.halftoneScale(), this.selectedColors(), this.colorTolerance(), this.halftoneSpacing());
-        break;
-      case 'contour-clip':
-        if (this.bgRemovalMode() === 'manual') {
-          this.canvasToBlob().then((maskBlob) => {
-            if (!maskBlob) {
-              alert('Por favor marca el objeto primero');
-              this.isLoading.set(false);
-              return;
-            }
-            this.api.contourClip(blob, maskBlob, 'manual', this.smartRefine()).subscribe({
-              next: (resBlob) => {
-                if (this.processedImageSource()) {
-                  URL.revokeObjectURL(this.processedImageSource()!);
-                }
-                this.processedImageSource.set(URL.createObjectURL(resBlob));
-                this.isLoading.set(false);
-              },
-              error: () => {
-                alert('Error al procesar el recorte manual');
-                this.isLoading.set(false);
-              }
-            });
-          });
-          return;
-        } else {
-          obs = this.api.contourClip(blob, undefined, 'auto', false, this.selectedColors(), this.colorTolerance());
-        }
-        break;
-      case 'crop':
-        if (!this.cropperInstance) return;
-        this.cropperInstance.getCroppedCanvas().toBlob((resBlob) => {
-          if (resBlob) {
-            if (this.processedImageSource()) {
-              URL.revokeObjectURL(this.processedImageSource()!);
-            }
-            this.processedImageSource.set(URL.createObjectURL(resBlob));
-          }
-          this.isLoading.set(false);
-        }, 'image/png');
-        return; // Client-side processing done
-      default:
-        this.isLoading.set(false);
-        return;
-    }
+          break;
 
-    obs.subscribe({
-      next: (resBlob) => {
-        if (this.processedImageSource()) {
-          URL.revokeObjectURL(this.processedImageSource()!);
-        }
-        const url = URL.createObjectURL(resBlob);
-        this.processedImageSource.set(url);
-        this.isLoading.set(false);
-      },
-      error: (err) => {
-        console.error(err);
-        alert('Error al procesar');
-        this.isLoading.set(false);
+        default:
+          this.isLoading.set(false);
+          return;
       }
-    });
+
+      if (this.processedImageSource()) {
+        URL.revokeObjectURL(this.processedImageSource()!);
+      }
+      const url = URL.createObjectURL(resultBlob);
+      this.processedImageSource.set(url);
+
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Error al procesar');
+    } finally {
+      this.isLoading.set(false);
+    }
   }
 }

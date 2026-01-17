@@ -19,7 +19,8 @@
             </div>
 
             <!-- Preview Area -->
-            <div class="preview-area" *ngIf="currentImageSource()">
+            @if (currentImageSource()) {
+            <div class="preview-area">
                 <div class="image-container">
                     <div class="img-wrapper">
                         <span class="label">Original</span>
@@ -29,27 +30,32 @@
                                 [style.cursor]="(mode() === 'remove-objects' && removalMethod() === 'magic-wand') ? 'crosshair' : 'default'">
 
                             <!-- Canvas overlay -->
-                            <canvas
-                                *ngIf="mode() === 'remove-objects' || (mode() === 'remove-bg' && bgRemovalMode() === 'draw') || (mode() === 'contour-clip' && bgRemovalMode() === 'manual')"
-                                #maskCanvas class="mask-canvas"
+                            @if (mode() === 'remove-objects' || (mode() === 'remove-bg' && bgRemovalMode() === 'draw')
+                            || (mode() === 'contour-clip' && bgRemovalMode() === 'manual')) {
+                            <canvas #maskCanvas class="mask-canvas"
                                 [class.hidden-draw]="mode() === 'remove-objects' && removalMethod() === 'magic-wand'"
                                 (mousedown)="startDrawing($event)" (mousemove)="draw($event)" (mouseup)="stopDrawing()"
                                 (mouseleave)="stopDrawing()" (click)="onImageClick($event)">
                             </canvas>
+                            }
                         </div>
                     </div>
                     <div class="img-wrapper">
                         <span class="label">Resultado</span>
                         <img [src]="processedImageSource() || currentImageSource()" alt="Procesada">
-                        <div class="loading-overlay" *ngIf="isLoading()">
+                        <div class="loading-overlay" [class.hidden]="!isLoading()">
+                            @if (isLoading()) {
                             <div class="spinner"></div>
                             <p>Procesando...</p>
+                            }
                         </div>
                     </div>
                 </div>
 
+                @switch (mode()) {
+                @case ('enhance') {
                 <!-- Controls: Enhance -->
-                <div class="controls" *ngIf="mode() === 'enhance'">
+                <div class="controls">
                     <div class="control-group">
                         <label>Contraste: {{ contrast() }}</label>
                         <input type="range" min="0.5" max="2.0" step="0.1" [ngModel]="contrast()"
@@ -66,9 +72,11 @@
                             (ngModelChange)="sharpness.set($event)">
                     </div>
                 </div>
+                }
 
+                @case ('upscale') {
                 <!-- Controls: Upscale -->
-                <div class="controls" *ngIf="mode() === 'upscale'">
+                <div class="controls">
                     <div class="control-group">
                         <label>Factor de Escala: {{ upscaleFactor() }}x</label>
                         <select [ngModel]="upscaleFactor()" (ngModelChange)="upscaleFactor.set($event)">
@@ -85,9 +93,11 @@
                             (ngModelChange)="upscaleDetailBoost.set($event)">
                     </div>
                 </div>
+                }
 
+                @case ('remove-bg') {
                 <!-- Controls: Remove Background -->
-                <div class="controls" *ngIf="mode() === 'remove-bg'">
+                <div class="controls">
                     <div class="mode-selector">
                         <label>
                             <input type="radio" name="bgMode" value="auto" [ngModel]="bgRemovalMode()"
@@ -106,14 +116,17 @@
                         </label>
                     </div>
 
-                    <div class="bg-options" *ngIf="bgRemovalMode() === 'auto'">
+                    @if (bgRemovalMode() === 'auto') {
+                    <div class="bg-options">
                         <div class="control-group">
                             <label>Colores de Fondo (Selecciona en la imagen):</label>
                             <div class="color-list">
-                                <div *ngFor="let color of selectedColors(); let i = index" class="color-chip"
+                                @for (color of selectedColors(); track i; let i = $index) {
+                                <div class="color-chip"
                                     [style.background-color]="'rgb(' + color[0] + ',' + color[1] + ',' + color[2] + ')'">
                                     <span class="remove" (click)="removeColor(i)">&times;</span>
                                 </div>
+                                }
                             </div>
                         </div>
                         <div class="control-group">
@@ -122,8 +135,10 @@
                                 (ngModelChange)="colorTolerance.set($event)">
                         </div>
                     </div>
+                    }
 
-                    <div class="color-controls" *ngIf="bgRemovalMode() === 'manual'">
+                    @if (bgRemovalMode() === 'manual') {
+                    <div class="color-controls">
                         <div class="control-group">
                             <label>Tolerancia: {{ colorTolerance() }}</label>
                             <input type="range" min="0" max="100" [ngModel]="colorTolerance()"
@@ -136,14 +151,18 @@
                             <button class="btn-small" (click)="openColorPicker(colorPicker)">Agregar Color</button>
                         </div>
                         <div class="selected-colors">
-                            <div class="color-chip" *ngFor="let color of selectedColors(); let i = index"
+                            @for (color of selectedColors(); track i; let i = $index) {
+                            <div class="color-chip"
                                 [style.background-color]="'rgb(' + color[0] + ',' + color[1] + ',' + color[2] + ')'">
                                 <button class="remove-color" (click)="removeColor(i)">×</button>
                             </div>
+                            }
                         </div>
                     </div>
+                    }
 
-                    <div class="drawing-controls" *ngIf="bgRemovalMode() === 'draw'">
+                    @if (bgRemovalMode() === 'draw') {
+                    <div class="drawing-controls">
                         <div class="control-group">
                             <label class="checkbox-label">
                                 <input type="checkbox" [ngModel]="smartRefine()"
@@ -162,10 +181,13 @@
                             <button class="btn-small" (click)="clearCanvas()">Limpiar</button>
                         </div>
                     </div>
+                    }
                 </div>
+                }
 
+                @case ('remove-objects') {
                 <!-- Controls: Remove Objects -->
-                <div class="controls" *ngIf="mode() === 'remove-objects'">
+                <div class="controls">
                     <div class="mode-selector">
                         <label>
                             <input type="radio" name="remMethod" value="brush" [ngModel]="removalMethod()"
@@ -179,30 +201,42 @@
                         </label>
                     </div>
 
-                    <div class="control-group" *ngIf="removalMethod() === 'brush'">
+                    @if (removalMethod() === 'brush') {
+                    <div class="control-group">
                         <label>Tamaño del Pincel: {{ brushSize() }}px</label>
                         <input type="range" min="5" max="50" [ngModel]="brushSize()"
                             (ngModelChange)="brushSize.set($event)">
                     </div>
+                    }
 
-                    <div class="control-group" *ngIf="removalMethod() === 'magic-wand'">
+                    @if (removalMethod() === 'magic-wand') {
+                    <div class="control-group">
                         <label>Tolerancia: {{ colorTolerance() }}</label>
                         <input type="range" min="0" max="100" [ngModel]="colorTolerance()"
                             (ngModelChange)="colorTolerance.set($event)">
-                        <p class="hint" *ngIf="!lastClickCoords()">Haz clic en la imagen para elegir punto</p>
-                        <p class="hint" *ngIf="lastClickCoords()">Punto seleccionado: {{ lastClickCoords()?.x }}, {{
+                        @if (!lastClickCoords()) {
+                        <p class="hint">Haz clic en la imagen para elegir punto</p>
+                        }
+                        @if (lastClickCoords()) {
+                        <p class="hint">Punto seleccionado: {{ lastClickCoords()?.x }}, {{
                             lastClickCoords()?.y }}</p>
+                        }
                     </div>
+                    }
 
-                    <div class="canvas-actions" *ngIf="removalMethod() === 'brush'">
+                    @if (removalMethod() === 'brush') {
+                    <div class="canvas-actions">
                         <button class="btn-small" (click)="undo()"
                             [disabled]="canvasHistory().length === 0">Deshacer</button>
                         <button class="btn-small" (click)="clearCanvas()">Limpiar</button>
                     </div>
+                    }
                 </div>
+                }
 
+                @case ('halftone') {
                 <!-- Controls: Halftone -->
-                <div class="controls" *ngIf="mode() === 'halftone'">
+                <div class="controls">
                     <div class="control-group">
                         <label>Tamaño de Punto: {{ dotSize() }}px</label>
                         <input type="range" min="2" max="10" [ngModel]="dotSize()"
@@ -230,16 +264,20 @@
                             </div>
                         </div>
                         <div class="selected-colors">
-                            <div class="color-chip" *ngFor="let color of selectedColors(); let i = index"
+                            @for (color of selectedColors(); track i; let i = $index) {
+                            <div class="color-chip"
                                 [style.background-color]="'rgb(' + color[0] + ',' + color[1] + ',' + color[2] + ')'">
                                 <button class="remove-color" (click)="removeColor(i)">×</button>
                             </div>
+                            }
                         </div>
                     </div>
                 </div>
+                }
 
+                @case ('contour-clip') {
                 <!-- Controls: Contour Clip -->
-                <div class="controls" *ngIf="mode() === 'contour-clip'">
+                <div class="controls">
                     <div class="mode-selector">
                         <label>
                             <input type="radio" name="contourMode" value="auto" [ngModel]="bgRemovalMode()"
@@ -253,7 +291,8 @@
                         </label>
                     </div>
 
-                    <div class="drawing-controls" *ngIf="bgRemovalMode() === 'manual'">
+                    @if (bgRemovalMode() === 'manual') {
+                    <div class="drawing-controls">
                         <div class="control-group">
                             <label class="checkbox-label">
                                 <input type="checkbox" [ngModel]="smartRefine()"
@@ -273,10 +312,13 @@
                         </div>
                         <p class="hint">Marca lo que quieres <b>CONSERVAR</b></p>
                     </div>
+                    }
                 </div>
+                }
 
+                @case ('crop') {
                 <!-- Controls: Crop -->
-                <div class="controls" *ngIf="mode() === 'crop'">
+                <div class="controls">
                     <div class="mode-selector aspect-ratios">
                         <button class="btn-small" [class.active]="isNaN(cropAspectRatio())"
                             (click)="setAspectRatio(NaN)">Libre</button>
@@ -293,32 +335,43 @@
                     </div>
                     <p class="hint">Ajusta el recuadro para recortar</p>
                 </div>
+                }
+                }
 
                 <div class="action-buttons">
-                    <div class="filename-input" *ngIf="processedImageSource()">
+                    @if (processedImageSource()) {
+                    <div class="filename-input">
                         <input type="text" [(ngModel)]="customFilename" placeholder="nombre-archivo">
                         <span>.png</span>
                     </div>
+                    }
                     <button class="btn secondary" (click)="reset()">Subir otra</button>
-                    <button class="btn session" *ngIf="processedImageSource()" (click)="addToGallery()">
+                    @if (processedImageSource()) {
+                    <button class="btn session" (click)="addToGallery()">
                         <i class="ph ph-arrow-counter-clockwise"></i> Guardar para reusar
                     </button>
+                    }
                     <button class="btn primary" (click)="process()">Procesar Imagen</button>
-                    <a *ngIf="processedImageSource()" [href]="processedImageSource()" class="btn download"
+                    @if (processedImageSource()) {
+                    <a [href]="processedImageSource()" class="btn download"
                         [download]="(customFilename || 'resultado') + '.png'">Descargar</a>
+                    }
                 </div>
             </div>
+            }
         </div>
 
         <!-- Session Sidebar -->
-        <div class="session-sidebar" *ngIf="sessionGallery().length > 0">
+        @if (sessionGallery().length > 0) {
+        <div class="session-sidebar">
             <div class="gallery-header">
                 <h3>Trabajos Recientes</h3>
                 <span class="count">{{ sessionGallery().length }}</span>
             </div>
 
             <div class="gallery-list">
-                <div class="gallery-item" *ngFor="let item of sessionGallery()" (click)="loadFromGallery(item)">
+                @for (item of sessionGallery(); track item.id) {
+                <div class="gallery-item" (click)="loadFromGallery(item)">
                     <div class="thumb-wrapper">
                         <img [src]="getSafeUrl(item.blob)" [alt]="item.name">
                         <button class="delete-btn" (click)="deleteFromGallery(item.id, $event)">×</button>
@@ -328,7 +381,9 @@
                         <span class="time">{{ item.timestamp | date:'shortTime' }}</span>
                     </div>
                 </div>
+                }
             </div>
         </div>
+        }
     </div>
 </div>

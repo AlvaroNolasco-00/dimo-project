@@ -7,11 +7,14 @@
     </div>
 
     <div class="content">
-        <div class="loading" *ngIf="isLoading()">
+        @if (isLoading()) {
+        <div class="loading">
             <i class="ph ph-spinner ph-spin"></i> Cargando proyectos...
         </div>
+        }
 
-        <table class="data-table" *ngIf="!isLoading()">
+        @if (!isLoading()) {
+        <table class="data-table">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -22,7 +25,8 @@
                 </tr>
             </thead>
             <tbody>
-                <tr *ngFor="let p of projects()">
+                @for (p of projects(); track p.id) {
+                <tr>
                     <td>{{ p.id }}</td>
                     <td>{{ p.name }}</td>
                     <td>{{ p.description }}</td>
@@ -39,16 +43,20 @@
                         </button>
                     </td>
                 </tr>
-                <tr *ngIf="projects().length === 0">
+                } @empty {
+                <tr>
                     <td colspan="5" class="empty-state">No hay proyectos creados.</td>
                 </tr>
+                }
             </tbody>
         </table>
+        }
     </div>
 </div>
 
 <!-- Create Modal -->
-<div class="modal-overlay" *ngIf="showCreateModal()">
+@if (showCreateModal()) {
+<div class="modal-overlay">
     <div class="modal">
         <div class="modal-header">
             <h2>Nuevo Proyecto</h2>
@@ -71,14 +79,17 @@
         </div>
     </div>
 </div>
+}
 
 <!-- Edit Modal -->
-<app-project-edit *ngIf="showEditModal()" [project]="editingProject" (close)="closeEditModal()"
-    (saved)="onProjectUpdated($event)">
+@if (showEditModal()) {
+<app-project-edit [project]="editingProject" (close)="closeEditModal()" (saved)="onProjectUpdated($event)">
 </app-project-edit>
+}
 
 <!-- Users Modal -->
-<div class="modal-overlay" *ngIf="showUsersModal()">
+@if (showUsersModal()) {
+<div class="modal-overlay">
     <div class="modal large">
         <div class="modal-header">
             <h2>Usuarios en {{ selectedProjectForUsers?.name }}</h2>
@@ -90,12 +101,15 @@
                 <div class="user-list">
                     <h3>Asignados</h3>
                     <ul>
-                        <li *ngFor="let u of projectUsers()">
+                        @for (u of projectUsers(); track u.id) {
+                        <li>
                             <span>{{ u.email }} ({{ u.full_name }})</span>
                             <button class="btn-icon danger" (click)="removeUser(u.id)"><i
                                     class="ph ph-minus-circle"></i></button>
                         </li>
-                        <li *ngIf="projectUsers().length === 0" class="empty">No hay usuarios asignados.</li>
+                        } @empty {
+                        <li class="empty">No hay usuarios asignados.</li>
+                        }
                     </ul>
                 </div>
 
@@ -106,22 +120,30 @@
                         <input type="text" [(ngModel)]="searchTerm" placeholder="Buscar usuario...">
                     </div>
                     <ul>
-                        <li *ngFor="let u of allUsers() | slice:0:20">
+                        @for (u of allUsers() | slice:0:20; track u.id) {
+                        <li>
                             <!-- Todo: Implement filter pipe or computed signal for search -->
-                            <ng-container
-                                *ngIf="!searchTerm || u.email.includes(searchTerm) || u.full_name.includes(searchTerm)">
+                            @if (!searchTerm || u.email.includes(searchTerm) || u.full_name.includes(searchTerm)) {
+                            <ng-container>
                                 <div class="user-info">
                                     <span [class.assigned]="isAssigned(u.id)">{{ u.email }}</span>
                                 </div>
-                                <button *ngIf="!isAssigned(u.id)" class="btn-icon success" (click)="assignUser(u.id)">
+                                @if (!isAssigned(u.id)) {
+                                <button class="btn-icon success" (click)="assignUser(u.id)">
                                     <i class="ph ph-plus-circle"></i>
                                 </button>
-                                <span *ngIf="isAssigned(u.id)" class="badge">Asignado</span>
+                                }
+                                @if (isAssigned(u.id)) {
+                                <span class="badge">Asignado</span>
+                                }
                             </ng-container>
+                            }
                         </li>
+                        }
                     </ul>
                 </div>
             </div>
         </div>
     </div>
 </div>
+}

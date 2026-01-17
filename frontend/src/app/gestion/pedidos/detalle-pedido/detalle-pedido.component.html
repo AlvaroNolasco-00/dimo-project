@@ -12,10 +12,12 @@
     </button>
   </div>
 
-  <div class="loading-state" *ngIf="isLoading">
+  @if (isLoading) {
+  <div class="loading-state">
     <div class="spinner"></div>
     <p>Cargando pedido...</p>
   </div>
+  }
 
   <div class="details-grid" *ngIf="!isLoading && order">
     <!-- Left Column: General Info & Items -->
@@ -43,9 +45,11 @@
           <label>Estado (Etapa)</label>
           <div class="select-wrapper">
             <select [(ngModel)]="order.current_state_id" class="input-field" [disabled]="isCancelled">
-              <option *ngFor="let state of projectStates" [value]="state.id">
+              @for (state of projectStates; track state.id) {
+              <option [value]="state.id">
                 {{ state.name }}
               </option>
+              }
             </select>
             <i class="ph ph-caret-down"></i>
           </div>
@@ -67,25 +71,33 @@
         </div>
 
         <div class="items-list">
-          <div class="item-row" *ngFor="let item of order.items; let i = index">
+          @for (item of order.items; track i; let i = $index) {
+          <div class="item-row">
             <div class="item-info">
               <span class="item-qty">{{ item.quantity }}x</span>
               <div class="item-desc">
                 <strong>{{ item.description }}</strong>
 
                 <!-- Attributes -->
-                <div class="item-attrs" *ngIf="item.attributes && getKeys(item.attributes).length > 0">
-                  <div *ngFor="let key of getKeys(item.attributes)">
-                    <span class="attr-tag" *ngIf="key !== 'sub_items' && key !== 'is_composite'">
+                @if (item.attributes && getKeys(item.attributes).length > 0) {
+                <div class="item-attrs">
+                  @for (key of getKeys(item.attributes); track key) {
+                  @if (key !== 'sub_items' && key !== 'is_composite') {
+                  <div>
+                    <span class="attr-tag">
                       {{ key }}: {{ item.attributes[key] }}
                     </span>
                   </div>
+                  }
+                  }
                 </div>
+                }
 
                 <!-- Sub Items (Composite) with File Upload -->
-                <div class="sub-items-container mt-3"
-                  *ngIf="item.attributes?.is_composite && item.attributes?.sub_items">
-                  <div class="sub-item-row" *ngFor="let sub of item.attributes.sub_items; let subIndex = index">
+                @if (item.attributes?.is_composite && item.attributes?.sub_items) {
+                <div class="sub-items-container mt-3">
+                  @for (sub of item.attributes.sub_items; track subIndex; let subIndex = $index) {
+                  <div class="sub-item-row">
 
                     <div class="sub-item-info">
                       <i class="ph ph-arrow-elbow-down-right"></i>
@@ -95,13 +107,15 @@
 
                     <div class="sub-item-actions">
                       <!-- View Image if exists -->
-                      <button *ngIf="sub.image_url" (click)="openImageViewer(sub.image_url)" class="action-btn view"
-                        title="Ver imagen">
+                      @if (sub.image_url) {
+                      <button (click)="openImageViewer(sub.image_url)" class="action-btn view" title="Ver imagen">
                         <i class="ph ph-image"></i> Ver Foto
                       </button>
+                      }
 
                       <!-- Upload Button -->
-                      <div class="upload-wrapper" *ngIf="!isCancelled">
+                      @if (!isCancelled) {
+                      <div class="upload-wrapper">
                         <input type="file" [id]="'file-'+i+'-'+subIndex" hidden
                           (change)="uploadSubItemFile(i, subIndex, $event)">
                         <label [for]="'file-'+i+'-'+subIndex" class="action-btn upload" title="Cargar imagen">
@@ -109,10 +123,13 @@
                           {{ sub.image_url ? 'Cambiar' : 'Cargar Imagen' }}
                         </label>
                       </div>
+                      }
                     </div>
 
                   </div>
+                  }
                 </div>
+                }
 
               </div>
             </div>
@@ -127,10 +144,11 @@
               </button>
             </div>
           </div>
-
-          <div class="empty-state" *ngIf="order.items.length === 0">
+          } @empty {
+          <div class="empty-state">
             <p>No hay items en este pedido.</p>
           </div>
+          }
         </div>
 
         <div class="order-total mt-4">
@@ -140,12 +158,14 @@
       </div>
 
       <!-- History Card -->
-      <div class="card mt-4" *ngIf="history && history.length > 0">
+      @if (history && history.length > 0) {
+      <div class="card mt-4">
         <div class="card-header">
           <h3>Historial de Cambios</h3>
         </div>
         <div class="history-list">
-          <div class="history-item" *ngFor="let item of history">
+          @for (item of history; track item.created_at) {
+          <div class="history-item">
             <div class="history-timeline">
               <div class="history-dot"></div>
             </div>
@@ -154,24 +174,32 @@
                 <span class="history-desc">{{ item.description }}</span>
                 <span class="history-time text-secondary">{{ item.created_at | date:'short' }}</span>
               </div>
-              <div class="history-user text-sm text-secondary" *ngIf="item.user">
+              @if (item.user) {
+              <div class="history-user text-sm text-secondary">
                 <i class="ph ph-user"></i> {{ item.user.full_name }}
               </div>
+              }
             </div>
           </div>
+          }
         </div>
       </div>
+      }
 
     </div>
   </div>
 </div>
 
 <!-- Image Viewer Modal -->
-<div class="image-viewer-overlay" *ngIf="showImageViewer" (click)="closeImageViewer()">
+@if (showImageViewer) {
+<div class="image-viewer-overlay" (click)="closeImageViewer()">
   <div class="image-viewer-content" (click)="$event.stopPropagation()">
     <button class="close-btn" (click)="closeImageViewer()">
       <i class="ph ph-x"></i>
     </button>
-    <img [src]="currentImageUrl" alt="Vista previa" *ngIf="currentImageUrl">
+    @if (currentImageUrl) {
+    <img [src]="currentImageUrl" alt="Vista previa">
+    }
   </div>
 </div>
+}

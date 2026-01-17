@@ -43,11 +43,12 @@
         </div>
 
         <div id="map" class="map-container"></div>
-
-        <div class="selected-address" *ngIf="nuevoPedido.direccion">
+        @if (nuevoPedido.direccion) {
+        <div class="selected-address">
           <i class="ph ph-map-pin"></i>
           <span>{{ nuevoPedido.direccion }}</span>
         </div>
+        }
       </div>
 
       <!-- STATES SECTION -->
@@ -58,8 +59,12 @@
             <i class="ph ph-steps"></i>
             <select id="etapa" [(ngModel)]="nuevoPedido.current_state_id" name="etapa" required
               [disabled]="isLoadingStates">
-              <option *ngIf="isLoadingStates" [ngValue]="null">Cargando etapas...</option>
-              <option *ngFor="let state of projectStates" [value]="state.id">{{ state.name }}</option>
+              @if (isLoadingStates) {
+              <option [ngValue]="null">Cargando etapas...</option>
+              }
+              @for (state of projectStates; track state.id) {
+              <option [value]="state.id">{{ state.name }}</option>
+              }
             </select>
             <i class="ph ph-caret-down select-icon"></i>
           </div>
@@ -85,8 +90,12 @@
                 <select [(ngModel)]="tempSubItem.cost_type_id" name="subCostType" (change)="onCostTypeChange()"
                   [disabled]="isLoadingTypes">
                   <option [ngValue]="null" disabled selected>Tipo</option>
-                  <option *ngIf="isLoadingTypes" [ngValue]="null" disabled>Cargando...</option>
-                  <option *ngFor="let type of costTypes" [value]="type.id">{{ type.name }}</option>
+                  @if (isLoadingTypes) {
+                  <option [ngValue]="null" disabled>Cargando...</option>
+                  }
+                  @for (type of costTypes; track type.id) {
+                  <option [value]="type.id">{{ type.name }}</option>
+                  }
                 </select>
               </div>
             </div>
@@ -98,13 +107,21 @@
                 <select [(ngModel)]="tempSubItem.operative_cost_id" name="subOpCost"
                   [disabled]="!tempSubItem.cost_type_id || isLoadingCosts" (change)="onOperativeCostChange()">
                   <option [ngValue]="null" disabled selected>Selecciona opción</option>
-                  <option *ngIf="isLoadingCosts" [ngValue]="null" disabled>Cargando...</option>
-                  <option *ngFor="let cost of availableOperativeCosts" [ngValue]="cost.id">
+                  @if (isLoadingCosts) {
+                  <option [ngValue]="null" disabled>Cargando...</option>
+                  }
+                  @for (cost of availableOperativeCosts; track cost.id) {
+                  <option [ngValue]="cost.id">
                     {{ cost.base_cost | currency }}
-                    <span *ngIf="cost.attributes">
-                      - <span *ngFor="let attr of cost.attributes | keyvalue">{{ attr.key }}: {{ attr.value }} </span>
+                    @if (cost.attributes) {
+                    <span>
+                      - @for (attr of cost.attributes | keyvalue; track attr.key) {
+                      <span>{{ attr.key }}: {{ attr.value }} </span>
+                      }
                     </span>
+                    }
                   </option>
+                  }
                 </select>
               </div>
             </div>
@@ -127,16 +144,19 @@
           </div>
 
           <!-- Current Composite Item Preview -->
-          <div class="composite-preview" *ngIf="newItem.subItems.length > 0">
+          @if (newItem.subItems.length > 0) {
+          <div class="composite-preview">
             <div class="sub-items-list">
               <h5>Componentes del Item:</h5>
               <ul>
-                <li *ngFor="let sub of newItem.subItems; let i = index">
+                @for (sub of newItem.subItems; track i; let i = $index) {
+                <li>
                   <span>{{ sub.quantity }}x {{ sub.description }} ({{ sub.unit_price | currency }})</span>
                   <button type="button" class="btn-icon-danger small" (click)="removeSubItem(i)">
                     <i class="ph ph-x"></i>
                   </button>
                 </li>
+                }
               </ul>
             </div>
 
@@ -155,9 +175,11 @@
               </div>
 
               <div class="action-buttons-wrapper">
-                <button *ngIf="editingItemIndex !== null" type="button" class="btn-cancel-edit" (click)="cancelEdit()">
+                @if (editingItemIndex !== null) {
+                <button type="button" class="btn-cancel-edit" (click)="cancelEdit()">
                   <i class="ph ph-x"></i> Cancelar Edición
                 </button>
+                }
 
                 <button type="button" class="btn-add-item primary" (click)="addItem()">
                   <i class="ph" [class.ph-check]="editingItemIndex === null"
@@ -167,10 +189,12 @@
               </div>
             </div>
           </div>
+          }
         </div>
 
         <!-- Items List -->
-        <div class="items-table-wrapper" *ngIf="items.length > 0">
+        @if (items.length > 0) {
+        <div class="items-table-wrapper">
           <table class="items-table">
             <thead>
               <tr>
@@ -182,14 +206,19 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let item of items; let i = index">
+              @for (item of items; track i; let i = $index) {
+              <tr>
                 <td>
                   <strong>{{ item.description }}</strong>
-                  <div class="item-details-small" *ngIf="item.attributes?.sub_items">
-                    <span *ngFor="let sub of item.attributes.sub_items">
+                  @if (item.attributes?.sub_items) {
+                  <div class="item-details-small">
+                    @for (sub of item.attributes.sub_items; track sub.description) {
+                    <span>
                       • {{ sub.quantity }}x {{ sub.description }} <br>
                     </span>
+                    }
                   </div>
+                  }
                 </td>
                 <td>{{ item.quantity }}</td>
                 <td>${{ item.unit_price | number:'1.2-2' }}</td>
@@ -205,6 +234,7 @@
                   </div>
                 </td>
               </tr>
+              }
             </tbody>
             <tfoot>
               <tr>
@@ -214,6 +244,7 @@
             </tfoot>
           </table>
         </div>
+        }
       </div>
 
       <div class="form-group full-width">
@@ -231,8 +262,12 @@
         </button>
         <button type="submit" class="btn-save" [disabled]="items.length === 0 || isSaving"
           [class.btn-loading]="isSaving">
-          <span class="spinner" *ngIf="isSaving"></span>
-          <i class="ph ph-floppy-disk" *ngIf="!isSaving"></i>
+          @if (isSaving) {
+          <span class="spinner"></span>
+          }
+          @if (!isSaving) {
+          <i class="ph ph-floppy-disk"></i>
+          }
           Guardar Pedido
         </button>
       </div>

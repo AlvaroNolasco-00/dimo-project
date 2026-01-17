@@ -2,7 +2,9 @@
   <div class="sidebar-header">
     <div class="logo">
       <i class="ph ph-folder-open"></i>
-      <span *ngIf="!isCollapsed()">Gestión</span>
+      @if (!isCollapsed()) {
+      <span>Gestión</span>
+      }
     </div>
     <button class="toggle-btn" (click)="toggle()" [title]="isCollapsed() ? 'Expandir' : 'Colapsar'">
       <i class="ph" [class.ph-caret-double-right]="isCollapsed()" [class.ph-caret-double-left]="!isCollapsed()"></i>
@@ -12,16 +14,23 @@
   <nav>
     <button class="nav-btn" routerLink="/gestion/pedidos" routerLinkActive="active" [title]="'Pedidos'">
       <i class="ph ph-shopping-cart"></i>
-      <span class="btn-text" *ngIf="!isCollapsed()">Pedidos</span>
+      @if (!isCollapsed()) {
+      <span class="btn-text">Pedidos</span>
+      }
     </button>
     <button class="nav-btn" routerLink="/gestion/finanzas" routerLinkActive="active" [title]="'Finanzas'">
       <i class="ph ph-currency-dollar"></i>
-      <span class="btn-text" *ngIf="!isCollapsed()">Finanzas</span>
+      @if (!isCollapsed()) {
+      <span class="btn-text">Finanzas</span>
+      }
     </button>
-    <button class="nav-btn" routerLink="/gestion/proyectos" routerLinkActive="active" [title]="'Proyectos'"
-      *ngIf="authService.isAdmin()">
+    @if (authService.isAdmin()) {
+    <button class="nav-btn" routerLink="/gestion/proyectos" routerLinkActive="active" [title]="'Proyectos'">
       <i class="ph ph-briefcase"></i>
-      <span class="btn-text" *ngIf="!isCollapsed()">Proyectos</span>
+      @if (!isCollapsed()) {
+      <span class="btn-text">Proyectos</span>
+      }
     </button>
+    }
   </nav>
 </aside>

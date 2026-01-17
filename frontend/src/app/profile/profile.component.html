@@ -8,10 +8,14 @@
         <div class="profile-card user-card">
             <div class="avatar-wrapper" (click)="triggerFileInput()">
                 <div class="avatar-container">
-                    <img *ngIf="userAvatarUrl" [src]="userAvatarUrl" alt="Avatar" class="avatar-image">
-                    <div *ngIf="!userAvatarUrl" class="default-avatar">
+                    @if (userAvatarUrl) {
+                    <img [src]="userAvatarUrl" alt="Avatar" class="avatar-image">
+                    }
+                    @if (!userAvatarUrl) {
+                    <div class="default-avatar">
                         <i class="ph ph-user"></i>
                     </div>
+                    }
                     <div class="avatar-overlay">
                         <i class="ph ph-camera"></i>
                     </div>
@@ -23,9 +27,11 @@
             <h2 class="user-name">{{ user()?.full_name }}</h2>
             <p class="user-email">{{ user()?.email }}</p>
 
-            <button *ngIf="isRegularAccount" class="btn-premium">
+            @if (isRegularAccount) {
+            <button class="btn-premium">
                 <i class="ph ph-crown"></i> Conseguir Premium
             </button>
+            }
             <p class="account-status">Actualmente tienes Cuenta Regular</p>
         </div>
 
@@ -85,17 +91,20 @@
             <!-- Linked Projects -->
             <div class="profile-card">
                 <h3 class="card-title">Proyectos Vinculados</h3>
-                <div *ngIf="user()?.projects?.length; else noProjects">
+                @if (user()?.projects?.length) {
+                <div>
                     <ul class="project-list">
-                        <li *ngFor="let project of user()?.projects" class="project-item">
+                        @for (project of user()?.projects; track project.id) {
+                        <li class="project-item">
                             <i class="ph ph-folder"></i>
                             <span>{{ project.name }}</span>
                         </li>
+                        }
                     </ul>
                 </div>
-                <ng-template #noProjects>
-                    <p class="empty-state">No tienes proyectos vinculados.</p>
-                </ng-template>
+                } @else {
+                <p class="empty-state">No tienes proyectos vinculados.</p>
+                }
             </div>
         </div>
     </div>

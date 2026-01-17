@@ -5,8 +5,8 @@
       <span>Dimo Suite</span>
     </div>
 
-    <div class="user-menu-container project-selector" *ngIf="(authService.user()?.projects || []).length > 0"
-      #projectMenuContainer>
+    @if ((authService.user()?.projects || []).length > 0) {
+    <div class="user-menu-container project-selector" #projectMenuContainer>
       <button class="user-menu-trigger" (click)="toggleProjectDropdown($event)">
         <div class="user-avatar project-avatar">
           <i class="ph ph-briefcase"></i>
@@ -14,14 +14,18 @@
         <span class="user-name">{{ authService.currentProject()?.name || 'Seleccionar Proyecto' }}</span>
         <i class="ph ph-caret-down" [class.rotated]="isProjectDropdownOpen()"></i>
       </button>
-      <div class="user-dropdown" *ngIf="isProjectDropdownOpen()">
-        <a class="dropdown-item" *ngFor="let p of authService.user()?.projects" (click)="selectProject(p)"
-          [class.active]="authService.currentProject()?.id === p.id">
+      @if (isProjectDropdownOpen()) {
+      <div class="user-dropdown">
+        @for (p of authService.user()?.projects; track p.id) {
+        <a class="dropdown-item" (click)="selectProject(p)" [class.active]="authService.currentProject()?.id === p.id">
           <i class="ph ph-folder"></i>
           <span>{{ p.name }}</span>
         </a>
+        }
       </div>
+      }
     </div>
+    }
 
     <div class="navbar-right">
       <div class="navbar-links">
@@ -30,11 +34,12 @@
           <i class="ph ph-toolbox"></i>
           <span>Utilidades</span>
         </a>
-        <a routerLink="/usuarios" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" class="nav-link"
-          *ngIf="authService.isAdmin()">
+        @if (authService.isAdmin()) {
+        <a routerLink="/usuarios" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" class="nav-link">
           <i class="ph ph-users"></i>
           <span>Usuarios</span>
         </a>
+        }
         <a routerLink="/gestion" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" class="nav-link">
           <i class="ph ph-folder-open"></i>
           <span>Gestión</span>
@@ -44,16 +49,17 @@
       <div class="user-menu-container" #userMenuContainer>
         <button class="user-menu-trigger" (click)="toggleDropdown($event)">
           <div class="user-avatar">
-            <img *ngIf="getUserAvatarUrl(); else defaultIcon" [src]="getUserAvatarUrl()" alt="Avatar"
-              class="avatar-img">
-            <ng-template #defaultIcon>
-              <i class="ph ph-user"></i>
-            </ng-template>
+            @if (getUserAvatarUrl()) {
+            <img [src]="getUserAvatarUrl()" alt="Avatar" class="avatar-img">
+            } @else {
+            <i class="ph ph-user"></i>
+            }
           </div>
           <span class="user-name">{{ getUserDisplayName() }}</span>
           <i class="ph ph-caret-down" [class.rotated]="isDropdownOpen()"></i>
         </button>
-        <div class="user-dropdown" *ngIf="isDropdownOpen()">
+        @if (isDropdownOpen()) {
+        <div class="user-dropdown">
           <a class="dropdown-item" routerLink="/profile" (click)="closeDropdown()">
             <i class="ph ph-user-circle"></i>
             <span>Ver perfil</span>
@@ -63,6 +69,7 @@
             <span>Cerrar sesión</span>
           </button>
         </div>
+        }
       </div>
     </div>
   </div>

@@ -3,10 +3,12 @@
 
   <div class="controls">
     <div class="actions-row">
-      <button class="btn-create" [routerLink]="['/usuarios/creacion']" *ngIf="isAdmin">
+      @if (isAdmin) {
+      <button class="btn-create" [routerLink]="['/usuarios/creacion']">
         <i class="ph ph-plus"></i>
         Nuevo Usuario
       </button>
+      }
     </div>
 
     <div class="filters-row">
@@ -76,7 +78,8 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let user of users">
+          @for (user of users; track user.id) {
+          <tr>
             <td>{{ user.id }}</td>
             <td>{{ user.full_name || 'N/A' }}</td>
             <td>{{ user.email }}</td>
@@ -87,12 +90,17 @@
             </td>
             <td>{{ user.is_admin ? 'Admin' : 'Usuario' }}</td>
             <td>
-              <button *ngIf="!user.is_approved" (click)="approve(user)" class="btn-approve">Aprobar</button>
+              @if (!user.is_approved) {
+              <button (click)="approve(user)" class="btn-approve">Aprobar</button>
+              }
             </td>
           </tr>
-          <tr *ngIf="users.length === 0">
+          }
+          @if (users.length === 0) {
+          <tr>
             <td colspan="6" class="no-data">No se encontraron usuarios.</td>
           </tr>
+          }
         </tbody>
       </table>
     </div>

@@ -14,18 +14,23 @@
                 <input #fileInputBase type="file" (change)="onBaseSelected($event)" accept="image/*" hidden>
             </div>
 
-            <div class="control-group" *ngIf="baseImageSrc()">
+            @if (baseImageSrc()) {
+            <div class="control-group">
                 <label>2. Logo / Marca</label>
                 <button class="btn secondary" (click)="triggerWatermarkUpload()">
                     <i class="ph ph-stamp"></i> {{ watermarkImageSrc() ? 'Cambiar Logo' : 'Subir Logo' }}
                 </button>
                 <input #fileInputWatermark type="file" (change)="onWatermarkSelected($event)" accept="image/*" hidden>
-                <p class="hint" *ngIf="watermarkImageSrc()">El logo se ha redimensionado automáticamente (max 300px).
+                @if (watermarkImageSrc()) {
+                <p class="hint">El logo se ha redimensionado automáticamente (max 300px).
                 </p>
+                }
             </div>
+            }
 
             <!-- Enhance Controls -->
-            <div class="control-group" *ngIf="baseImageSrc() && watermarkImageSrc()">
+            @if (baseImageSrc() && watermarkImageSrc()) {
+            <div class="control-group">
                 <label>3. Ajustes</label>
 
                 <div class="sub-control">
@@ -45,16 +50,21 @@
                     </select>
                 </div>
             </div>
+            }
 
-            <div class="action-buttons" *ngIf="baseImageSrc() && watermarkImageSrc()">
+            @if (baseImageSrc() && watermarkImageSrc()) {
+            <div class="action-buttons">
                 <button class="btn primary full-width" (click)="process()"
                     [disabled]="isLoading() || !!resultImageSrc()">
-                    <i class="ph ph-spinner spinner" *ngIf="isLoading()"></i>
+                    @if (isLoading()) {
+                    <i class="ph ph-spinner spinner"></i>
+                    }
                     {{ isLoading() ? 'Procesando...' : 'Aplicar Marca' }}
                 </button>
 
                 <!-- Moved Actions -->
-                <div class="post-process-actions" *ngIf="resultImageSrc() || isLoading()">
+                @if (resultImageSrc() || isLoading()) {
+                <div class="post-process-actions">
                     <a [href]="resultImageSrc()" [download]="downloadFilename()" class="btn download full-width"
                         [class.disabled]="!resultImageSrc()">
                         <i class="ph ph-download"></i> Descargar
@@ -68,13 +78,17 @@
                         <i class="ph ph-arrow-left"></i> Volver a Editar
                     </button>
                 </div>
+                }
             </div>
+            }
         </div>
 
         <div class="preview-area">
             <!-- Canvas/Preview Container -->
             <div class="canvas-container" [class.hidden]="resultImageSrc()">
-                <p *ngIf="!baseImageSrc()" class="empty-state">Sube una imagen base para comenzar</p>
+                @if (!baseImageSrc()) {
+                <p class="empty-state">Sube una imagen base para comenzar</p>
+                }
                 <canvas #editorCanvas (mousedown)="onMouseDown($event)" (mousemove)="onMouseMove($event)"
                     (mouseup)="onMouseUp()" (mouseleave)="onMouseUp()"
                     [style.cursor]="watermarkImageSrc() ? 'move' : 'default'">
@@ -82,10 +96,12 @@
             </div>
 
             <!-- Result View -->
-            <div class="result-container" *ngIf="resultImageSrc()">
+            @if (resultImageSrc()) {
+            <div class="result-container">
                 <h3>Resultado</h3>
                 <img [src]="resultImageSrc()" alt="Resultado">
             </div>
+            }
         </div>
     </div>
 
@@ -97,7 +113,8 @@
         </div>
 
         <div class="gallery-list">
-            <div class="gallery-item" *ngFor="let item of sessionGallery()" (click)="loadFromGallery(item)">
+            @for (item of sessionGallery(); track item.id) {
+            <div class="gallery-item" (click)="loadFromGallery(item)">
                 <div class="thumb-wrapper">
                     <img [src]="getSafeUrl(item.blob)" [alt]="item.name">
                     <button class="delete-btn" (click)="deleteFromGallery(item.id, $event)">
@@ -109,6 +126,7 @@
                     <span class="time">{{ item.timestamp | date:'shortTime' }}</span>
                 </div>
             </div>
+            }
         </div>
     </div>
 </div>

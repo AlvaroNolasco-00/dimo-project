@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { SidebarComponent } from '../../sidebar/sidebar.component';
 import { NavbarTopComponent } from '../navbar-top/navbar-top.component';
@@ -9,7 +9,8 @@ import { filter } from 'rxjs/operators';
   standalone: true,
   imports: [RouterOutlet, SidebarComponent, NavbarTopComponent, CommonModule],
   templateUrl: './main-layout.component.html',
-  styleUrls: ['./main-layout.component.scss']
+  styleUrls: ['./main-layout.component.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MainLayoutComponent implements OnInit {
   private router = inject(Router);

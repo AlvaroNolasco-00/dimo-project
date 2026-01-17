@@ -18,14 +18,18 @@
             <div class="form-group">
                 <label>Estados del Pedido</label>
                 <div class="states-list">
-                    <div *ngIf="isLoadingStates">Cargando estados...</div>
-                    <div *ngFor="let state of allOrderStates" class="checkbox-item">
+                    @if (isLoadingStates) {
+                    <div>Cargando estados...</div>
+                    }
+                    @for (state of allOrderStates; track state.id) {
+                    <div class="checkbox-item">
                         <input type="checkbox" [id]="'state-' + state.id" [checked]="projectStatesConfig[state.id]"
                             (change)="toggleState(state.id)">
                         <label [for]="'state-' + state.id">
                             {{ state.name }}
                         </label>
                     </div>
+                    }
                 </div>
             </div>
         </div>
