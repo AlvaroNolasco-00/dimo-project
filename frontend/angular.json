@@ -46,6 +46,11 @@
             "browser": "src/main.ts",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "allowedCommonJsDependencies": [
+              "cropperjs",
+              "sweetalert2",
+              "leaflet"
+            ],
             "assets": [
               {
                 "glob": "**/*",
@@ -54,7 +59,8 @@
             ],
             "styles": [
               "src/styles.scss",
-              "node_modules/leaflet/dist/leaflet.css"
+              "node_modules/leaflet/dist/leaflet.css",
+              "node_modules/cropperjs/dist/cropper.css"
             ],
             "stylePreprocessorOptions": {
               "includePaths": [

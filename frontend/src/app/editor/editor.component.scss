@@ -1,5 +1,5 @@
-@import 'app/shared/mixins';
-@import "cropperjs/dist/cropper.css";
+@use 'app/shared/mixins' as *;
+
 
 /* Darker shadow for better silhouette */
 ::ng-deep .cropper-modal {
@@ -87,59 +87,7 @@ header {
     }
 }
 
-.upload-zone {
-    border: 2px dashed var(--border-color);
-    border-radius: var(--radius);
-    padding: 3rem;
-    text-align: center;
-    cursor: pointer;
-    transition: var(--transition);
-    width: 100%;
-    max-width: 500px;
-    margin: auto;
 
-    @media (max-width: 1440px),
-    (max-height: 900px) {
-        padding: 1.5rem;
-        max-width: 350px;
-    }
-
-    @include mobile {
-        padding: 1rem;
-        max-width: 100%;
-        border-width: 1px;
-    }
-
-    &.dragover {
-        border-color: var(--accent-color);
-        background: hsla(260, 100%, 65%, 0.05);
-    }
-
-    i {
-        font-size: 3rem;
-        color: var(--text-secondary);
-        margin-bottom: 1rem;
-
-        @media (max-width: 1440px),
-        (max-height: 900px) {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-    }
-
-    h3 {
-        margin-bottom: 0.5rem;
-    }
-
-    p {
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-    }
-
-    &.hidden {
-        display: none;
-    }
-}
 
 .preview-area {
     width: 100%;
@@ -253,21 +201,7 @@ header {
     }
 }
 
-.spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid rgba(255, 255, 255, 0.1);
-    border-left-color: var(--accent-color);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 1rem;
-}
 
-@keyframes spin {
-    100% {
-        transform: rotate(360deg);
-    }
-}
 
 .controls {
     display: flex;
@@ -347,47 +281,7 @@ input[type='range'] {
     }
 }
 
-.btn {
-    padding: 0.8rem 2rem;
-    border: none;
-    border-radius: 50px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
-    text-decoration: none;
-    font-size: 1rem;
 
-    @media (max-width: 1440px),
-    (max-height: 900px) {
-        padding: 0.5rem 1.2rem;
-        font-size: 0.85rem;
-    }
-
-    &.primary {
-        background-color: var(--accent-color);
-        color: white;
-
-        &:hover {
-            box-shadow: 0 4px 15px hsla(260, 100%, 65%, 0.4);
-            transform: translateY(-2px);
-        }
-    }
-
-    &.secondary {
-        background: transparent;
-        border: 1px solid var(--border-color);
-        color: var(--text-primary);
-
-        &:hover {
-            background: hsla(0, 0%, 100%, 0.1);
-        }
-    }
-
-    &.download {
-        background-color: #4caf50;
-        color: white;
-    }
-}
 
 .btn-small {
     padding: 0.5rem 1rem;
@@ -812,20 +706,3 @@ select {
 }
 
 /* New Button Style */
-.btn.session {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    border: 1px solid var(--border-color);
-
-    i {
-        font-size: 1.1rem;
-    }
-
-    &:hover {
-        background: rgba(255, 255, 255, 0.2);
-        border-color: var(--accent-color);
-    }
-}

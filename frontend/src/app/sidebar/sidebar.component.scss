@@ -1,4 +1,4 @@
-@import 'app/shared/mixins';
+@use 'app/shared/mixins' as *;
 
 .sidebar {
   width: 260px;

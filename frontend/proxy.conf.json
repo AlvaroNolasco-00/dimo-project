@@ -1,6 +1,8 @@
 {
     "/api": {
-        "target": "http://localhost:8000",
-        "secure": false
+        "target": "https://genuine-nertie-dimo-store-ef3ce25e.koyeb.app",
+        "secure": true,
+        "changeOrigin": true,
+        "logLevel": "debug"
     }
 }

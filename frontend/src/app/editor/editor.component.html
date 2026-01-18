@@ -345,15 +345,15 @@
                         <span>.png</span>
                     </div>
                     }
-                    <button class="btn secondary" (click)="reset()">Subir otra</button>
+                <button class="btn-secondary btn-pill" (click)="reset()">Subir otra</button>
                     @if (processedImageSource()) {
-                    <button class="btn session" (click)="addToGallery()">
+                    <button class="btn-secondary btn-pill session" (click)="addToGallery()">
                         <i class="ph ph-arrow-counter-clockwise"></i> Guardar para reusar
                     </button>
                     }
-                    <button class="btn primary" (click)="process()">Procesar Imagen</button>
+                    <button class="btn-primary btn-pill" (click)="process()">Procesar Imagen</button>
                     @if (processedImageSource()) {
-                    <a [href]="processedImageSource()" class="btn download"
+                    <a [href]="processedImageSource()" class="btn-success btn-pill"
                         [download]="(customFilename || 'resultado') + '.png'">Descargar</a>
                     }
                 </div>

@@ -23,7 +23,11 @@ app.include_router(orders.router)
 # CORS config
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:4200",
+        "https://dimo-project-git-main-alvaronolasco-00s-projects.vercel.app",
+        "https://dimo-project.vercel.app"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

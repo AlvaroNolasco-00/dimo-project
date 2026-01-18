@@ -34,7 +34,6 @@
   p {
     color: var(--text-secondary);
     margin: 0;
-    font-size: 1.1rem;
   }
 }
 
@@ -49,28 +48,7 @@
   }
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
 
-  &.full-width {
-    grid-column: 1 / -1;
-    margin-bottom: 2rem;
-  }
-
-  label {
-    color: var(--text-secondary);
-    font-size: 0.9rem;
-    font-weight: 500;
-  }
-
-  .helper-text {
-    color: var(--text-tertiary);
-    font-size: 0.85rem;
-    margin: -0.25rem 0 0.5rem 0;
-  }
-}
 
 // Map Styles
 .map-container {
@@ -133,67 +111,7 @@
   }
 }
 
-.input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
 
-  i {
-    position: absolute;
-    left: 1rem;
-    color: var(--text-tertiary);
-    font-size: 1.25rem;
-    pointer-events: none;
-  }
-
-  &.textarea-wrapper {
-    align-items: flex-start;
-
-    i {
-      top: 1rem;
-    }
-  }
-
-  .select-icon {
-    left: auto;
-    right: 1rem;
-  }
-
-  input,
-  select,
-  textarea {
-    width: 100%;
-    padding: 0.875rem 1rem 0.875rem 3rem;
-    background: var(--surface-ground);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius);
-    color: var(--text-primary);
-    font-size: 1rem;
-    transition: all 0.2s;
-    font-family: inherit;
-
-    &::placeholder {
-      color: var(--text-tertiary);
-    }
-
-    &:focus {
-      outline: none;
-      border-color: var(--accent-color);
-      box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
-      background: var(--surface-card);
-    }
-  }
-
-  select {
-    appearance: none;
-    cursor: pointer;
-  }
-
-  textarea {
-    resize: vertical;
-    min-height: 120px;
-  }
-}
 
 .form-actions {
   display: flex;
@@ -481,25 +399,7 @@
 }
 
 // Spinner Animation
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
 
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.spinner {
-  border: 3px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top: 3px solid white;
-  width: 20px;
-  height: 20px;
-  animation: spin 1s linear infinite;
-  display: inline-block;
-}
 
 .btn-loading {
   position: relative;

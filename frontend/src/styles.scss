@@ -67,3 +67,224 @@ body {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--text-secondary);
 }
+
+/* Global Utility Classes */
+.btn-primary {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius);
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition);
+
+    &:hover:not(:disabled) {
+        background: var(--accent-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(var(--accent-rgb), 0.2);
+    }
+
+    &:active:not(:disabled) {
+        transform: translateY(0);
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: var(--border-color);
+    }
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius);
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition);
+
+    &:hover:not(:disabled) {
+        background: var(--surface-ground, rgba(255, 255, 255, 0.05));
+        border-color: var(--text-primary);
+    }
+}
+
+.btn-danger {
+    background: rgba(var(--danger-rgb), 0.1);
+    border: 1px solid rgba(var(--danger-rgb), 0.2);
+    color: var(--danger);
+    padding: 0.6rem;
+    border-radius: 10px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+
+    &:hover {
+        background: var(--danger);
+        color: white;
+    }
+}
+
+
+
+.btn-success {
+    background: #4caf50; // Match editor download button or use var(--success)
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius);
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition);
+
+    &:hover {
+        background: #43a047;
+    }
+}
+
+.btn-pill {
+    border-radius: 50px !important;
+}
+
+.card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 2rem;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+
+    label {
+        color: var(--text-secondary);
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+}
+
+.input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    input,
+    select,
+    textarea {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        background: var(--bg-color, rgba(255, 255, 255, 0.05));
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius);
+        color: var(--text-primary);
+        font-size: 1rem;
+        transition: all 0.2s;
+        font-family: inherit;
+
+        &:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.1);
+        }
+    }
+
+    i {
+        position: absolute;
+        color: var(--text-tertiary);
+        pointer-events: none;
+    }
+}
+
+/* Spinner Animation */
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner {
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top: 3px solid white; // Default
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+
+    &.primary {
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        border-left-color: var(--accent-color);
+        border-top: 4px solid rgba(255, 255, 255, 0.1); // Reset top
+        width: 40px;
+        height: 40px;
+    }
+}
+
+.upload-zone {
+    border: 2px dashed var(--border-color);
+    border-radius: var(--radius);
+    padding: 2.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    width: 100%;
+    margin: auto;
+    background: var(--surface-card, rgba(255, 255, 255, 0.02));
+
+    &:hover,
+    &.dragover {
+        border-color: var(--accent-color);
+        background: hsla(260, 100%, 65%, 0.05);
+
+        i {
+            color: var(--accent-color);
+            transform: translateY(-2px);
+        }
+    }
+
+    i {
+        font-size: 2.5rem;
+        color: var(--text-secondary);
+        margin-bottom: 0.75rem;
+        transition: transform 0.2s;
+        display: block; // Ensure block for margin
+    }
+
+    p {
+        margin: 0;
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+    }
+
+    h3 {
+        margin: 0 0 0.5rem 0;
+        font-size: 1.1rem;
+        color: var(--text-primary);
+    }
+
+    &.hidden {
+        display: none;
+    }
+}

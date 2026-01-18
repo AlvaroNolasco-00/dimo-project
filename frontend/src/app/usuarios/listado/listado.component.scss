@@ -1,4 +1,4 @@
-@import 'app/shared/mixins';
+@use 'app/shared/mixins' as *;
 
 .user-list-container {
   padding: 24px;
