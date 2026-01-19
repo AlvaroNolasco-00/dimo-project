@@ -82,7 +82,8 @@ async def api_remove_background(
         
         # Mode 3: Automatic background removal (rembg)
         else:
-            result = await run_in_threadpool(processing.remove_background, image_bytes)
+            # Auto mode calls remove_background which is async
+            result = await processing.remove_background(image_bytes)
             
         return Response(content=result, media_type="image/png")
     except Exception as e:
@@ -115,7 +116,7 @@ async def api_upscale(
             raise HTTPException(status_code=400, detail="Upscale factor must be greater than 0")
             
         image_bytes = await image.read()
-        result = await run_in_threadpool(processing.upscale_image, image_bytes, factor, detail_boost)
+        result = await processing.upscale_image(image_bytes, factor, detail_boost)
         return Response(content=result, media_type="image/png")
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
@@ -180,7 +181,8 @@ async def api_contour_clip(
             except Exception as e:
                 raise HTTPException(status_code=400, detail=f"Invalid color format: {str(e)}")
             
-        result = await run_in_threadpool(processing.contour_clip, image_bytes, mask_bytes, mode, refine, colors_list, threshold)
+        # contour_clip is now async
+        result = await processing.contour_clip(image_bytes, mask_bytes, mode, refine, colors_list, threshold)
         return Response(content=result, media_type="image/png")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

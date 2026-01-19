@@ -56,3 +56,8 @@ backend/master_db_setup.sql
 logs/*
 CONFIGURATION.md
 backend/.env.example
+configuration_guide.md
+.gitignore
+.gitignore
+migrated_services.md
+koyeb_service_creation_guide.md

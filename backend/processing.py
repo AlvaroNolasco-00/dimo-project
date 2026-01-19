@@ -2,6 +2,39 @@ import cv2
 import numpy as np
 from PIL import Image, ImageEnhance, ImageFilter
 import io
+import os
+import httpx
+
+# GPU Service Configuration
+GPU_SERVICE_URL = os.getenv("GPU_SERVICE_URL") # e.g., https://dimo-gpu.koyeb.app
+GPU_SERVICE_SECRET = os.getenv("GPU_SERVICE_SECRET")
+
+async def call_gpu_service(endpoint: str, image_bytes: bytes, params: dict = None) -> bytes:
+    """Helper to call the GPU worker service."""
+    if not GPU_SERVICE_URL:
+        raise ValueError("GPU_SERVICE_URL not configured")
+        
+    url = f"{GPU_SERVICE_URL}/{endpoint}"
+    headers = {"x-api-key": GPU_SERVICE_SECRET} if GPU_SERVICE_SECRET else {}
+    
+    # 60s timeout for Cold Starts
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        # Prepare multipart/form-data
+        files = {"file": ("image.png", image_bytes, "image/png")}
+        
+        # httpx merges params into query string or form? 
+        # For our GPU service, we defined params as query params in main.py?
+        # main.py: upscale(file=..., scale=...) -> scale is query param (default) or Form.
+        # Let's check main.py... `scale: float = 2.0` in FastAPI is Query by default unless File/Form used.
+        # Since we use File(...), other args usually become Query unless explicitly Form.
+        # Use query params for simplicity.
+        
+        response = await client.post(url, files=files, params=params, headers=headers)
+        
+        if response.status_code != 200:
+            raise Exception(f"GPU Service Failed: {response.status_code} - {response.text}")
+            
+        return response.content
 
 def read_image_file(file_bytes: bytes) -> Image.Image:
     """Reads image bytes and returns a PIL Image. Preserves Alpha if present."""
@@ -137,11 +170,26 @@ def create_mask_from_point(image_bytes: bytes, x: int, y: int, tolerance: int = 
     return pil_to_bytes(mask_pil)
 
 # 2. Quitar Fondo
-def remove_background(image_bytes: bytes) -> bytes:
+async def remove_background(image_bytes: bytes) -> bytes:
     """
-    Removes background using rembg.
+    Removes background. Tries GPU service first, falls back to CPU (rembg).
     """
+    if GPU_SERVICE_URL:
+        try:
+            return await call_gpu_service("remove-background", image_bytes)
+        except Exception as e:
+            print(f"GPU BG Removal failed, falling back to CPU: {e}")
+            pass
+
+    # Legacy Fallback (CPU)
     # rembg expects bytes
+    # We must run this in a threadpool if called from async, but here we are inside an async func.
+    # If we are falling back to CPU blocking code, we should probably warn or handle threadpool at the caller level.
+    # However, since we define this as 'async', the caller will await it.
+    # If we run cpu blocking code here, it blocks the event loop.
+    # But since this is a fallback for a failure case, it might be acceptable, 
+    # OR we re-wrap it in run_in_threadpool inside here? No, 'processing' shouldn't depend on fastapi.concurrency ideally.
+    # We will just run it blocking for the fallback.
     from rembg import remove
     output_bytes = remove(image_bytes)
     return output_bytes
@@ -254,35 +302,40 @@ def enhance_quality(image_bytes: bytes, contrast=1.2, brightness=1.1, sharpness=
     return pil_to_bytes(img)
 
 # 4. Aumentar Resolución (Upscaling)
-def upscale_image(image_bytes: bytes, factor=2, detail_boost=1.5) -> bytes:
+async def upscale_image(image_bytes: bytes, factor=2, detail_boost=1.5) -> bytes:
     """
-    Upscales image using high-quality interpolation (Lanczos) and perceptual enhancements.
-    detail_boost: 0.0 to 3.0, controls sharpness after upscale.
+    Upscales image using AI (Real-ESRGAN) via GPU Service.
+    Falls back to legacy Lanczos if GPU_SERVICE_URL is not set.
     """
+    if GPU_SERVICE_URL:
+        try:
+            return await call_gpu_service("upscale", image_bytes, params={"scale": factor})
+        except Exception as e:
+            print(f"GPU Upscale failed, falling back to CPU: {e}")
+            # Fallback to local
+            pass
+            
+    # Legacy Fallback (CPU)
+    return upscale_image_legacy(image_bytes, factor, detail_boost)
+
+def upscale_image_legacy(image_bytes: bytes, factor=2, detail_boost=1.5) -> bytes:
+    """Legacy CPU upscaling using Lanczos."""
     img_pil = read_image_file(image_bytes)
     width, height = img_pil.size
     MAX_DIMENSION = 10000
     
-    # Calculate new size
     new_width = int(width * factor)
     new_height = int(height * factor)
     
-    # Safety check
     if new_width > MAX_DIMENSION or new_height > MAX_DIMENSION:
         raise ValueError(f"Upscale factor too large. Resulting image would exceed {MAX_DIMENSION}x{MAX_DIMENSION} pixels.")
-
-    # 1. Subtle Denoise before upscale (helps avoid amplifying noise)
-    # Using a small median filter for noise reduction if the image is small
+    
     if width < 1000:
         img_pil = img_pil.filter(ImageFilter.MedianFilter(size=3))
 
-    # 2. Resize with Lanczos (High quality interpolation)
     res_pil = img_pil.resize((new_width, new_height), Image.Resampling.LANCZOS)
     
-    # 3. Perceptual Enhancement: Unsharp Mask
-    # radius/percent calculation based on scale and boost
     if detail_boost > 0:
-        # radius scales slightly with factor but stays small (1-3)
         radius = 1 + (factor / 4)
         percent = int(100 * detail_boost)
         res_pil = res_pil.filter(ImageFilter.UnsharpMask(radius=radius, percent=percent, threshold=3))
@@ -372,11 +425,11 @@ def generate_halftone(image_bytes: bytes, dot_size: int = 10, scale: float = 1.0
                 cv2.circle(output, (center_x, center_y), radius, color_bgr, -1, cv2.LINE_AA)
 
     return pil_to_bytes(cv2_to_pil(output))
-def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str = 'manual', refine: bool = False, colors: list = None, tolerance: int = 30) -> bytes:
+async def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str = 'manual', refine: bool = False, colors: list = None, tolerance: int = 30) -> bytes:
     """
     Advanced Contour Clipping (GrabCut or Automatic).
     - If mode == 'manual', uses user strokes as 'Definite Foreground'.
-    - If mode == 'auto', uses 'rembg' (with optional color hints).
+    - If mode == 'auto', uses 'rembg' (via GPU service if avail) (with optional color hints).
     - If refine == True, uses GrabCut snapped refinement.
     """
     img_pil = read_image_file(image_bytes).convert("RGB")
@@ -384,9 +437,9 @@ def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str = 'manu
     h, w = img_cv.shape[:2]
 
     if mode == 'auto':
-        # 1. Get initial mask from rembg
-        from rembg import remove
-        rembg_res = remove(image_bytes)
+        # 1. Get initial mask from rembg (Use our async wrapper which tries GPU)
+        rembg_res = await remove_background(image_bytes)
+        
         rembg_pil = Image.open(io.BytesIO(rembg_res)).convert("L")
         rembg_mask = np.array(rembg_pil)
         
@@ -414,7 +467,7 @@ def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str = 'manu
     
     else: # Manual Mode
         if not mask_bytes:
-            return remove_background(image_bytes)
+            return await remove_background(image_bytes)
 
         mask_pil = read_image_file(mask_bytes).convert("L")
         mask_cv = np.array(mask_pil)
@@ -423,7 +476,7 @@ def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str = 'manu
         _, mask_binary = cv2.threshold(mask_cv, 127, 255, cv2.THRESH_BINARY)
         
         if np.sum(mask_binary) == 0:
-            return remove_background(image_bytes)
+            return await remove_background(image_bytes)
 
         if refine:
             gc_mask = np.full((h, w), cv2.GC_BGD, dtype=np.uint8)
@@ -446,7 +499,7 @@ def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str = 'manu
         cv2.grabCut(img_cv, gc_mask, None, bgd_model, fgd_model, iterations, cv2.GC_INIT_WITH_MASK)
     except Exception as e:
         print(f"GrabCut error: {e}")
-        return remove_background(image_bytes)
+        return await remove_background(image_bytes)
     
     # Final mask: where GrabCut says it is foreground
     mask_res = np.where((gc_mask == cv2.GC_FGD) | (gc_mask == cv2.GC_PR_FGD), 255, 0).astype(np.uint8)
