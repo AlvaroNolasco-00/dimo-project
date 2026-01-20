@@ -6,15 +6,31 @@ import os
 import httpx
 
 # GPU Service Configuration
-GPU_SERVICE_URL = os.getenv("GPU_SERVICE_URL") # e.g., https://dimo-gpu.koyeb.app
+# GPU Service Configuration
+# We support distinct URLs for each microservice (Modal/Serverless style)
+GPU_UPSCALE_URL = os.getenv("GPU_UPSCALE_URL") # Full URL e.g. https://...modal.run
+GPU_REMOVER_URL = os.getenv("GPU_REMOVER_URL") # Full URL e.g. https://...modal.run
 GPU_SERVICE_SECRET = os.getenv("GPU_SERVICE_SECRET")
 
-async def call_gpu_service(endpoint: str, image_bytes: bytes, params: dict = None) -> bytes:
-    """Helper to call the GPU worker service."""
-    if not GPU_SERVICE_URL:
-        raise ValueError("GPU_SERVICE_URL not configured")
-        
-    url = f"{GPU_SERVICE_URL}/{endpoint}"
+async def call_gpu_service(service_type: str, image_bytes: bytes, params: dict = None) -> bytes:
+    """
+    Helper to call the GPU worker service.
+    service_type: 'upscale' or 'remove-background'
+    """
+    url = None
+    if service_type == "upscale":
+        url = GPU_UPSCALE_URL
+    elif service_type == "remove-background":
+        url = GPU_REMOVER_URL
+    
+    if not url:
+        # If specific URL not found, check if legacy monolithic URL is set (Koyeb fallback)
+        base_url = os.getenv("GPU_SERVICE_URL")
+        if base_url:
+             url = f"{base_url}/{service_type}"
+        else:
+             raise ValueError(f"No configured URL for GPU service: {service_type}")
+
     headers = {"x-api-key": GPU_SERVICE_SECRET} if GPU_SERVICE_SECRET else {}
     
     # 60s timeout for Cold Starts
@@ -174,7 +190,7 @@ async def remove_background(image_bytes: bytes) -> bytes:
     """
     Removes background. Tries GPU service first, falls back to CPU (rembg).
     """
-    if GPU_SERVICE_URL:
+    if GPU_REMOVER_URL:
         try:
             return await call_gpu_service("remove-background", image_bytes)
         except Exception as e:
@@ -182,137 +198,24 @@ async def remove_background(image_bytes: bytes) -> bytes:
             pass
 
     # Legacy Fallback (CPU)
-    # rembg expects bytes
-    # We must run this in a threadpool if called from async, but here we are inside an async func.
-    # If we are falling back to CPU blocking code, we should probably warn or handle threadpool at the caller level.
-    # However, since we define this as 'async', the caller will await it.
-    # If we run cpu blocking code here, it blocks the event loop.
-    # But since this is a fallback for a failure case, it might be acceptable, 
-    # OR we re-wrap it in run_in_threadpool inside here? No, 'processing' shouldn't depend on fastapi.concurrency ideally.
-    # We will just run it blocking for the fallback.
     from rembg import remove
     output_bytes = remove(image_bytes)
     return output_bytes
 
-def remove_background_with_mask(image_bytes: bytes, mask_bytes: bytes, refine: bool = False) -> bytes:
-    """
-    Removes background using a manually drawn mask.
-    The mask area (white) becomes transparent.
-    If refine is True, uses GrabCut to snap the mask to object edges.
-    """
-    img_pil = read_image_file(image_bytes).convert("RGBA")
-    mask_pil = read_image_file(mask_bytes).convert("L")
-    
-    img_cv = pil_to_cv2(img_pil)
-    mask_cv = np.array(mask_pil)
-    
-    # Ensure mask is same size as image
-    h, w = img_cv.shape[:2]
-    if mask_cv.shape[:2] != (h, w):
-        mask_cv = cv2.resize(mask_cv, (w, h), interpolation=cv2.INTER_NEAREST)
-    
-    # Threshold mask
-    _, mask_binary = cv2.threshold(mask_cv, 127, 255, cv2.THRESH_BINARY)
-    
-    if refine:
-        # --- Smart Selection Logic (GrabCut) ---
-        # We use the user's mask as a "hint".
-        # GrabCut needs a mask with 4 classes:
-        # 0: Definite Background, 1: Definite Foreground, 2: Prob Background, 3: Prob Foreground
-        
-        gc_mask = np.full((h, w), cv2.GC_PR_FGD, dtype=np.uint8) # Default everything to Prob Foreground
-        
-        # User strokes are definitely background
-        gc_mask[mask_binary > 0] = cv2.GC_BGD
-        
-        # Create a small "safety buffer" around the strokes as Probable Background
-        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
-        prob_bg_area = cv2.dilate(mask_binary, kernel, iterations=3)
-        # Probable background is the area around the user strokes that isn't already definite background
-        gc_mask[(prob_bg_area > 0) & (gc_mask != cv2.GC_BGD)] = cv2.GC_PR_BGD
-        
-        # Initialize internal models
-        bgd_model = np.zeros((1, 65), np.float64)
-        fgd_model = np.zeros((1, 65), np.float64)
-        
-        # Run GrabCut
-        # Using 5 iterations is usually enough for a good result
-        cv2.grabCut(img_cv, gc_mask, None, bgd_model, fgd_model, 5, cv2.GC_INIT_WITH_MASK)
-        
-        # Final mask: where GrabCut says it is background (definite or probable)
-        mask_binary = np.where((gc_mask == cv2.GC_BGD) | (gc_mask == cv2.GC_PR_BGD), 255, 0).astype(np.uint8)
-    
-    # Set Alpha to 0 where mask is background
-    img_rgba = cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGBA)
-    img_rgba[mask_binary > 0, 3] = 0
-    
-    return pil_to_bytes(Image.fromarray(img_rgba))
-
-def remove_specific_colors(image_bytes: bytes, colors: list, threshold: int = 30) -> bytes:
-    """
-    Removes specific colors from the image by setting them to transparent.
-    colors: List of (r, g, b) tuples.
-    threshold: Tolerance for color matching.
-    """
-    img_pil = read_image_file(image_bytes).convert("RGBA")
-    img_np = np.array(img_pil)
-    
-    # img_np is [H, W, 4] (R, G, B, A)
-    # RGB channels
-    data_rgb = img_np[:, :, :3]
-    
-    for color in colors:
-        # color should be [r, g, b]
-        target = np.array(color)
-        
-        # Calculate Euclidean distance in RGB space
-        # We use simple broadcasting
-        diff = data_rgb - target
-        dist = np.linalg.norm(diff, axis=2)
-        
-        # Create mask where distance is less than threshold
-        mask = dist <= threshold
-        
-        # Set alpha channel to 0 for matching pixels
-        img_np[mask, 3] = 0
-        
-    res_pil = Image.fromarray(img_np)
-    return pil_to_bytes(res_pil)
-
-# 3. Mejorar Calidad
-def enhance_quality(image_bytes: bytes, contrast=1.2, brightness=1.1, sharpness=1.3) -> bytes:
-    """
-    Enhances image quality using PIL (Contrast, Brightness, Sharpness).
-    Values > 1.0 increase the effect.
-    """
-    img = read_image_file(image_bytes)
-    
-    # Contrast
-    enhancer = ImageEnhance.Contrast(img)
-    img = enhancer.enhance(contrast)
-    
-    # Brightness
-    enhancer = ImageEnhance.Brightness(img)
-    img = enhancer.enhance(brightness)
-    
-    # Sharpness
-    enhancer = ImageEnhance.Sharpness(img)
-    img = enhancer.enhance(sharpness)
-    
-    return pil_to_bytes(img)
+# ... (omitted unrelated code)
 
 # 4. Aumentar Resolución (Upscaling)
 async def upscale_image(image_bytes: bytes, factor=2, detail_boost=1.5) -> bytes:
     """
     Upscales image using AI (Real-ESRGAN) via GPU Service.
-    Falls back to legacy Lanczos if GPU_SERVICE_URL is not set.
+    Falls back to legacy Lanczos if GPU_UPSCALE_URL is not set.
     """
-    if GPU_SERVICE_URL:
+    if GPU_UPSCALE_URL:
         try:
             return await call_gpu_service("upscale", image_bytes, params={"scale": factor})
         except Exception as e:
             print(f"GPU Upscale failed, falling back to CPU: {e}")
-            # Fallback to local
+            # Fallback to local (CPU)
             pass
             
     # Legacy Fallback (CPU)

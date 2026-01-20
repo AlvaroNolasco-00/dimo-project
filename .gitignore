@@ -61,3 +61,6 @@ configuration_guide.md
 .gitignore
 migrated_services.md
 koyeb_service_creation_guide.md
+test_output_remove_bg.png
+.gitignore
+test_output_upscale.png
