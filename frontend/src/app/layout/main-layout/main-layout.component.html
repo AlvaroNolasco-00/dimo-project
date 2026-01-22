@@ -1,6 +1,6 @@
 <div class="app-container">
     <app-navbar-top></app-navbar-top>
-    <div class="content-wrapper">
+    <div class="content-wrapper" [class.collapsed]="isSidebarCollapsed()" [class.has-sidebar]="showSidebar()">
         <div class="sidebar-backdrop" [class.visible]="layoutService.sidebarOpen()"
             (click)="layoutService.closeSidebar()">
         </div>

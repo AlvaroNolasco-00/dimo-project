@@ -1,0 +1,9 @@
+<div class="upload-zone" (click)="fileInput.click()" (dragover)="$event.preventDefault(); isDragging.set(true)"
+    (dragleave)="isDragging.set(false)" (drop)="onDrop($event)" [class.dragover]="isDragging()">
+    <div class="upload-content">
+        <i class="ph ph-upload-simple"></i>
+        <h3>Arrastra tu imagen aquí</h3>
+        <p>o haz clic para subir</p>
+        <input #fileInput type="file" (change)="onFileSelected($event)" accept="image/*" hidden>
+    </div>
+</div>

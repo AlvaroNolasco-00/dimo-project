@@ -3,18 +3,35 @@
 .app-container {
     display: flex;
     flex-direction: column;
-    height: 100vh;
+    height: 100dvh;
     overflow: hidden;
     position: relative;
     background-color: var(--body-bg); // Ensure background color
 }
 
 .content-wrapper {
-    display: flex;
-    flex: 1;
+    // display: flex;
+    display: grid;
+    // flex: 1;
     overflow: hidden;
-    height: calc(100vh - 60px);
+    // height: calc(100vh - 60px);
+    height: 100%;
     position: relative; // Context for absolute sidebar and backdrop
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+    transition: grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &.has-sidebar {
+        grid-template-columns: 260px 1fr;
+
+        &.collapsed {
+            grid-template-columns: 80px 1fr;
+        }
+
+        @include mobile {
+            grid-template-columns: 1fr;
+        }
+    }
 }
 
 .main-content {
@@ -23,12 +40,9 @@
     display: flex;
     flex-direction: column;
     width: 100%;
-    transition: width 0.3s ease; // smooth transition matching sidebar
 }
 
 .main-content.with-sidebar {
-    width: calc(100% - 260px);
-
     @include mobile {
         width: 100%; // Sidebar is overlay, so content is full width
     }

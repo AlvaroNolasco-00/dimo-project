@@ -16,6 +16,7 @@ import { LayoutService } from '../../services/layout.service';
 export class MainLayoutComponent implements OnInit {
   private router = inject(Router);
   layoutService = inject(LayoutService);
+  isSidebarCollapsed = this.layoutService.isSidebarCollapsed;
   private urlSignal = signal('');
 
   ngOnInit() {

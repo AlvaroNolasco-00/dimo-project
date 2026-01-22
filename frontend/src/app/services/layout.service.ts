@@ -17,8 +17,18 @@ export class LayoutService {
         this.sidebarOpen.set(false);
     }
 
-    // Explicitly open the sidebar
     openSidebar() {
         this.sidebarOpen.set(true);
+    }
+
+    // Signal to track if the sidebar is collapsed (desktop)
+    isSidebarCollapsed = signal(false);
+
+    toggleSidebarCollapsed() {
+        this.isSidebarCollapsed.update(value => !value);
+    }
+
+    setSidebarCollapsed(value: boolean) {
+        this.isSidebarCollapsed.set(value);
     }
 }

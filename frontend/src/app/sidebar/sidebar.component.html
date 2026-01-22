@@ -2,9 +2,7 @@
   <div class="sidebar-header">
     <div class="logo">
       <i class="ph ph-aperture"></i>
-      @if (!isCollapsed()) {
       <span>PhotoEdit</span>
-      }
     </div>
     <button class="toggle-btn" (click)="toggle()" [title]="isCollapsed() ? 'Expandir' : 'Colapsar'">
       <i class="ph" [class.ph-caret-double-right]="isCollapsed()" [class.ph-caret-double-left]="!isCollapsed()"></i>
@@ -14,53 +12,37 @@
   <nav>
     <button class="nav-btn" routerLink="/utilidades/remove-bg" routerLinkActive="active" [title]="'Quitar Fondo'">
       <i class="ph ph-eraser"></i>
-      @if (!isCollapsed()) {
       <span class="btn-text">Quitar Fondo</span>
-      }
     </button>
     <button class="nav-btn" routerLink="/utilidades/remove-objects" routerLinkActive="active"
       [title]="'Borrar Objetos'">
       <i class="ph ph-magic-wand"></i>
-      @if (!isCollapsed()) {
       <span class="btn-text">Borrar Objetos</span>
-      }
     </button>
     <button class="nav-btn" routerLink="/utilidades/enhance" routerLinkActive="active" [title]="'Mejorar Calidad'">
       <i class="ph ph-sparkle"></i>
-      @if (!isCollapsed()) {
       <span class="btn-text">Mejorar Calidad</span>
-      }
     </button>
     <button class="nav-btn" routerLink="/utilidades/upscale" routerLinkActive="active" [title]="'Upscaling'">
       <i class="ph ph-arrows-out-simple"></i>
-      @if (!isCollapsed()) {
       <span class="btn-text">Upscaling</span>
-      }
     </button>
     <button class="nav-btn" routerLink="/utilidades/halftone" routerLinkActive="active" [title]="'Semitonos'">
       <i class="ph ph-grid-nine"></i>
-      @if (!isCollapsed()) {
       <span class="btn-text">Semitonos</span>
-      }
     </button>
     <button class="nav-btn" routerLink="/utilidades/contour-clip" routerLinkActive="active"
       [title]="'Recorte de Contorno'">
       <i class="ph ph-scissors"></i>
-      @if (!isCollapsed()) {
       <span class="btn-text">Recorte de Contorno</span>
-      }
     </button>
     <button class="nav-btn" routerLink="/utilidades/crop" routerLinkActive="active" [title]="'Recorte de Foto'">
       <i class="ph ph-crop"></i>
-      @if (!isCollapsed()) {
       <span class="btn-text">Recorte de Foto</span>
-      }
     </button>
     <button class="nav-btn" routerLink="/utilidades/watermark" routerLinkActive="active" [title]="'Marca de Agua'">
       <i class="ph ph-stamp"></i>
-      @if (!isCollapsed()) {
       <span class="btn-text">Marca de Agua</span>
-      }
     </button>
   </nav>
 </aside>

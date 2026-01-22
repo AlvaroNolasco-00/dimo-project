@@ -12,9 +12,9 @@ import { LayoutService } from '../services/layout.service';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SidebarComponent implements OnInit {
-  isCollapsed = signal(false);
   private platformId = inject(PLATFORM_ID);
   layoutService = inject(LayoutService);
+  isCollapsed = this.layoutService.isSidebarCollapsed;
 
   // Computed to combine local collapsed state with mobile open state if needed
   // For mobile, we primarily check layoutService.sidebarOpen
@@ -23,12 +23,12 @@ export class SidebarComponent implements OnInit {
   ngOnInit() {
     if (isPlatformBrowser(this.platformId)) {
       if (window.innerWidth <= 768) {
-        this.isCollapsed.set(true);
+        this.layoutService.setSidebarCollapsed(true);
       }
     }
   }
 
   toggle() {
-    this.isCollapsed.set(!this.isCollapsed());
+    this.layoutService.toggleSidebarCollapsed();
   }
 }

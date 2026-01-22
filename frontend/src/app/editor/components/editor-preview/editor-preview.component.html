@@ -1,0 +1,32 @@
+<div class="preview-area">
+    <div class="image-container">
+        <div class="img-wrapper">
+            <span class="label">Original</span>
+            <div class="canvas-container">
+                <img #originalImage [src]="currentImageSource()" alt="Original" (load)="onImageLoad($event)"
+                    (click)="onImageClick($event)"
+                    [style.cursor]="(mode() === 'remove-objects' && removalMethod() === 'magic-wand') ? 'crosshair' : 'default'">
+
+                <!-- Canvas overlay -->
+                @if (mode() === 'remove-objects' || (mode() === 'remove-bg' && bgRemovalMode() === 'draw')
+                || (mode() === 'contour-clip' && bgRemovalMode() === 'manual')) {
+                <canvas #maskCanvas class="mask-canvas"
+                    [class.hidden-draw]="mode() === 'remove-objects' && removalMethod() === 'magic-wand'"
+                    (mousedown)="startDrawing($event)" (mousemove)="draw($event)" (mouseup)="stopDrawing()"
+                    (mouseleave)="stopDrawing()" (click)="onImageClick($event)">
+                </canvas>
+                }
+            </div>
+        </div>
+        <div class="img-wrapper">
+            <span class="label">Resultado</span>
+            <img [src]="processedImageSource() || currentImageSource()" alt="Procesada">
+            <div class="loading-overlay" [class.hidden]="!isLoading()">
+                @if (isLoading()) {
+                <div class="spinner"></div>
+                <p>Procesando...</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>

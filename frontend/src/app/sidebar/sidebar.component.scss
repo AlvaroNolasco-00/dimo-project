@@ -1,7 +1,14 @@
 @use 'app/shared/mixins' as *;
 
+:host {
+  display: block;
+  height: 100%;
+  overflow: hidden;
+  width: 100%;
+}
+
 .sidebar {
-  width: 260px;
+  width: 100%;
   height: 100%;
   background-color: var(--sidebar-bg);
   padding: 1.5rem;
@@ -21,7 +28,7 @@
     height: 100%;
     transform: translateX(-100%); // Hidden by default on mobile
     box-shadow: 4px 0 15px rgba(0, 0, 0, 0.5);
-    width: 280px; // Slightly wider on mobile for better touch
+    width: 100%; // Slightly wider on mobile for better touch
     z-index: 2000; // Above navbar backdrop
   }
 
@@ -118,7 +125,10 @@
 
   span {
     opacity: 0;
-    display: none;
+    width: 0;
+    overflow: hidden;
+    visibility: hidden;
+    transition: width 0.3s, opacity 0.3s, visibility 0.3s;
   }
 
   @include mobile {
@@ -126,7 +136,8 @@
 
     span {
       opacity: 1;
-      display: inline; // Reveal again on mobile drawer
+      width: auto;
+      visibility: visible;
     }
   }
 }
@@ -135,6 +146,27 @@ nav {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  flex: 1; // Take remaining height
+  overflow-y: auto; // Scroll if too long
+  min-height: 0; // Allow flex shrinkage
+
+  // Custom Scrollbar for nav
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 4px;
+
+    &:hover {
+      background: var(--text-secondary);
+    }
+  }
 }
 
 .nav-btn {
@@ -180,24 +212,34 @@ nav {
 .collapsed .nav-btn {
   justify-content: center;
   padding: 1rem 0;
+  gap: 0;
 
   i {
     margin: 0;
   }
 
+  .btn-text {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+    visibility: hidden;
+    transition: width 0.3s, opacity 0.3s, visibility 0.3s;
+  }
+
   @include mobile {
     justify-content: flex-start;
     padding: 1rem;
+    gap: 1rem;
 
     i {
       margin-right: 0;
       min-width: 1.4rem;
     }
 
-    // We need to target the text span to show it
     .btn-text {
       opacity: 1;
-      display: inline;
+      width: auto;
+      visibility: visible;
     }
   }
 }

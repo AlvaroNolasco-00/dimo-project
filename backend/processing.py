@@ -4,13 +4,49 @@ from PIL import Image, ImageEnhance, ImageFilter
 import io
 import os
 import httpx
+import asyncio
+
+import logging
+
+# Configure Logging
+logger = logging.getLogger(__name__)
 
 # GPU Service Configuration
-# GPU Service Configuration
 # We support distinct URLs for each microservice (Modal/Serverless style)
-GPU_UPSCALE_URL = os.getenv("GPU_UPSCALE_URL") # Full URL e.g. https://...modal.run
-GPU_REMOVER_URL = os.getenv("GPU_REMOVER_URL") # Full URL e.g. https://...modal.run
+GPU_UPSCALE_URL = os.getenv("GPU_UPSCALE_URL") 
+GPU_REMOVER_URL = os.getenv("GPU_REMOVER_URL") 
 GPU_SERVICE_SECRET = os.getenv("GPU_SERVICE_SECRET")
+# Legacy/Koyeb Fallback URL
+GPU_SERVICE_URL = os.getenv("GPU_SERVICE_URL")
+
+# App Environment
+APP_ENV = os.getenv("APP_ENV", "local")
+
+def _should_use_gpu(capability: str = None) -> bool:
+    """
+    Determines if we should use the GPU Service based on functionality available.
+    """
+    # 0. Force local processing if APP_ENV is local to avoid cloud costs
+    if APP_ENV == "local":
+        return False
+
+    # 1. Check if we have a specific URL (e.g. upscaler-specific)
+    if capability == "upscale" and GPU_UPSCALE_URL:
+        return True
+    if capability == "remove-background" and GPU_REMOVER_URL:
+        return True
+        
+    # 2. Check generic service URL
+    if GPU_SERVICE_URL:
+        return True
+        
+    return False
+
+# Log startup mode
+if _should_use_gpu():
+    logger.info(f"🚀 PROCESSING MODE: CLOUD GPU ENABLED (Env: {APP_ENV})")
+else:
+    logger.info(f"💻 PROCESSING MODE: LOCAL CPU FALLBACK (Env: {APP_ENV}) - Optimized for Apple Silicon/Local Dev")
 
 async def call_gpu_service(service_type: str, image_bytes: bytes, params: dict = None) -> bytes:
     """
@@ -185,21 +221,68 @@ def create_mask_from_point(image_bytes: bytes, x: int, y: int, tolerance: int = 
     mask_pil = Image.fromarray(mask)
     return pil_to_bytes(mask_pil)
 
+
+def remove_specific_colors(image_bytes: bytes, colors: list, tolerance: int = 30) -> bytes:
+    """
+    Removes specific colors from the image by making them transparent.
+    colors: list of [R, G, B]
+    tolerance: distance threshold
+    """
+    img_pil = read_image_file(image_bytes).convert("RGBA")
+    data = np.array(img_pil)
+    
+    # We look at RGB channels
+    rgb_data = data[:, :, :3]
+    
+    mask_accumulated = np.zeros(data.shape[:2], dtype=bool)
+    
+    for color in colors:
+        target = np.array(color[:3]) # Ensure we only use RGB
+        diff = rgb_data - target
+        # Euclidean distance
+        dist = np.linalg.norm(diff, axis=2)
+        mask = dist <= tolerance
+        mask_accumulated = mask_accumulated | mask
+        
+    # Set alpha to 0 where mask matches
+    data[mask_accumulated, 3] = 0
+    
+    return pil_to_bytes(Image.fromarray(data))
+
 # 2. Quitar Fondo
 async def remove_background(image_bytes: bytes) -> bytes:
     """
     Removes background. Tries GPU service first, falls back to CPU (rembg).
     """
-    if GPU_REMOVER_URL:
+    if _should_use_gpu("remove-background"):
         try:
+            logger.info("🎨 Removing background via Cloud GPU...")
             return await call_gpu_service("remove-background", image_bytes)
         except Exception as e:
-            print(f"GPU BG Removal failed, falling back to CPU: {e}")
+            logger.error(f"❌ GPU BG Removal failed: {e}. Falling back to Local CPU.")
             pass
 
-    # Legacy Fallback (CPU)
+    # Legacy Fallback (CPU/M4 Neural Engine)
+    logger.info("💻 Removing background via Local Engine...")
+    
+    # Optimize: Use persistent session and try CoreML (Apple Silicon)
+    # We load this lazily to avoid overhead if not used
+    global _LOCAL_REMBG_SESSION
+    if '_LOCAL_REMBG_SESSION' not in globals() or _LOCAL_REMBG_SESSION is None:
+        from rembg import new_session
+        # Providers: CoreML for macOS (M-chips), CUDA for NVIDIA, CPU fallback
+        # Note: Requires 'onnxruntime-silicon' installed on Mac for CoreML support
+        providers = ['CoreMLExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']
+        try:
+            _LOCAL_REMBG_SESSION = new_session("u2net", providers=providers)
+            logger.info(f"✅ Local rembg session initialized with providers: {providers}")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to init accelerated rembg session: {e}. Falling back to default.")
+            _LOCAL_REMBG_SESSION = new_session("u2net")
+
     from rembg import remove
-    output_bytes = remove(image_bytes)
+    # Run blocking task in thread
+    output_bytes = await asyncio.to_thread(remove, image_bytes, session=_LOCAL_REMBG_SESSION)
     return output_bytes
 
 # ... (omitted unrelated code)
@@ -210,16 +293,18 @@ async def upscale_image(image_bytes: bytes, factor=2, detail_boost=1.5) -> bytes
     Upscales image using AI (Real-ESRGAN) via GPU Service.
     Falls back to legacy Lanczos if GPU_UPSCALE_URL is not set.
     """
-    if GPU_UPSCALE_URL:
+    if _should_use_gpu("upscale"):
         try:
+            logger.info(f"🔍 Upscaling image x{factor} via Cloud GPU...")
             return await call_gpu_service("upscale", image_bytes, params={"scale": factor})
         except Exception as e:
-            print(f"GPU Upscale failed, falling back to CPU: {e}")
+            logger.error(f"❌ GPU Upscale failed: {e}. Falling back to Local CPU.")
             # Fallback to local (CPU)
             pass
             
     # Legacy Fallback (CPU)
-    return upscale_image_legacy(image_bytes, factor, detail_boost)
+    logger.info(f"💻 Upscaling image x{factor} via Local CPU (Lanczos)...")
+    return await asyncio.to_thread(upscale_image_legacy, image_bytes, factor, detail_boost)
 
 def upscale_image_legacy(image_bytes: bytes, factor=2, detail_boost=1.5) -> bytes:
     """Legacy CPU upscaling using Lanczos."""
