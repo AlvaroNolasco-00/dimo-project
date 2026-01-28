@@ -4,7 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 
 from . import models, database
-from .routers import projects, auth, users, processing, finance, orders, payments
+from .routers import projects, auth, users, processing, finance, orders, payments, clients
 from .database import engine
 
 # Create DB tables
@@ -20,6 +20,7 @@ app.include_router(finance.router)
 app.include_router(projects.router)
 app.include_router(orders.router)
 app.include_router(payments.router)
+app.include_router(clients.router)
 
 # CORS config
 app.add_middleware(

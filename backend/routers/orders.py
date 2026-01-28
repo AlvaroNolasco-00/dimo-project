@@ -125,6 +125,7 @@ def create_order(project_id: int, order_data: schemas.OrderCreate, db: Session =
     new_order = models.Order(
         project_id=project_id,
         client_name=order_data.client_name,
+        client_id=order_data.client_id,
         delivery_date=order_data.delivery_date,
         shipping_address=order_data.shipping_address,
         location_lat=order_data.location_lat,

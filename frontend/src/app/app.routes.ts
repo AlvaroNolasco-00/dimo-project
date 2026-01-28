@@ -21,6 +21,8 @@ import { RecuentoGananciasComponent } from './gestion/finanzas/recuento-ganancia
 import { ProyectosComponent } from './gestion/proyectos/proyectos.component';
 import { NoProjectComponent } from './auth/no-project/no-project.component';
 import { ProfileComponent } from './profile/profile.component';
+import { ClientesComponent } from './gestion/clientes/clientes.component';
+import { ClienteFormComponent } from './gestion/clientes/cliente-form/cliente-form.component';
 
 export const routes: Routes = [
     // Auth Routes (Clean layout, no sidebar)
@@ -101,6 +103,9 @@ export const routes: Routes = [
                     { path: 'pedidos', component: PedidosComponent },
                     { path: 'pedidos/crear', component: CrearPedidoComponent },
                     { path: 'pedidos/:id', component: DetallePedidoComponent },
+                    { path: 'clientes', component: ClientesComponent },
+                    { path: 'clientes/crear', component: ClienteFormComponent },
+                    { path: 'clientes/editar/:id', component: ClienteFormComponent },
                     { path: 'proyectos', component: ProyectosComponent, canActivate: [adminGuard] },
                     { path: 'finanzas', component: FinanzasComponent },
                     { path: 'finanzas/costos-operativos', component: CostosOperativosComponent },

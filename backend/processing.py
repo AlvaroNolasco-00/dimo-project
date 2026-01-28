@@ -48,7 +48,7 @@ if _should_use_gpu():
 else:
     logger.info(f"💻 PROCESSING MODE: LOCAL CPU FALLBACK (Env: {APP_ENV}) - Optimized for Apple Silicon/Local Dev")
 
-async def call_gpu_service(service_type: str, image_bytes: bytes, params: dict = None) -> bytes:
+async def call_gpu_service(service_type: str, image_bytes: bytes, params: dict = None, data: dict = None) -> bytes:
     """
     Helper to call the GPU worker service.
     service_type: 'upscale' or 'remove-background'
@@ -81,7 +81,7 @@ async def call_gpu_service(service_type: str, image_bytes: bytes, params: dict =
         # Since we use File(...), other args usually become Query unless explicitly Form.
         # Use query params for simplicity.
         
-        response = await client.post(url, files=files, params=params, headers=headers)
+        response = await client.post(url, files=files, params=params, data=data, headers=headers)
         
         if response.status_code != 200:
             raise Exception(f"GPU Service Failed: {response.status_code} - {response.text}")
@@ -296,7 +296,14 @@ async def upscale_image(image_bytes: bytes, factor=2, detail_boost=1.5) -> bytes
     if _should_use_gpu("upscale"):
         try:
             logger.info(f"🔍 Upscaling image x{factor} via Cloud GPU...")
-            return await call_gpu_service("upscale", image_bytes, params={"scale": factor})
+            # Send both 'scale' and 'factor' to be safe, plus detail_boost
+            form_data = {
+                "scale": factor, 
+                "factor": factor,
+                "detail_boost": detail_boost
+            }
+            logger.info(f"🔍 Upscaling image x{factor} via Cloud GPU with params: {form_data}")
+            return await call_gpu_service("upscale", image_bytes, data=form_data)
         except Exception as e:
             logger.error(f"❌ GPU Upscale failed: {e}. Falling back to Local CPU.")
             # Fallback to local (CPU)

@@ -1,16 +1,28 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject, Injector } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { environment } from '../../environments/environment';
 import { Project, ProjectCreate, ProjectUpdate, ProjectUser } from '../interfaces/project.interface';
+import { AuthService } from './auth.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class ProjectService {
     private apiUrl = `${environment.apiUrl}/projects`;
+    private authService = inject(AuthService);
+    private injector = inject(Injector);
+
+    private selectedProjectId$ = toObservable(this.authService.currentProject, { injector: this.injector }).pipe(
+        map(p => p ? p.id : null)
+    );
 
     constructor(private http: HttpClient) { }
+
+    getSelectedProjectId(): Observable<number | null> {
+        return this.selectedProjectId$;
+    }
 
     getProjects(skip: number = 0, limit: number = 100): Observable<Project[]> {
         return this.http.get<Project[]>(`${this.apiUrl}/?skip=${skip}&limit=${limit}`);

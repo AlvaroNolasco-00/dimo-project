@@ -150,5 +150,31 @@ export class ApiService {
     getOperativeCosts(costTypeId: number): Observable<any[]> {
         return this.http.get<any[]>(`${environment.apiUrl}/finance/costs?cost_type_id=${costTypeId}`);
     }
+
+    // --- Clients ---
+
+    getProjectClients(projectId: number): Observable<any[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}/projects/${projectId}/clients`);
+    }
+
+    getClient(projectId: number, clientId: number): Observable<any> {
+        return this.http.get<any>(`${environment.apiUrl}/projects/${projectId}/clients/${clientId}`);
+    }
+
+    searchClientByPhone(projectId: number, phone: string): Observable<any> {
+        return this.http.get<any>(`${environment.apiUrl}/projects/${projectId}/clients/search/${phone}`);
+    }
+
+    createClient(projectId: number, clientData: any): Observable<any> {
+        return this.http.post<any>(`${environment.apiUrl}/projects/${projectId}/clients`, clientData);
+    }
+
+    updateClient(projectId: number, clientId: number, clientData: any): Observable<any> {
+        return this.http.put<any>(`${environment.apiUrl}/projects/${projectId}/clients/${clientId}`, clientData);
+    }
+
+    deleteClient(projectId: number, clientId: number): Observable<any> {
+        return this.http.delete<any>(`${environment.apiUrl}/projects/${projectId}/clients/${clientId}`);
+    }
 }
 

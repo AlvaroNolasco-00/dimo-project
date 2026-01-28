@@ -61,6 +61,32 @@ class OperativeCost(Base):
 
     cost_type = relationship("CostType")
 
+class Client(Base):
+    __tablename__ = "clients"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    
+    phone_number = Column(String(50), nullable=False)
+    full_name = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True)
+    tax_id = Column(String(50), nullable=True)
+    client_type = Column(String(20), default='retail')
+    shipping_address = Column(String, nullable=True)
+    preferences = Column(JSON, default={})
+    notes = Column(String, nullable=True)
+    
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    # Relationships
+    project = relationship("Project")
+    orders = relationship("Order", back_populates="client")
+
+    __table_args__ = (
+        UniqueConstraint('phone_number', 'project_id', name='uq_client_phone_project'),
+    )
+
 # --- Order System Models ---
 
 class OrderState(Base):
@@ -93,6 +119,7 @@ class Order(Base):
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     
     client_name = Column(String, nullable=False)
+    client_id = Column(Integer, ForeignKey("clients.id"), nullable=True)
     delivery_date = Column(DateTime, nullable=True)
     shipping_address = Column(String, nullable=True)
     location_lat = Column(Numeric(10, 6), nullable=True)
@@ -107,6 +134,7 @@ class Order(Base):
 
     # Relationships
     project = relationship("Project", back_populates="orders")
+    client = relationship("Client", back_populates="orders")
     state = relationship("OrderState")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
     history = relationship("OrderHistory", back_populates="order", cascade="all, delete-orphan")

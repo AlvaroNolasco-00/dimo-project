@@ -126,6 +126,7 @@ class OrderItem(OrderItemBase):
 
 class OrderBase(BaseModel):
     client_name: str
+    client_id: Optional[int] = None
     delivery_date: Optional[datetime] = None
     shipping_address: Optional[str] = None
     location_lat: Optional[float] = None
@@ -178,6 +179,39 @@ class OrderHistory(OrderHistoryBase):
     order_id: int
     user_id: Optional[int] = None
     user: Optional[UserBasic] = None
+
+    class Config:
+        from_attributes = True
+
+# --- Clients ---
+class ClientBase(BaseModel):
+    phone_number: str
+    full_name: str
+    email: Optional[str] = None
+    tax_id: Optional[str] = None
+    client_type: Optional[str] = "retail"
+    shipping_address: Optional[str] = None
+    preferences: Dict[str, Any] = {}
+    notes: Optional[str] = None
+
+class ClientCreate(ClientBase):
+    project_id: int
+
+class ClientUpdate(BaseModel):
+    phone_number: Optional[str] = None
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    tax_id: Optional[str] = None
+    client_type: Optional[str] = None
+    shipping_address: Optional[str] = None
+    preferences: Optional[Dict[str, Any]] = None
+    notes: Optional[str] = None
+
+class Client(ClientBase):
+    id: int
+    project_id: int
+    created_at: datetime
+    updated_at: datetime
 
     class Config:
         from_attributes = True

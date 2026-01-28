@@ -18,6 +18,12 @@
       <span class="btn-text">Pedidos</span>
       }
     </button>
+    <button class="nav-btn" routerLink="/gestion/clientes" routerLinkActive="active" [title]="'Clientes'">
+      <i class="ph ph-users"></i>
+      @if (!isCollapsed()) {
+      <span class="btn-text">Clientes</span>
+      }
+    </button>
     <button class="nav-btn" routerLink="/gestion/finanzas" routerLinkActive="active" [title]="'Finanzas'">
       <i class="ph ph-currency-dollar"></i>
       @if (!isCollapsed()) {
