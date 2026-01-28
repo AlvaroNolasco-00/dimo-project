@@ -221,7 +221,7 @@ class TaskResponse(BaseModel):
     task_id: str
 
 class TaskStatus(BaseModel):
-    task_id: str
+    id: str
     status: str
     result_url: Optional[str] = None
     error: Optional[str] = None
