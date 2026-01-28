@@ -215,3 +215,16 @@ class Client(ClientBase):
 
     class Config:
         from_attributes = True
+
+# --- Processing Tasks ---
+class TaskResponse(BaseModel):
+    task_id: str
+
+class TaskStatus(BaseModel):
+    task_id: str
+    status: str
+    result_url: Optional[str] = None
+    error: Optional[str] = None
+
+    class Config:
+        from_attributes = True

@@ -287,6 +287,46 @@ async def remove_background(image_bytes: bytes) -> bytes:
 
 # ... (omitted unrelated code)
 
+from .database import SessionLocal
+from . import models
+
+# Define static directory for processed results
+STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+os.makedirs(STATIC_DIR, exist_ok=True)
+
+async def run_upscale_task(task_id: str, image_bytes: bytes, factor: float, detail_boost: float):
+    """
+    Background worker for upscaling task.
+    """
+    db = SessionLocal()
+    try:
+        # Perform work
+        result_bytes = await upscale_image(image_bytes, factor, detail_boost)
+        
+        # Save to static file
+        filename = f"upscale_{task_id}.png"
+        file_path = os.path.join(STATIC_DIR, filename)
+        with open(file_path, "wb") as f:
+            f.write(result_bytes)
+            
+        # Update DB
+        task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
+        if task:
+            task.status = "COMPLETED"
+            # We return the static URL relative to /api/static
+            task.result_url = f"/api/static/{filename}"
+            db.commit()
+            
+    except Exception as e:
+        logger.error(f"Error in run_upscale_task for task {task_id}: {str(e)}")
+        task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
+        if task:
+            task.status = "FAILED"
+            task.error = str(e)
+            db.commit()
+    finally:
+        db.close()
+
 # 4. Aumentar Resolución (Upscaling)
 async def upscale_image(image_bytes: bytes, factor=2, detail_boost=1.5) -> bytes:
     """

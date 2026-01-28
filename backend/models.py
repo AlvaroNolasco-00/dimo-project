@@ -189,4 +189,14 @@ class OrderHistory(Base):
     order = relationship("Order", back_populates="history")
     user = relationship("User")
 
+class ProcessingTask(Base):
+    __tablename__ = "processing_tasks"
+
+    id = Column(String, primary_key=True, index=True)
+    status = Column(String, default="PENDING") # PENDING, COMPLETED, FAILED
+    result_url = Column(String, nullable=True)
+    error = Column(String, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
 

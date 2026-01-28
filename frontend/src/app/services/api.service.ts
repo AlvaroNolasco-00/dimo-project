@@ -1,7 +1,8 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { Observable } from 'rxjs';
+import { Observable, timer, throwError, of } from 'rxjs';
+import { switchMap, filter, take, tap, map } from 'rxjs/operators';
 
 @Injectable({
     providedIn: 'root'
@@ -57,7 +58,36 @@ export class ApiService {
         formData.append('image', image);
         formData.append('factor', factor.toString());
         formData.append('detail_boost', detailBoost.toString());
-        return this.http.post(`${environment.apiUrl}/upscale`, formData, { responseType: 'blob' });
+
+        return this.http.post<{ task_id: string }>(`${environment.apiUrl}/upscale`, formData).pipe(
+            switchMap(res => this.pollTask(res.task_id)),
+            switchMap(task => {
+                // Determine absolute URL for the result. 
+                // task.result_url is like "/api/static/..."
+                // Since our API is at e.g. https://.../api, and static is at https://.../api/static
+                // If apiUrl already includes /api, we might need to handle it.
+                // Our environment.apiUrl usually is "https://.../api"
+                // So result_url starts with /api... we can just use the base domain.
+
+                const baseUrl = environment.apiUrl.replace(/\/api$/, '');
+                const finalUrl = `${baseUrl}${task.result_url}`;
+                return this.http.get(finalUrl, { responseType: 'blob' });
+            })
+        );
+    }
+
+    private pollTask(taskId: string): Observable<any> {
+        return timer(1000, 2000).pipe(
+            switchMap(() => this.http.get<any>(`${environment.apiUrl}/processing/tasks/${taskId}`)),
+            filter(task => task.status === 'COMPLETED' || task.status === 'FAILED'),
+            take(1),
+            switchMap(task => {
+                if (task.status === 'FAILED') {
+                    return throwError(() => new Error(task.error || 'Upscale task failed'));
+                }
+                return of(task);
+            })
+        );
     }
 
     halftone(image: Blob, dotSize: number, scale: number, colors?: Array<[number, number, number]>, threshold?: number, spacing: number = 0): Observable<Blob> {

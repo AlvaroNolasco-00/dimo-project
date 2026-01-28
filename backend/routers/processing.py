@@ -1,13 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Response
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Response, BackgroundTasks
 from fastapi.concurrency import run_in_threadpool
+from sqlalchemy.orm import Session
+import uuid
 
 from typing import Optional
-from .. import models, processing
-from ..deps import get_approved_user
+from .. import models, processing, schemas
+from ..deps import get_approved_user, get_db
 
 router = APIRouter(
     prefix="/api",
-    tags=["processing"] # Using "processing" tag, but endpoints had mixed tags or no tags implicitly in main.
+    tags=["processing"]
 )
 
 @router.post("/remove-objects")
@@ -104,24 +106,46 @@ async def api_enhance_quality(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/upscale")
+@router.post("/upscale", response_model=schemas.TaskResponse)
 async def api_upscale(
+    background_tasks: BackgroundTasks,
     image: UploadFile = File(...), 
     factor: float = Form(2.0),
     detail_boost: float = Form(1.5),
-    user: models.User = Depends(get_approved_user)
+    user: models.User = Depends(get_approved_user),
+    db: Session = Depends(get_db)
 ):
     try:
         if factor <= 0:
             raise HTTPException(status_code=400, detail="Upscale factor must be greater than 0")
             
+        task_id = str(uuid.uuid4())
         image_bytes = await image.read()
-        result = await processing.upscale_image(image_bytes, factor, detail_boost)
-        return Response(content=result, media_type="image/png")
-    except ValueError as ve:
-        raise HTTPException(status_code=400, detail=str(ve))
+        
+        # Create task in DB
+        task = models.ProcessingTask(id=task_id, status="PENDING")
+        db.add(task)
+        db.commit()
+        
+        # Start background task
+        background_tasks.add_task(
+            processing.run_upscale_task, 
+            task_id, 
+            image_bytes, 
+            factor, 
+            detail_boost
+        )
+        
+        return {"task_id": task_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/processing/tasks/{task_id}", response_model=schemas.TaskStatus)
+async def get_task_status(task_id: str, db: Session = Depends(get_db)):
+    task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
 
 @router.post("/halftone")
 async def api_halftone(
