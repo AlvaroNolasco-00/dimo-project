@@ -2,7 +2,7 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Numeric, func, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSON
-from .database import Base
+from .core.database import Base
 
 # Association table for User <-> Project
 user_projects = Table(

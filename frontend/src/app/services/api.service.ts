@@ -77,7 +77,8 @@ export class ApiService {
     }
 
     private pollTask(taskId: string): Observable<any> {
-        return timer(1000, 2000).pipe(
+        // Ejecuta la consulta recurrente cada 10 segundos
+        return timer(1000, 10000).pipe(
             switchMap(() => this.http.get<any>(`${environment.apiUrl}/processing/tasks/${taskId}`)),
             filter(task => task.status === 'COMPLETED' || task.status === 'FAILED'),
             take(1),

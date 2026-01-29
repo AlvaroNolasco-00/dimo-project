@@ -4,8 +4,9 @@ from sqlalchemy.orm import Session
 import uuid
 
 from typing import Optional
-from .. import models, processing, schemas
-from ..deps import get_approved_user, get_db
+from .. import models, schemas
+from ..services import processing
+from ..core.deps import get_approved_user, get_db
 
 router = APIRouter(
     prefix="/api",

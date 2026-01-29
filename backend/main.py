@@ -3,9 +3,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-from . import models, database
+from . import models
+from .core import database
 from .routers import projects, auth, users, processing, finance, orders, payments, clients
-from .database import engine
+from .core.database import engine
 
 # Create DB tables
 models.Base.metadata.create_all(bind=engine)

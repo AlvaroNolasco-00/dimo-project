@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 # Load .env from the same directory as this file (backend/.env)
-env_path = Path(__file__).parent / '.env'
+env_path = Path(__file__).parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
 # Determinar el entorno (por defecto 'local' si no está definido)

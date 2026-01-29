@@ -1,14 +1,26 @@
-<div class="app-container">
-    <app-navbar-top></app-navbar-top>
-    <div class="content-wrapper" [class.collapsed]="isSidebarCollapsed()" [class.has-sidebar]="showSidebar()">
-        <div class="sidebar-backdrop" [class.visible]="layoutService.sidebarOpen()"
-            (click)="layoutService.closeSidebar()">
-        </div>
-        @if (showSidebar()) {
+<div class="app-container" [class.has-sidebar]="showSidebar()" [class.sidebar-collapsed]="isSidebarCollapsed()">
+
+    <!-- Sidebar (Left Column) -->
+    @if (showSidebar()) {
+    <div class="sidebar-wrapper">
         <app-sidebar></app-sidebar>
-        }
-        <main class="main-content" [class.with-sidebar]="showSidebar()">
-            <router-outlet #outlet="outlet"></router-outlet>
-        </main>
+    </div>
+    }
+
+    <!-- Main Content Area (Right Column) -->
+    <div class="main-wrapper">
+        <!-- Top Navbar -->
+        <app-navbar-top></app-navbar-top>
+
+        <!-- Main Router Content -->
+        <div class="content-wrapper">
+            <div class="sidebar-backdrop" [class.visible]="layoutService.sidebarOpen()"
+                (click)="layoutService.closeSidebar()">
+            </div>
+
+            <main class="main-content">
+                <router-outlet #outlet="outlet"></router-outlet>
+            </main>
+        </div>
     </div>
 </div>

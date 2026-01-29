@@ -69,8 +69,8 @@ async def call_gpu_service(service_type: str, image_bytes: bytes, params: dict =
 
     headers = {"x-api-key": GPU_SERVICE_SECRET} if GPU_SERVICE_SECRET else {}
     
-    # 60s timeout for Cold Starts
-    async with httpx.AsyncClient(timeout=60.0) as client:
+    # 120s timeout for Cold Starts and large images
+    async with httpx.AsyncClient(timeout=120.0) as client:
         # Prepare multipart/form-data
         files = {"file": ("image.png", image_bytes, "image/png")}
         
@@ -287,43 +287,77 @@ async def remove_background(image_bytes: bytes) -> bytes:
 
 # ... (omitted unrelated code)
 
-from .database import SessionLocal
-from . import models
+from ..core.database import SessionLocal
+from .. import models
 
 # Define static directory for processed results
-STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
+STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
 os.makedirs(STATIC_DIR, exist_ok=True)
 
 async def run_upscale_task(task_id: str, image_bytes: bytes, factor: float, detail_boost: float):
     """
     Background worker for upscaling task.
+    Handles GPU -> CPU Fallback transition explicitly to update DB status.
     """
     db = SessionLocal()
     try:
-        # Perform work
-        result_bytes = await upscale_image(image_bytes, factor, detail_boost)
+        result_bytes = None
         
-        # Save to static file
-        filename = f"upscale_{task_id}.png"
-        file_path = os.path.join(STATIC_DIR, filename)
-        with open(file_path, "wb") as f:
-            f.write(result_bytes)
+        # 1. Try GPU if enabled
+        if _should_use_gpu("upscale"):
+            try:
+                result_bytes = await upscale_image(image_bytes, factor, detail_boost)
+            except Exception as e:
+                logger.error(f"⚠️ GPU Upscale Task {task_id} failed: {e}")
+                
+                # Update DB to warn about fallback
+                task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
+                if task:
+                    task.status = "FALLBACK_CPU"
+                    # We commit here so if the CPU process crashes (OOM), we at least know it reached this state
+                    db.commit()
+                
+                # We will fall through to Legacy CPU logic below
+                result_bytes = None
+        
+        # 2. Fallback to Local CPU if needed
+        if result_bytes is None:
+            logger.info(f"🔄 Task {task_id}: Using Local CPU fallback.")
             
-        # Update DB
-        task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
-        if task:
-            task.status = "COMPLETED"
-            # We return the static URL relative to /api/static
-            task.result_url = f"/api/static/{filename}"
-            db.commit()
+            # Check for safety limits before attempting CPU upscale to avoid OOM/Crash
+            img_pil = read_image_file(image_bytes)
+            w, h = img_pil.size
+            if (w * factor) > 4000 or (h * factor) > 4000:
+                raise ValueError(f"Image too large for Local CPU upscale ({w}x{h} -> x{factor}). Max limit is 4000px.")
+            
+            result_bytes = await asyncio.to_thread(upscale_image_legacy, image_bytes, factor, detail_boost)
+
+        # 3. Save Success
+        if result_bytes:
+            filename = f"upscale_{task_id}.png"
+            file_path = os.path.join(STATIC_DIR, filename)
+            with open(file_path, "wb") as f:
+                f.write(result_bytes)
+                
+            # Update DB
+            task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
+            if task:
+                task.status = "COMPLETED"
+                task.result_url = f"/api/static/{filename}"
+                db.commit()
             
     except Exception as e:
-        logger.error(f"Error in run_upscale_task for task {task_id}: {str(e)}")
-        task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
-        if task:
-            task.status = "FAILED"
-            task.error = str(e)
-            db.commit()
+        logger.error(f"❌ Error in run_upscale_task for task {task_id}: {str(e)}")
+        # Check if session is still valid
+        try:
+            task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
+            if task:
+                task.status = "FAILED"
+                task.error = str(e)
+                db.commit()
+        except:
+            # If DB session is broken
+            pass
     finally:
         db.close()
 
@@ -331,25 +365,28 @@ async def run_upscale_task(task_id: str, image_bytes: bytes, factor: float, deta
 async def upscale_image(image_bytes: bytes, factor=2, detail_boost=1.5) -> bytes:
     """
     Upscales image using AI (Real-ESRGAN) via GPU Service.
-    Falls back to legacy Lanczos if GPU_UPSCALE_URL is not set.
+    NO AUTOMATIC FALLBACK HERE - Controlled by run_upscale_task.
     """
     if _should_use_gpu("upscale"):
-        try:
-            logger.info(f"🔍 Upscaling image x{factor} via Cloud GPU...")
-            # Send both 'scale' and 'factor' to be safe, plus detail_boost
-            form_data = {
-                "scale": factor, 
-                "factor": factor,
-                "detail_boost": detail_boost
-            }
-            logger.info(f"🔍 Upscaling image x{factor} via Cloud GPU with params: {form_data}")
-            return await call_gpu_service("upscale", image_bytes, data=form_data)
-        except Exception as e:
-            logger.error(f"❌ GPU Upscale failed: {e}. Falling back to Local CPU.")
-            # Fallback to local (CPU)
-            pass
+        logger.info(f"🔍 Upscaling image x{factor} via Cloud GPU...")
+        form_data = {
+            "scale": factor, 
+            "factor": factor, # Send both just in case
+            "detail_boost": detail_boost
+        }
+        # This will Raise exception if it fails, allowing run_upscale_task to handle it
+        return await call_gpu_service("upscale", image_bytes, data=form_data)
             
-    # Legacy Fallback (CPU)
+    # If GPU not configured, use legacy immediately (or could raise error depending on policy)
+    # For now, if no GPU configured, return None to signal fallback needed or just run legacy?
+    # run_upscale_task handles the logic. If we are here, it means we probably want legacy.
+    # BUT, to keep this function clean, if GPU is OFF, we might as well return the legacy result directly.
+    # However, run_upscale_task calls checking _should_use_gpu explicitly.
+    # So if we are here, and _should_use_gpu is True, it means we called call_gpu_service.
+    # If _should_use_gpu is False, we shouldn't be calling this if we want strict separation, 
+    # OR we just return local.
+    
+    # Safe default:
     logger.info(f"💻 Upscaling image x{factor} via Local CPU (Lanczos)...")
     return await asyncio.to_thread(upscale_image_legacy, image_bytes, factor, detail_boost)
 
@@ -357,7 +394,7 @@ def upscale_image_legacy(image_bytes: bytes, factor=2, detail_boost=1.5) -> byte
     """Legacy CPU upscaling using Lanczos."""
     img_pil = read_image_file(image_bytes)
     width, height = img_pil.size
-    MAX_DIMENSION = 10000
+    MAX_DIMENSION = 4000 # Reduced from 10000 to prevent OOM on Cloud Free tiers/Local
     
     new_width = int(width * factor)
     new_height = int(height * factor)

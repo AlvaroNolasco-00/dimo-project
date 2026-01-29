@@ -5,18 +5,15 @@
     flex-direction: column;
     height: 100%;
     overflow: hidden;
-    // border: 14px solid red;
-    // background: red;
 }
 
 .editor-main-wrapper {
     display: flex;
     flex-direction: column;
     padding: 20px;
-    overflow: hidden; // Force children to be constrained
-    flex: 1; // Use flex growth instead of fixed height
-    min-height: 0; // Crucial for nested scroll containers
-    // border: 14px solid green;
+    overflow: hidden;
+    flex: 1;
+    min-height: 0;
     gap: 20px;
 
     @media (max-width: 1440px),
@@ -25,62 +22,34 @@
     }
 
     @include mobile {
-        // padding: 0.5rem;
         padding-bottom: 80px;
     }
 }
 
 header {
-    // margin-bottom: 2rem;
     margin: 0;
-    // flex-shrink: 0;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    gap: 0;
+    gap: 0.5rem;
     max-width: 1200px;
     margin-inline: auto;
-    // border: red solid 1px;
     width: 100%;
 
-    @media (max-width: 1440px),
-    (max-height: 900px) {
-        // margin-bottom: 0.5rem;
-        // align-items: center;
-        // gap: 1rem;
-    }
-
-    @include mobile {
-        // flex-direction: column;
-        // align-items: flex-start;
-        // gap: 0.2rem;
-    }
-
     h1 {
-        font-size: 24px;
-        // margin-bottom: 0.5rem;
+        font-size: 34px;
+        /* Matches 'Hello, Margaret' size illusion */
+        font-weight: 700;
         margin: 0;
-
-        @media (max-width: 1440px),
-        (max-height: 900px) {
-            // font-size: 1.2rem;
-            // margin-bottom: 0;
-        }
-
-        @include mobile {
-            // font-size: 1.5rem;
-        }
+        color: var(--text-primary);
+        letter-spacing: -1px;
     }
 
     p {
         color: var(--text-secondary);
         margin: 0;
-
-        @media (max-width: 1440px),
-        (max-height: 900px) {
-            font-size: 0.8rem;
-            margin: 0;
-        }
+        font-size: 1rem;
+        font-weight: 500;
     }
 }
 
@@ -95,7 +64,6 @@ header {
     min-height: 0;
     max-width: 1200px;
     margin-inline: auto;
-    // border: red solid 1px;
     width: 100%;
 
     @include mobile {
@@ -106,30 +74,31 @@ header {
 
 .editor-area {
     flex: 1;
-    background-color: var(--sidebar-bg);
+    background-color: var(--card-bg);
+    /* White background */
     border-radius: var(--radius);
-    padding: 10px;
-    border: 1px solid var(--border-color);
-    // display: flex;
-    // flex-direction: column;
+    padding: 20px;
+    /* Soft shadow instead of border */
+    box-shadow: 0 20px 40px -10px rgba(112, 144, 176, 0.12);
+    border: none;
+
     align-items: center;
     justify-content: center;
-    // min-height: 0;
-    // overflow-y: auto; // Allow scroll if content is too big
 
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
     height: fit-content;
-    gap: 10px;
+    gap: 20px;
     min-height: 300px;
-    // @media (max-width: 1440px),
-    // (max-height: 900px) {
-    //     padding: 0.5rem;
-    // }
 
     &.has-not-file {
-        grid-template-rows: 1fr;
+        /* When no file (Upload mode), center the upload zone but keep header at top? 
+           Actually, if header is first child in grid, it stays at top. 
+           We just need rows to be sized correctly. */
+        grid-template-rows: auto 1fr;
+        min-height: 600px;
+        /* Give it space */
     }
 }
 
@@ -137,15 +106,8 @@ header {
 .action-buttons {
     display: flex;
     justify-content: center;
-    gap: 10px;
-    // margin-top: auto;
+    gap: 12px;
     flex-shrink: 0;
-    // padding-top: 1rem;
-
-    @media (max-width: 1440px),
-    (max-height: 900px) {
-        padding-top: 0;
-    }
 
     @include mobile {
         flex-wrap: wrap;
@@ -166,25 +128,121 @@ header {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: var(--sidebar-bg);
+    background: var(--bg-color);
+    /* Light gray input */
     padding: 0.5rem 1rem;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
+    border-radius: 50px;
+    border: 1px solid transparent;
 
     input {
         background: transparent;
         border: none;
         color: var(--text-primary);
         outline: none;
-        width: 120px;
+        width: 140px;
+        font-weight: 500;
+
+        &::placeholder {
+            color: var(--text-secondary);
+        }
     }
 
     span {
         color: var(--text-secondary);
+        font-weight: 500;
+    }
+
+    &:focus-within {
+        background: #fff;
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1);
     }
 }
 
-/* Darker shadow for better silhouette - Global fix for Cropper */
-// ::ng-deep .cropper-modal {
-//     opacity: 0.8 !important;
-// }
+/* Stats Row Styles */
+.stats-row {
+    display: flex;
+    gap: 3rem;
+    /* Spacious gap like the image */
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
+    width: 100%;
+
+    @include mobile {
+        gap: 1rem;
+    }
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 160px;
+    background: transparent;
+    /* In the image, these seem to be floating on the white background. 
+       If we want them to pop more, we could give them a bg, but clean is better. */
+
+    @include mobile {
+        flex: 1;
+        min-width: 140px;
+    }
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+
+    &.icon-success {
+        background: rgba(1, 181, 116, 0.1);
+        color: var(--success);
+    }
+
+    &.icon-warning {
+        background: rgba(255, 181, 71, 0.1);
+        color: var(--warning);
+    }
+
+    &.icon-info {
+        background: rgba(57, 101, 255, 0.1);
+        color: var(--info);
+    }
+}
+
+.stat-info {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.stat-info .label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-bottom: 0.2rem;
+}
+
+.stat-info .value-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stat-info .value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+/* Ensure padding on header to match image spacing */
+header {
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    // border-bottom: 1px solid var(--border-color); /* Optional separator */
+}

@@ -5,8 +5,9 @@ import shutil
 import os
 from datetime import datetime
 
-from .. import models, auth, database
-from ..deps import get_db, get_current_user
+from .. import models
+from ..core import auth, database
+from ..core.deps import get_db, get_current_user
 
 router = APIRouter(
     prefix="/api/auth",

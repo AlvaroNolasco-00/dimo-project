@@ -4,29 +4,31 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    max-height: 100%; // Ensure it never exceeds parent
-    flex-shrink: 0; // Prevent shrinking
+    max-height: 100%;
+    flex-shrink: 0;
     min-height: 0;
-    overflow: hidden; // Ensure host clips overflow
+    overflow: hidden;
 }
 
 .session-sidebar {
-    width: 280px;
-    background: var(--sidebar-bg);
-    border-left: 1px solid var(--border-color);
+    width: 290px;
+    /* Wider to match design */
+    background: var(--card-bg);
+    /* White background */
     border-radius: var(--radius);
     display: flex;
     flex-direction: column;
     padding: 1.5rem;
     gap: 1.5rem;
-    background: rgba(30, 30, 35, 0.6);
-    backdrop-filter: blur(10px);
-    border: 1px solid var(--border-color);
+    box-shadow: 0 20px 40px -10px rgba(112, 144, 176, 0.12);
+    /* Match card shadow */
     position: relative;
     transition: width 0.3s ease, padding 0.3s ease, transform 0.3s ease;
     overflow: hidden;
-    flex: 1; // Flexible height filling
-    min-height: 0; // Ensure it behaves well in flex parent
+    flex: 1;
+    min-height: 0;
+    border: none;
+    /* No border needed with shadow */
 
     @include mobile {
         width: 100%;
@@ -41,14 +43,15 @@
     }
 
     &.collapsed {
-        width: 30px;
-        padding: 1.5rem 5px;
+        width: 40px;
+        padding: 1.5rem 0;
+        background: transparent;
+        box-shadow: none;
 
         @include mobile {
             width: 40px;
             transform: translateX(0);
             right: 0;
-            background: rgba(0, 0, 0, 0.5);
         }
 
         .sidebar-content {
@@ -56,26 +59,32 @@
             pointer-events: none;
             width: 250px;
         }
+
+        .collapse-toggle {
+            left: auto;
+            right: 0;
+            border-radius: 8px 0 0 8px;
+            box-shadow: -5px 0 15px rgba(0, 0, 0, 0.05);
+        }
     }
 }
 
 .session-sidebar:not(.collapsed) {
     @include mobile {
-        width: 80%;
+        width: 85%;
         transform: translateX(0);
-        box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+        box-shadow: -5px 0 25px rgba(0, 0, 0, 0.1);
     }
 }
 
 .sidebar-content {
-    /* Added selector based on instruction and context */
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
     width: 100%;
-    flex: 1; // Flexible filling
-    overflow: hidden; // Create a flex context without scrolling itself
-    min-height: 0; // CRITICAL: Allows flex container to shrink below content size
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
     transition: opacity 0.2s ease;
     opacity: 1;
 }
@@ -86,11 +95,10 @@
     left: 0;
     transform: translateY(-50%);
     width: 24px;
-    height: 40px;
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-left: none;
-    border-radius: 0 8px 8px 0;
+    height: 48px;
+    background: white;
+    border: none;
+    border-radius: 0 12px 12px 0;
     color: var(--text-secondary);
     cursor: pointer;
     display: flex;
@@ -98,10 +106,13 @@
     justify-content: center;
     z-index: 10;
     transition: var(--transition);
+    box-shadow: 5px 0 15px rgba(0, 0, 0, 0.05);
 
     &:hover {
         background: var(--accent-color);
         color: white;
+        width: 32px;
+        /* Expand on hover */
     }
 }
 
@@ -113,17 +124,18 @@
 
     h3 {
         font-size: 1.1rem;
-        font-weight: 600;
+        font-weight: 700;
         margin: 0;
+        color: var(--text-primary);
     }
 
     .count {
-        background: var(--accent-color);
-        color: white;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        font-weight: 600;
+        background: rgba(67, 24, 255, 0.1);
+        color: var(--accent-color);
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
     }
 }
 
@@ -131,10 +143,10 @@
     display: flex;
     flex-direction: column;
     gap: 1rem;
-    flex: 1; // Take remaining space
-    overflow-y: auto; // Scroll restricted to this area
-    min-height: 0; // Allow shrinking
-    padding-right: 4px; // Avoid scrollbar covering content
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+    padding-right: 4px;
 
     &::-webkit-scrollbar {
         width: 4px;
@@ -145,39 +157,42 @@
     }
 
     &::-webkit-scrollbar-thumb {
-        background: var(--border-color);
+        background: #E0E5F2;
         border-radius: 4px;
 
         &:hover {
-            background: var(--text-secondary);
+            background: #A3AED0;
         }
     }
 }
 
 .gallery-item {
-    background: rgba(255, 255, 255, 0.05);
+    background: transparent;
     border-radius: 12px;
-    padding: 0.8rem;
+    padding: 0.5rem;
     cursor: pointer;
     transition: var(--transition);
     border: 1px solid transparent;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
 
     &:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: var(--accent-color);
+        background: #F4F7FE;
         transform: translateY(-2px);
     }
 }
 
 .thumb-wrapper {
     position: relative;
-    width: 100%;
-    height: 140px;
-    border-radius: 8px;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
     overflow: hidden;
-    margin-bottom: 0.8rem;
-    background: #000;
+    margin-bottom: 0;
+    background: #E0E5F2;
+    flex-shrink: 0;
 
     img {
         width: 100%;
@@ -187,25 +202,24 @@
 
     .delete-btn {
         position: absolute;
-        top: 6px;
-        right: 6px;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: rgba(0, 0, 0, 0.6);
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+        background: rgba(0, 0, 0, 0.5);
         color: white;
         border: none;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
-        backdrop-filter: blur(4px);
+        font-size: 1.2rem;
         opacity: 0;
         transition: opacity 0.2s;
 
         &:hover {
-            background: #ff4444;
+            background: rgba(238, 93, 80, 0.8);
         }
     }
 }
@@ -217,11 +231,13 @@
 .gallery-item .meta {
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: 0.1rem;
+    overflow: hidden;
 
     .name {
         font-size: 0.9rem;
-        font-weight: 500;
+        font-weight: 700;
+        color: var(--text-primary);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -230,5 +246,6 @@
     .time {
         font-size: 0.75rem;
         color: var(--text-secondary);
+        font-weight: 500;
     }
 }

@@ -1,15 +1,24 @@
+@use 'app/shared/mixins' as *;
+
 .costos-operativos-container {
-  padding: 2rem;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 h1 {
-  color: #ffffff;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 p {
-  color: #adb5bd;
-  margin-bottom: 2rem;
+  color: var(--text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.actions-bar {
+  margin-bottom: 0;
 }
 
 .costs-container {
@@ -17,26 +26,41 @@ p {
   gap: 2rem;
   flex-wrap: wrap;
 
+  @include mobile {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
   .section {
     flex: 1;
-    min-width: 300px;
-    background: #1e1e2d;
-    /* Dark card background */
-    border-radius: 12px;
+    min-width: 400px;
+    background: var(--card-bg);
+    border-radius: var(--radius);
     padding: 1.5rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-    border: 1px solid #2b2b40;
+    box-shadow: 0 20px 40px -10px rgba(112, 144, 176, 0.12);
+    /* Logip Card Shadow */
+    border: none;
+    transition: var(--transition);
+
+    @include mobile {
+      min-width: 100%;
+      padding: 1rem;
+    }
 
     h2 {
       margin: 0;
       font-size: 1.25rem;
-      color: #ffffff;
+      color: var(--brand-color);
+    }
+
+    small {
+      color: var(--text-secondary);
     }
 
     .section-header {
       margin-bottom: 1.5rem;
-      border-bottom: 1px solid #2b2b40;
-      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
     }
 
     .section-footer {
@@ -53,6 +77,16 @@ p {
 
 .table-responsive {
   overflow-x: auto;
+
+  /* Logip Scrollbar */
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #E0E5F2;
+    border-radius: 10px;
+  }
 }
 
 table {
@@ -62,16 +96,17 @@ table {
 
   th,
   td {
-    padding: 16px;
+    padding: 16px 12px;
     text-align: left;
-    border-bottom: 1px solid #2b2b40;
+    border-bottom: 1px solid #E0E5F2;
+    /* Subtler border */
     font-size: 0.95rem;
   }
 
   th {
     font-weight: 600;
-    color: #92929f;
-    background-color: #1e1e2d;
+    color: var(--text-secondary);
+    background-color: transparent;
     white-space: nowrap;
     text-transform: uppercase;
     font-size: 0.75rem;
@@ -79,71 +114,110 @@ table {
   }
 
   td {
-    color: #c5c5d2;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  /* Remove last border */
+  tr:last-child td {
+    border-bottom: none;
   }
 
   tbody tr:hover {
-    background-color: #2b2b40;
-    transition: background-color 0.1s ease;
+    background-color: #F4F7FE;
+    /* Light hover */
+    transition: background-color 0.2s ease;
+  }
+
+  .text-right {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
   }
 }
 
 .btn-edit {
   background: transparent;
-  border: 1px solid #4b4b61;
-  color: #adb5bd;
-  padding: 4px 12px;
-  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 50px;
   font-size: 0.8rem;
   cursor: pointer;
   transition: all 0.2s ease;
+  font-weight: 500;
 
   &:hover {
-    background: #4b4b61;
-    color: #ffffff;
+    background: var(--accent-color);
+    color: white;
+    border-color: var(--accent-color);
+  }
+}
+
+/* Primary Button Global Override if not using util class directly */
+.btn-primary {
+  background: var(--accent-color);
+  border: none;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 50px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: 0 4px 10px rgba(67, 24, 255, 0.2);
+
+  &:hover {
+    background: var(--accent-hover);
+    transform: translateY(-2px);
   }
 }
 
 .btn-add {
-  background: #7239ea;
-  border: none;
-  color: #ffffff;
-  padding: 10px 20px;
-  border-radius: 6px;
+  @extend .btn-primary;
+  width: 100%;
+  /* Make add button full width inside card footer? Or minimal pill? Keep regular */
+  width: auto;
   font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background 0.2s ease;
+  padding: 8px 16px;
+  background: rgba(67, 24, 255, 0.1);
+  color: var(--accent-color);
+  box-shadow: none;
 
   &:hover {
-    background: #5d29cc;
+    background: var(--accent-color);
+    color: white;
   }
 }
 
-.btn-primary {
-  @extend .btn-add;
-}
-
 .btn-secondary {
-  background: #4b4b61;
-  color: white;
-  border: none;
+  background: white;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: 50px;
   cursor: pointer;
+  font-weight: 500;
 
   &:hover {
-    background: #5a5a72;
+    background: #F4F7FE;
   }
 }
 
 .btn-danger {
-  background: #dc3545;
-  color: white;
+  background: rgba(238, 93, 80, 0.1);
+  color: var(--danger);
   border: none;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 6px 12px;
+  border-radius: 50px;
   cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+
+  &:hover {
+    background: var(--danger);
+    color: white;
+  }
 }
 
 // Modal Styles
@@ -153,7 +227,9 @@ table {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.2);
+  /* Lighter backdrop */
+  backdrop-filter: blur(2px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -161,25 +237,29 @@ table {
 }
 
 .modal-content {
-  background: #1e1e2d;
+  background: var(--card-bg);
   padding: 2rem;
-  border-radius: 12px;
+  border-radius: var(--radius);
   width: 500px;
   max-width: 90%;
-  color: white;
-  border: 1px solid #2b2b40;
+  color: var(--text-primary);
+  border: none;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
 
   h2 {
     margin-top: 0;
+    margin-bottom: 1.5rem;
+    color: var(--brand-color);
   }
 
   .form-group {
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
 
     label {
       display: block;
       margin-bottom: 0.5rem;
-      color: #adb5bd;
+      color: var(--text-primary);
+      font-weight: 500;
     }
   }
 
@@ -193,15 +273,20 @@ table {
 
 .form-control {
   width: 100%;
-  padding: 10px;
-  border-radius: 6px;
-  border: 1px solid #2b2b40;
-  background: #151521;
-  color: white;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: #F4F7FE;
+  /* Light input bg */
+  color: var(--text-primary);
+  font-family: inherit;
+  transition: 0.2s;
 
   &:focus {
     outline: none;
-    border-color: #7239ea;
+    background: white;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1);
   }
 }
 
@@ -215,6 +300,7 @@ table {
 .attribute-row {
   display: flex;
   gap: 0.5rem;
+  align-items: center;
 
   input {
     flex: 1;

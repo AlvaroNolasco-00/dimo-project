@@ -11,46 +11,47 @@
   width: 100%;
   height: 100%;
   background-color: var(--sidebar-bg);
-  padding: 1.5rem;
+  padding: 2rem 1.5rem;
+  /* More breathing room */
   display: flex;
   flex-direction: column;
-  border-right: 1px solid var(--border-color);
+  /* border-right: 1px solid var(--border-color); */
+  /* Removed border for cleaner look, effectively invisible with light bg */
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.4s, transform 0.3s ease;
   position: relative;
   box-sizing: border-box;
   flex-shrink: 0;
-  z-index: 1000; // High z-index to sit on top on mobile
+  z-index: 1000;
 
   @include mobile {
     position: absolute;
     left: 0;
     top: 0;
     height: 100%;
-    transform: translateX(-100%); // Hidden by default on mobile
-    box-shadow: 4px 0 15px rgba(0, 0, 0, 0.5);
-    width: 100%; // Slightly wider on mobile for better touch
-    z-index: 2000; // Above navbar backdrop
+    transform: translateX(-100%);
+    box-shadow: 4px 0 25px rgba(0, 0, 0, 0.05);
+    /* Softer shadow */
+    width: 280px;
+    z-index: 2000;
   }
 
   &.mobile-open {
     @include mobile {
-      transform: translateX(0); // Visible when open
+      transform: translateX(0);
     }
   }
 }
 
 .sidebar.collapsed {
-  width: 80px;
-  padding: 1.5rem 0.5rem;
+  width: 90px;
+  /* Slightly wider collapsed state */
+  padding: 2rem 1rem;
 
   @include mobile {
-    // On mobile, 'collapsed' state from desktop logic essentially gets ignored 
-    // or reset because we want the drawer implementation
     width: 280px;
-    padding: 1.5rem;
-    transform: translateX(-100%); // Still hidden if not open
+    padding: 2rem 1.5rem;
+    transform: translateX(-100%);
 
-    // If it *is* open, we want it full width, not skinny
     &.mobile-open {
       transform: translateX(0);
     }
@@ -61,28 +62,31 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 3rem;
+  margin-bottom: 3.5rem;
   width: 100%;
+  padding: 0 0.5rem;
 }
 
 .collapsed .sidebar-header {
   flex-direction: column;
   gap: 1rem;
   justify-content: center;
+  padding: 0;
 
   @include mobile {
-    flex-direction: row; // Reset for mobile drawer
+    flex-direction: row;
     justify-content: space-between;
+    padding: 0 0.5rem;
   }
 }
 
 .toggle-btn {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
   width: 32px;
   height: 32px;
-  border-radius: 8px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -90,13 +94,12 @@
   transition: var(--transition);
 
   &:hover {
-    background-color: var(--accent-color);
-    color: white;
-    border-color: var(--accent-color);
+    background-color: var(--bg-color);
+    color: var(--accent-color);
   }
 
   @include mobile {
-    display: none; // Hide collapse toggle on mobile
+    display: none;
   }
 }
 
@@ -104,18 +107,22 @@
   display: flex;
   align-items: center;
   gap: 0.8rem;
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--accent-color);
+  font-size: 1.75rem;
+  /* Larger logo text */
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
 
   i {
     font-size: 2rem;
-    min-width: 2rem;
+    color: var(--text-primary);
+    /* Logo icon black/dark navy */
   }
 
   span {
     white-space: nowrap;
     opacity: 1;
+    letter-spacing: -0.5px;
     transition: opacity 0.3s;
   }
 }
@@ -145,12 +152,12 @@
 nav {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  flex: 1; // Take remaining height
-  overflow-y: auto; // Scroll if too long
-  min-height: 0; // Allow flex shrinkage
+  gap: 0.75rem;
+  /* Spacing between items */
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 
-  // Custom Scrollbar for nav
   &::-webkit-scrollbar {
     width: 4px;
   }
@@ -160,20 +167,21 @@ nav {
   }
 
   &::-webkit-scrollbar-thumb {
-    background: var(--border-color);
+    background: #E0E5F2;
     border-radius: 4px;
+    visibility: hidden;
+  }
 
-    &:hover {
-      background: var(--text-secondary);
-    }
+  &:hover::-webkit-scrollbar-thumb {
+    visibility: visible;
   }
 }
 
 .nav-btn {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem;
+  gap: 1.2rem;
+  padding: 0.8rem 1rem;
   border: none;
   background: transparent;
   color: var(--text-secondary);
@@ -182,25 +190,50 @@ nav {
   font-weight: 500;
   cursor: pointer;
   border-radius: var(--radius);
-  transition: var(--transition);
+  transition: all 0.2s ease;
   text-align: left;
   text-decoration: none;
   overflow: hidden;
+  position: relative;
 
   &:hover {
-    background-color: hsla(260, 100%, 65%, 0.1);
     color: var(--text-primary);
+    background: transparent;
+
+    i {
+      color: var(--accent-color);
+    }
   }
 
   &.active {
-    background-color: var(--accent-color);
-    color: white;
-    box-shadow: 0 4px 20px hsla(260, 100%, 65%, 0.4);
+    color: var(--text-primary);
+    font-weight: 700;
+
+    /* Right border indicator line to match "Logip" style implication or just clean bold */
+    &::after {
+      content: '';
+      position: absolute;
+      right: -1.5rem;
+      /* Stick to right edge */
+      top: 50%;
+      transform: translateY(-50%);
+      height: 24px;
+      width: 4px;
+      background: var(--accent-color);
+      border-radius: 4px 0 0 4px;
+      display: block;
+    }
+
+    i {
+      color: var(--accent-color);
+      font-weight: 700;
+    }
   }
 
   i {
-    font-size: 1.4rem;
-    min-width: 1.4rem;
+    font-size: 1.5rem;
+    min-width: 1.5rem;
+    transition: color 0.2s;
   }
 
   .btn-text {
@@ -211,8 +244,13 @@ nav {
 
 .collapsed .nav-btn {
   justify-content: center;
-  padding: 1rem 0;
+  padding: 0.8rem 0;
   gap: 0;
+
+  &.active::after {
+    right: 0;
+    /* Align to edge in collapsed mode */
+  }
 
   i {
     margin: 0;
@@ -228,12 +266,12 @@ nav {
 
   @include mobile {
     justify-content: flex-start;
-    padding: 1rem;
-    gap: 1rem;
+    padding: 0.8rem 1rem;
+    gap: 1.2rem;
 
     i {
       margin-right: 0;
-      min-width: 1.4rem;
+      min-width: 1.5rem;
     }
 
     .btn-text {
@@ -241,13 +279,16 @@ nav {
       width: auto;
       visibility: visible;
     }
+
+    &.active::after {
+      right: -1.5rem;
+    }
   }
 }
 
 .sidebar-footer {
   margin-top: auto;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -261,10 +302,11 @@ nav {
 }
 
 .user-avatar {
-  width: 36px;
-  height: 36px;
-  background: var(--accent-color);
-  color: white;
+  width: 40px;
+  height: 40px;
+  background: var(--bg-color);
+  /* Light bg for avatar placeholder */
+  color: var(--brand-color);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -281,8 +323,8 @@ nav {
 
 .user-email {
   color: var(--text-primary);
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: 0.9rem;
+  font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -299,8 +341,8 @@ nav {
   gap: 1rem;
   padding: 0.8rem 1rem;
   border: none;
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
+  background: transparent;
+  color: var(--text-secondary);
   font-family: inherit;
   font-size: 0.95rem;
   font-weight: 500;
@@ -310,12 +352,16 @@ nav {
   width: 100%;
 
   &:hover {
-    background-color: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
+    color: var(--danger);
+    background: rgba(238, 93, 80, 0.05);
+
+    i {
+      color: var(--danger);
+    }
   }
 
   i {
-    font-size: 1.2rem;
+    font-size: 1.4rem;
   }
 }
 

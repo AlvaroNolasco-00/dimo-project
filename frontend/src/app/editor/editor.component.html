@@ -1,11 +1,55 @@
 <div class="editor-main-wrapper">
-    <header>
-        <h1>{{ title() }}</h1>
-        <p>{{ description() }}</p>
-    </header>
-
     <div class="workspace-container">
         <div class="editor-area" [class.has-not-file]="!hasFile()">
+            <header>
+                <div class="header-content">
+                    <h1>{{ title() }}</h1>
+                    <p>{{ description() }}</p>
+                </div>
+
+                <!-- Dashboard Stats Row -->
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-icon icon-success">
+                            <i class="ph ph-check-circle"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="label">Procesadas</span>
+                            <div class="value-row">
+                                <span class="value">{{ sessionGallery().length }}</span>
+                                <span class="badge badge-success">+2 hoy</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon icon-warning">
+                            <i class="ph ph-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="label">Tiempo Ahorrado</span>
+                            <div class="value-row">
+                                <span class="value">31h</span>
+                                <span class="badge badge-danger">-5m</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon icon-info">
+                            <i class="ph ph-trend-up"></i>
+                        </div>
+                        <div class="stat-info">
+                            <span class="label">Eficiencia</span>
+                            <div class="value-row">
+                                <span class="value">93%</span>
+                                <span class="badge badge-info">+12%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
             <!-- Upload Zone -->
             @if (!hasFile()) {
             <app-editor-upload (fileSelected)="handleFile($event)">
