@@ -1,78 +1,100 @@
 <div class="user-list-container">
-  <h2>Listado de Usuarios</h2>
-
-  <div class="controls">
-    <div class="actions-row">
-      @if (isAdmin) {
-      <button class="btn-create" [routerLink]="['/usuarios/creacion']">
-        <i class="ph ph-plus"></i>
-        Nuevo Usuario
-      </button>
-      }
+  <div class="header">
+    <div class="title-section">
+      <h1>Usuarios</h1>
+      <p>Gestión y administración de usuarios de la plataforma</p>
     </div>
-
-    <div class="filters-row">
-      <div class="search-box">
-        <i class="ph ph-magnifying-glass search-icon"></i>
-        <input type="text" placeholder="Buscar por nombre o correo..." [(ngModel)]="search" (input)="onSearch($event)"
-          class="search-input">
-      </div>
-
-      <div class="filters-group">
-        <div class="filter-item">
-          <label>Estado</label>
-          <select [(ngModel)]="filterStatus" (change)="onFilterChange()">
-            <option [ngValue]="null">Todos</option>
-            <option [ngValue]="false">Pendiente</option>
-            <option [ngValue]="true">Aprobado</option>
-          </select>
-        </div>
-
-        <div class="filter-item">
-          <label>Rol</label>
-          <select [(ngModel)]="filterRole" (change)="onFilterChange()">
-            <option [ngValue]="null">Todos</option>
-            <option [ngValue]="false">Usuario</option>
-            <option [ngValue]="true">Admin</option>
-          </select>
-        </div>
-      </div>
-    </div>
+    @if (isAdmin) {
+    <a [routerLink]="['/usuarios/creacion']" class="btn-primary">
+      <i class="ph ph-plus"></i>
+      Nuevo Usuario
+    </a>
+    }
   </div>
 
-  <div class="table-container">
-    <div class="loader-overlay" *ngIf="loading">
-      <div class="loader"></div>
+  <div class="section-container">
+    <div class="section-header-row">
+      <div class="subtitle-group">
+        <h2>Listado de Usuarios</h2>
+        <span class="count-badge">Total: {{ total }} usuarios registrados</span>
+      </div>
     </div>
 
-    <div class="table-responsive">
-      <table class="user-table">
+    <div class="table-container">
+      <div class="table-toolbar">
+        <div class="filters">
+          <div class="search-box">
+            <div class="input-wrapper small has-icon">
+              <i class="ph ph-magnifying-glass"></i>
+              <input type="text" placeholder="Buscar por nombre o correo..." [(ngModel)]="search"
+                (input)="onSearch($event)">
+            </div>
+          </div>
+
+          <div class="filters-group">
+            <div class="input-wrapper small has-icon">
+              <i class="ph ph-funnel"></i>
+              <select [(ngModel)]="filterStatus" (change)="onFilterChange()">
+                <option [ngValue]="null">Todos los estados</option>
+                <option [ngValue]="false">Pendientes</option>
+                <option [ngValue]="true">Aprobados</option>
+              </select>
+              <i class="ph ph-caret-down select-icon"></i>
+            </div>
+
+            <div class="input-wrapper small has-icon">
+              <i class="ph ph-user-circle"></i>
+              <select [(ngModel)]="filterRole" (change)="onFilterChange()">
+                <option [ngValue]="null">Todos los roles</option>
+                <option [ngValue]="false">Usuario</option>
+                <option [ngValue]="true">Administrador</option>
+              </select>
+              <i class="ph ph-caret-down select-icon"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="loader-overlay" *ngIf="loading">
+        <div class="spinner"></div>
+      </div>
+
+      <table class="data-table">
         <thead>
           <tr>
             <th (click)="sort('id')" class="sortable">
-              ID
-              <i class="ph" *ngIf="sortBy === 'id'"
-                [ngClass]="sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down'"></i>
+              <div class="th-content">
+                <span>ID</span>
+                <i class="ph"
+                  [ngClass]="sortBy === 'id' ? (sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down') : 'ph-arrows-down-up'"></i>
+              </div>
             </th>
             <th (click)="sort('full_name')" class="sortable">
-              Nombre Completo
-              <i class="ph" *ngIf="sortBy === 'full_name'"
-                [ngClass]="sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down'"></i>
+              <div class="th-content">
+                <span>Nombre Completo</span>
+                <i class="ph"
+                  [ngClass]="sortBy === 'full_name' ? (sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down') : 'ph-arrows-down-up'"></i>
+              </div>
             </th>
             <th (click)="sort('email')" class="sortable">
-              Correo Electrónico
-              <i class="ph" *ngIf="sortBy === 'email'"
-                [ngClass]="sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down'"></i>
+              <div class="th-content">
+                <span>Correo Electrónico</span>
+                <i class="ph"
+                  [ngClass]="sortBy === 'email' ? (sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down') : 'ph-arrows-down-up'"></i>
+              </div>
             </th>
             <th (click)="sort('is_approved')" class="sortable">
-              Estado
-              <i class="ph" *ngIf="sortBy === 'is_approved'"
-                [ngClass]="sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down'"></i>
+              <div class="th-content">
+                <span>Estado</span>
+                <i class="ph"
+                  [ngClass]="sortBy === 'is_approved' ? (sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down') : 'ph-arrows-down-up'"></i>
+              </div>
             </th>
             <th (click)="sort('is_admin')" class="sortable">
-              Rol
-              <i class="ph" *ngIf="sortBy === 'is_admin'"
-                [ngClass]="sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down'"></i>
+              <div class="th-content">
+                <span>Rol</span>
+                <i class="ph"
+                  [ngClass]="sortBy === 'is_admin' ? (sortOrder === 'asc' ? 'ph-caret-up' : 'ph-caret-down') : 'ph-arrows-down-up'"></i>
+              </div>
             </th>
             <th>Acciones</th>
           </tr>
@@ -80,37 +102,53 @@
         <tbody>
           @for (user of users; track user.id) {
           <tr>
-            <td>{{ user.id }}</td>
+            <td class="fw-bold">#{{ user.id }}</td>
             <td>{{ user.full_name || 'N/A' }}</td>
             <td>{{ user.email }}</td>
             <td>
-              <span [class.status-approved]="user.is_approved" [class.status-pending]="!user.is_approved">
+              <span class="badge" [ngClass]="user.is_approved ? 'badge-success' : 'badge-warning'">
                 {{ user.is_approved ? 'Aprobado' : 'Pendiente' }}
               </span>
             </td>
-            <td>{{ user.is_admin ? 'Admin' : 'Usuario' }}</td>
             <td>
+              <span class="badge badge-info" *ngIf="user.is_admin">Admin</span>
+              <span *ngIf="!user.is_admin">Usuario</span>
+            </td>
+            <td class="actions">
               @if (!user.is_approved) {
-              <button (click)="approve(user)" class="btn-approve">Aprobar</button>
+              <button (click)="approve(user)" class="btn-icon success" title="Aprobar usuario">
+                <i class="ph ph-check-circle"></i>
+              </button>
               }
             </td>
           </tr>
           }
-          @if (users.length === 0) {
+          @if (users.length === 0 && !loading) {
           <tr>
-            <td colspan="6" class="no-data">No se encontraron usuarios.</td>
+            <td colspan="6" class="empty-state">
+              <i class="ph ph-users-three"></i>
+              <p>No se encontraron usuarios.</p>
+            </td>
           </tr>
           }
         </tbody>
       </table>
-    </div>
-  </div>
 
-  <div class="pagination">
-    <span>Mostrando página {{ page }} de {{ Math.ceil(total / limit) || 1 }} (Total: {{ total }} usuarios)</span>
-    <div class="pagination-buttons">
-      <button (click)="changePage(page - 1)" [disabled]="page === 1">Anterior</button>
-      <button (click)="changePage(page + 1)" [disabled]="page * limit >= total">Siguiente</button>
+      <!-- Pagination -->
+      <div class="pagination-footer">
+        <div class="pagination-info">
+          Mostrando página {{ page }} de {{ Math.ceil(total / limit) || 1 }} (Total: {{ total }} usuarios)
+        </div>
+        <div class="pagination-actions">
+          <button class="btn-pagination" (click)="changePage(page - 1)" [disabled]="page === 1">
+            <i class="ph ph-caret-left"></i>
+          </button>
+          <span class="page-indicator">{{ page }}</span>
+          <button class="btn-pagination" (click)="changePage(page + 1)" [disabled]="page * limit >= total">
+            <i class="ph ph-caret-right"></i>
+          </button>
+        </div>
+      </div>
     </div>
   </div>
 </div>

@@ -1,0 +1,107 @@
+<div class="container fade-in">
+    <div class="header-actions">
+        <button class="btn-secondary" routerLink="/gestion/finanzas">
+            <i class="ph ph-arrow-left"></i> Volver
+        </button>
+        <div class="spacer"></div>
+        <button class="btn-primary" (click)="openModal()">
+            <i class="ph ph-plus"></i> Nuevo Cupón
+        </button>
+    </div>
+
+    <h1>Cupones de Descuento</h1>
+    <p class="description">Gestiona los cupones disponibles, incluido el cupón FIDELITY (automático).</p>
+
+    <div class="coupons-grid">
+        <div class="coupon-card card" *ngFor="let coupon of coupons">
+            <div class="coupon-header">
+                <h3>{{coupon.code}}</h3>
+                <span class="badge" [ngClass]="coupon.is_active ? 'badge-success' : 'badge-danger'">
+                    {{coupon.is_active ? 'Activo' : 'Inactivo'}}
+                </span>
+            </div>
+
+            <div class="coupon-body">
+                <div class="discount-value">
+                    <span *ngIf="coupon.discount_type === 'FIXED'">{{coupon.discount_value | currency}}</span>
+                    <span *ngIf="coupon.discount_type === 'PERCENTAGE'">{{coupon.discount_value}}%</span>
+                    <small>Descuento</small>
+                </div>
+
+                <div class="detail-row" *ngIf="coupon.min_purchase_amount > 0">
+                    <span>Mín. Compra:</span>
+                    <span>{{coupon.min_purchase_amount | currency}}</span>
+                </div>
+
+                <div class="fidelity-tag" *ngIf="coupon.code === 'FIDELITY'">
+                    <i class="ph ph-star"></i> Automático (Fidelidad)
+                </div>
+            </div>
+        </div>
+
+        <div class="empty-state" *ngIf="coupons.length === 0 && !loading">
+            <p>No tienes cupones creados.</p>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+    <div class="modal-content card fade-in" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>Nuevo Cupón</h2>
+            <button class="btn-icon-only" (click)="closeModal()">
+                <i class="ph ph-x"></i>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <div class="form-container">
+                <div class="form-group">
+                    <label>Código del Cupón</label>
+                    <div class="input-wrapper">
+                        <i class="ph ph-tag left-icon"></i>
+                        <input type="text" [(ngModel)]="newCoupon.code" placeholder="Ej. SUMMER2024"
+                            (input)="newCoupon.code = newCoupon.code.toUpperCase()">
+                    </div>
+                    <small>Se mostrará en mayúsculas automáticamente.</small>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Tipo de Descuento</label>
+                        <div class="input-wrapper">
+                            <select [(ngModel)]="newCoupon.discount_type">
+                                <option value="FIXED">Monto Fijo ($)</option>
+                                <option value="PERCENTAGE">Porcentaje (%)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Valor</label>
+                        <div class="input-wrapper">
+                            <i class="ph ph-currency-dollar left-icon" *ngIf="newCoupon.discount_type === 'FIXED'"></i>
+                            <i class="ph ph-percent left-icon" *ngIf="newCoupon.discount_type === 'PERCENTAGE'"></i>
+                            <input type="number" [(ngModel)]="newCoupon.discount_value" placeholder="0.00">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Compra Mínima (Opcional)</label>
+                    <div class="input-wrapper">
+                        <i class="ph ph-currency-dollar left-icon"></i>
+                        <input type="number" [(ngModel)]="newCoupon.min_purchase_amount" placeholder="0.00">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-secondary" (click)="closeModal()">Cancelar</button>
+            <button class="btn-primary" (click)="saveCoupon()"
+                [disabled]="!newCoupon.code || !newCoupon.discount_value">
+                <i class="ph ph-check"></i> Crear Cupón
+            </button>
+        </div>
+    </div>
+</div>

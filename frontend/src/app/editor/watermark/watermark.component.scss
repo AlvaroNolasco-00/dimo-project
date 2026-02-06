@@ -14,7 +14,8 @@
     display: flex;
     gap: 1.5rem;
     width: 100%;
-    height: 100%;
+    flex: 1;
+    /* Changed from height: 100% to flex: 1 */
     min-height: 0;
     overflow: hidden;
 
@@ -67,7 +68,7 @@ p {
     width: 300px;
     flex-shrink: 0;
     padding: 2rem;
-    background: var(--bg-secondary);
+    background: var(--bg-color);
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
@@ -87,154 +88,7 @@ p {
     }
 }
 
-/* Session Sidebar */
-.session-sidebar {
-    width: 280px;
-    background: var(--bg-secondary);
-    /* or sidebar-bg var if exists */
-    border-left: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    padding: 1.5rem;
-    gap: 1.5rem;
-    overflow-y: auto;
-    flex-shrink: 0;
-    background: rgba(30, 30, 35, 0.6);
-    backdrop-filter: blur(10px);
 
-    @include mobile {
-        // Keep it as a drawer or hide it? 
-        // Consistent with Editor: off-canvas
-        position: fixed;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        z-index: 60;
-        transform: translateX(100%);
-        transition: transform 0.3s ease;
-        background: var(--card-bg);
-        width: 80%;
-
-        &.active {
-            // Assuming similar class or structure
-            transform: translateX(0);
-        }
-
-        // Note: Watermark sidebar logic needs to support this.
-        // Does it have a collapsed state in the SCSS? No 'collapsed' class in view_file output?
-        // Ah, line 1 shows :host... line 58 shows .session-sidebar.
-        // It doesn't seem to have the collapsed logic from editor.
-        // It's just a sidebar.
-        // So on mobile, we might just hide it and use a toggle?
-        // Or put it at the bottom?
-        display: none; // Hide for now unless we add a toggle.
-    }
-}
-
-.gallery-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-
-    h3 {
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin: 0;
-    }
-
-    .count {
-        background: var(--primary-color);
-        color: white;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        font-weight: 600;
-    }
-}
-
-.gallery-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.gallery-item {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    padding: 0.8rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 1px solid transparent;
-
-    &:hover {
-        background: rgba(255, 255, 255, 0.1);
-        border-color: var(--primary-color);
-        transform: translateY(-2px);
-    }
-}
-
-.thumb-wrapper {
-    position: relative;
-    width: 100%;
-    height: 140px;
-    border-radius: 8px;
-    overflow: hidden;
-    margin-bottom: 0.8rem;
-    background: #000;
-
-    img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .delete-btn {
-        position: absolute;
-        top: 6px;
-        right: 6px;
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: rgba(0, 0, 0, 0.6);
-        color: white;
-        border: none;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        backdrop-filter: blur(4px);
-        opacity: 0;
-        transition: opacity 0.2s;
-
-        &:hover {
-            background: #ff4444;
-        }
-    }
-}
-
-.gallery-item:hover .delete-btn {
-    opacity: 1;
-}
-
-.gallery-item .meta {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-
-    .name {
-        font-size: 0.9rem;
-        font-weight: 500;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .time {
-        font-size: 0.75rem;
-        color: var(--text-secondary);
-    }
-}
 
 .control-group {
     display: flex;
@@ -285,73 +139,13 @@ canvas {
 
 .hint {
     font-size: 0.8rem;
-    color: var(--primary-color);
+    color: var(--accent-color);
     margin-top: 0.5rem;
 }
 
-.btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: none;
-    font-size: 0.95rem;
-    box-sizing: border-box;
+.full-width {
+    width: 100%;
 }
-
-.btn.primary {
-    background: var(--primary-color);
-    color: white;
-
-    &:hover:not(:disabled) {
-        background: var(--primary-hover, color-mix(in srgb, var(--primary-color), white 10%));
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-
-    &:active:not(:disabled) {
-        transform: translateY(0);
-    }
-
-    &:disabled {
-        background: var(--bg-muted, #3a3a3a);
-        color: var(--text-muted, #888);
-        cursor: not-allowed;
-        opacity: 0.7;
-        transform: none;
-        box-shadow: none;
-    }
-}
-
-.btn.secondary {
-    background: var(--input-bg);
-    color: var(--text-primary);
-    border: 1px solid var(--border-color);
-}
-
-.btn.session {
-    background: rgba(255, 255, 255, 0.1);
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    border: 1px solid var(--border-color);
-
-    i {
-        font-size: 1.1rem;
-    }
-
-    &:hover {
-        background: rgba(255, 255, 255, 0.2);
-        border-color: var(--primary-color);
-    }
-}
-
 
 .action-buttons {
     display: flex;
@@ -382,30 +176,6 @@ canvas {
     to {
         transform: rotate(360deg);
     }
-}
-
-.btn.disabled,
-.btn:disabled {
-    opacity: 0.5;
-    pointer-events: none;
-    cursor: not-allowed;
-    filter: grayscale(0.5);
-}
-
-.btn.secondary:hover {
-    background: var(--hover-bg);
-}
-
-.btn.full-width {
-    width: 100%;
-}
-
-.btn.download {
-    background: var(--success-color, #10b981);
-    color: white;
-    text-decoration: none;
-    display: flex;
-    /* Ensure it behaves as flex even if it's an 'a' tag */
 }
 
 .result-container {

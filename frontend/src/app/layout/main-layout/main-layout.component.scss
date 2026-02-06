@@ -10,10 +10,10 @@
     transition: grid-template-columns 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 
     &.has-sidebar {
-        grid-template-columns: 290px 1fr;
+        grid-template-columns: 280px 1fr;
 
         &.sidebar-collapsed {
-            grid-template-columns: 110px 1fr;
+            grid-template-columns: 80px 1fr;
         }
 
         @include mobile {
@@ -28,7 +28,7 @@
     background: var(--sidebar-bg);
     border-right: 1px solid var(--border-color);
     position: relative;
-    z-index: 100;
+    z-index: 1100;
 
     @include mobile {
         position: absolute;
@@ -40,7 +40,7 @@
         background: transparent;
         border: none;
 
-        ::ng-deep app-sidebar {
+        ::ng-deep app-shared-sidebar {
             pointer-events: auto;
         }
     }

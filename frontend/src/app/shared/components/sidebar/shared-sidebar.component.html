@@ -1,0 +1,119 @@
+<aside class="sidebar" [class.collapsed]="isCollapsed">
+    <div class="sidebar-header">
+        <div class="logo">
+            <div class="logo-icon">
+                <div class="dot-grid">
+                    <span></span><span></span><span></span>
+                    <span></span><span></span><span></span>
+                    <span></span><span></span><span></span>
+                </div>
+            </div>
+            <span class="logo-text">{{ logoText }}</span>
+        </div>
+    </div>
+
+    <nav class="sidebar-nav">
+        <div class="nav-section">
+            @for (item of menuItems; track item.route) {
+            @if (!item.isAdminOnly || authService.isAdmin()) {
+            <a [routerLink]="item.route" routerLinkActive="active" class="nav-item" [title]="item.label">
+                <i class="ph" [class]="item.icon"></i>
+                <span class="item-label">{{ item.label }}</span>
+            </a>
+            }
+            }
+        </div>
+    </nav>
+
+    <div class="sidebar-footer">
+
+
+        <div class="bottom-nav">
+            <a class="nav-item secondary" routerLink="/help">
+                <i class="ph ph-info"></i>
+                <span class="item-label">Help & information</span>
+            </a>
+        </div>
+
+        <div class="user-menu-container" #userMenuContainer>
+            <div class="user-menu-trigger" (click)="toggleDropdown($event)" [class.collapsed]="isCollapsed">
+                <div class="user-avatar">
+                    @if (getUserAvatarUrl()) {
+                    <img [src]="getUserAvatarUrl()" alt="Avatar" class="avatar-img">
+                    } @else {
+                    <i class="ph ph-user"></i>
+                    }
+                </div>
+                <div class="user-info">
+                    <span class="user-name">{{ getUserDisplayName() }}</span>
+                    <div class="plan-info">
+                        <span class="plan-name">{{ authService.user()?.plan || 'Plan Gratuito' }}</span>
+                        @if (!authService.user()?.plan || authService.user()?.plan === 'Free' ||
+                        authService.user()?.plan === 'Free Plan' || authService.user()?.plan === 'Plan Gratuito') {
+                        <div class="upgrade-mini-btn" (click)="openPlans($event)">
+                            <i class="ph ph-info"></i>
+                            <span>Mejorar</span>
+                        </div>
+                        }
+                    </div>
+                </div>
+                <i class="ph ph-caret-up" [class.rotated]="isDropdownOpen()"></i>
+            </div>
+
+            @if (isDropdownOpen()) {
+            <div class="user-dropdown">
+                <a class="dropdown-item" routerLink="/profile" (click)="closeDropdown()">
+                    <i class="ph ph-user-circle"></i>
+                    <span>Ver perfil</span>
+                </a>
+                <button class="dropdown-item logout" (click)="logout()">
+                    <i class="ph ph-sign-out"></i>
+                    <span>Cerrar sesión</span>
+                </button>
+            </div>
+            }
+        </div>
+    </div>
+</aside>
+
+@if (showPlansModal()) {
+<div class="modal-overlay" (click)="closePlans()">
+    <div class="plans-modal" (click)="$event.stopPropagation()">
+        <button class="modal-close" (click)="closePlans()">
+            <i class="ph ph-x"></i>
+        </button>
+
+        <div class="modal-header">
+            <h2>Mejorar Plan</h2>
+            <p>Elige el plan que mejor se adapte a tus necesidades</p>
+        </div>
+
+        <div class="plans-grid">
+            @for (plan of plans; track plan.name) {
+            <div class="plan-card" [class.recommended]="plan.recommended">
+                @if (plan.recommended) {
+                <div class="recommended-badge">Recomendado</div>
+                }
+                <div class="plan-header">
+                    <h3>{{ plan.name }}</h3>
+                    <div class="plan-price">{{ plan.price }}</div>
+                </div>
+
+                <ul class="plan-features">
+                    @for (feature of plan.features; track feature) {
+                    <li>
+                        <i class="ph ph-check-circle"></i>
+                        <span>{{ feature }}</span>
+                    </li>
+                    }
+                </ul>
+
+                <button class="plan-btn" [class.outline]="!plan.recommended">
+                    {{ plan.current ? 'Plan Actual' : 'Elegir Plan' }}
+                </button>
+            </div>
+            }
+        </div>
+    </div>
+</div>
+}

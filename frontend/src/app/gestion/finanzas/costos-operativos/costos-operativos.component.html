@@ -1,20 +1,39 @@
 <div class="costos-operativos-container">
-  <h1>Costos Operativos</h1>
-  <p>Aquí podrás gestionar y visualizar todos los costos operativos del negocio.</p>
+  <div class="header-section mb-4">
+    <h1>Costos Operativos</h1>
+    <p>Aquí podrás gestionar y visualizar todos los costos operativos del negocio.</p>
+  </div>
 
-  <div class="actions-bar" style="margin-bottom: 20px;">
-    <button class="btn-primary" (click)="openTypeModal()">+ Nuevo Tipo de Gasto</button>
+  <div class="actions-bar mb-4">
+    <button class="btn-primary" (click)="openTypeModal()">
+      <i class="ph ph-plus-circle"></i>
+      Nuevo Tipo de Gasto
+    </button>
   </div>
 
   <div class="costs-container">
     @for (type of costTypes; track type.id) {
-    <div class="section">
-      <div class="section-header">
-        <h2>{{ type.name }}</h2>
-        <small>{{ type.description }}</small>
+    <div class="table-container">
+      <div class="table-toolbar">
+        <div class="d-flex justify-content-between align-items-center w-100">
+          <div>
+            <div class="d-flex align-items-center gap-2">
+              <h3 class="m-0">{{ type.name }}</h3>
+              @if (type.requires_art) {
+              <span class="badge badge-info">Requiere Arte</span>
+              }
+            </div>
+            <p class="text-secondary small m-0">{{ type.description }}</p>
+          </div>
+          <button class="btn-secondary btn-sm" (click)="openCostModal(type.id)">
+            <i class="ph ph-plus"></i>
+            Agregar costo
+          </button>
+        </div>
       </div>
+
       <div class="table-responsive">
-        <table>
+        <table class="data-table">
           <thead>
             <tr>
               @for (col of typeColumns[type.id]; track col) {
@@ -34,24 +53,27 @@
               }
               <td>{{ cost.base_cost | currency }}</td>
               <td class="text-right">
-                <button class="btn-edit" (click)="editCost(cost)">Editar</button>
-                @if (isAdmin) {
-                <button class="btn-danger" (click)="deleteCost(cost.id)" style="margin-left: 8px;">Eliminar</button>
-                }
+                <div class="actions-cell">
+                  <button class="btn-icon" (click)="editCost(cost)" title="Editar">
+                    <i class="ph ph-pencil-simple"></i>
+                  </button>
+                  @if (isAdmin) {
+                  <button class="btn-icon danger" (click)="deleteCost(cost.id)" title="Eliminar">
+                    <i class="ph ph-trash"></i>
+                  </button>
+                  }
+                </div>
               </td>
             </tr>
             } @empty {
             <tr>
-              <td [attr.colspan]="(typeColumns[type.id]?.length || 0) + 2" class="text-center">
-                No hay costos registrados.
+              <td [attr.colspan]="(typeColumns[type.id]?.length || 0) + 2" class="empty-state">
+                No hay costos registrados para este tipo.
               </td>
             </tr>
             }
           </tbody>
         </table>
-      </div>
-      <div class="section-footer">
-        <button class="btn-add" (click)="openCostModal(type.id)">Agregar costo a {{type.name}}</button>
       </div>
     </div>
     }
@@ -71,6 +93,10 @@
       <label>Descripción</label>
       <input type="text" [(ngModel)]="newTypeDesc" class="form-control">
     </div>
+    <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
+      <input type="checkbox" [(ngModel)]="newTypeRequiresArt" id="requiresArt">
+      <label for="requiresArt" style="margin-bottom: 0; cursor: pointer;">Requiere subir arte (diseño)</label>
+    </div>
     <div class="modal-actions">
       <button (click)="closeTypeModal()" class="btn-secondary">Cancelar</button>
       <button (click)="saveType()" class="btn-primary" [disabled]="!newTypeName">Guardar</button>
@@ -84,22 +110,91 @@
 <div class="modal-backdrop">
   <div class="modal-content">
     <h2>{{ editingCostId ? 'Editar' : 'Agregar' }} Costo</h2>
-    <div class="form-group">
-      <label>Costo Base</label>
-      <input type="number" [(ngModel)]="newCostBase" class="form-control">
+    <div class="row">
+      <div class="col-md-6 form-group">
+        <label>Costo Base</label>
+        <input type="number" [(ngModel)]="newCostBase" class="form-control">
+      </div>
+      <div class="col-md-6 form-group">
+        <label>Tipo de Costo</label>
+        <select [(ngModel)]="costMode" class="form-control">
+          <option value="simple">Simple</option>
+          <option value="variants">Con Variantes</option>
+          <option value="material">Material (Lienzo)</option>
+        </select>
+      </div>
     </div>
 
-    <h3>Atributos</h3>
+    <!-- Common Attributes -->
+    <h3>Atributos Generales</h3>
     <div class="attributes-list">
       @for (attr of newCostAttributes; track i; let i = $index) {
       <div class="attribute-row">
-        <input type="text" [(ngModel)]="attr.key" placeholder="Nombre (ej: Talla)" class="form-control">
-        <input type="text" [(ngModel)]="attr.value" placeholder="Valor (ej: XL)" class="form-control">
+        <input type="text" [(ngModel)]="attr.key" placeholder="Nombre (ej: Marca)" class="form-control">
+        <input type="text" [(ngModel)]="attr.value" placeholder="Valor (ej: Nike)" class="form-control">
         <button (click)="removeAttribute(i)" class="btn-danger">X</button>
       </div>
       }
       <button (click)="addAttribute()" class="btn-secondary btn-sm">+ Agregar Atributo</button>
     </div>
+
+    <!-- Variants Mode -->
+    @if (costMode === 'variants') {
+    <div class="variants-section mt-4">
+      <h3>Configuración de Variantes</h3>
+      <p class="text-muted small">Define grupos de opciones (ej: Tallas, Colores). El precio se sumará al costo base.
+      </p>
+
+      @for (group of variantGroups; track group; let i = $index) {
+      <div class="variant-group card p-3 mb-3">
+        <div class="d-flex justify-content-between mb-2">
+          <input type="text" [(ngModel)]="group.name" placeholder="Nombre del Grupo (ej: Talla)"
+            class="form-control font-weight-bold">
+          <button (click)="removeVariantGroup(i)" class="btn-danger btn-sm ml-2">Eliminar Grupo</button>
+        </div>
+
+        <div class="variant-options pl-3 border-left">
+          @for (option of group.options; track option; let j = $index) {
+          <div class="d-flex mb-1">
+            <input type="text" [(ngModel)]="option.label" placeholder="Opción (ej: XL)" class="form-control mr-2">
+            <input type="number" [(ngModel)]="option.priceMod" placeholder="+ Precio" class="form-control mr-2"
+              style="width: 100px;">
+            <button (click)="removeVariantOption(i, j)" class="btn-danger btn-sm">X</button>
+          </div>
+          }
+          <button (click)="addVariantOption(i)" class="btn-link btn-sm">+ Agregar Opción</button>
+        </div>
+      </div>
+      }
+      <button (click)="addVariantGroup()" class="btn-primary btn-sm">+ Nuevo Grupo de Variantes</button>
+    </div>
+    }
+
+    <!-- Material Mode -->
+    @if (costMode === 'material') {
+    <div class="material-section mt-4">
+      <h3>Dimensiones del Material</h3>
+      <div class="row">
+        <div class="col-4">
+          <label>Ancho</label>
+          <input type="number" [(ngModel)]="materialDims.width" class="form-control">
+        </div>
+        <div class="col-4">
+          <label>Alto</label>
+          <input type="number" [(ngModel)]="materialDims.height" class="form-control">
+        </div>
+        <div class="col-4">
+          <label>Unidad</label>
+          <select [(ngModel)]="materialDims.unit" class="form-control">
+            <option value="cm">cm</option>
+            <option value="mm">mm</option>
+            <option value="m">m</option>
+            <option value="in">in</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    }
 
     <div class="modal-actions">
       <button (click)="closeCostModal()" class="btn-secondary">Cancelar</button>

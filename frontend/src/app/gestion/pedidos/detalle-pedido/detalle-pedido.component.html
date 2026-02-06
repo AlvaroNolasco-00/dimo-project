@@ -59,6 +59,44 @@
           <label>Notas Adicionales</label>
           <textarea [(ngModel)]="order.notes" rows="4" class="input-field" placeholder="Notas del pedido..."></textarea>
         </div>
+
+        <!-- Magic Link Section -->
+        <div class="form-group mt-3 magic-link-section" *ngIf="order.access_token">
+          <label>Enlace Público para Cliente</label>
+          <div class="link-box">
+            <input type="text" [value]="'http://localhost:4200/track/' + order.access_token" readonly
+              class="input-field">
+            <button class="btn-secondary" (click)="copyLink(order.access_token)">
+              <i class="ph ph-copy"></i> Copiar
+            </button>
+          </div>
+          <small class="text-secondary">Envía este enlace al cliente para que suba sus artes y confirme entrega.</small>
+        </div>
+      </div>
+
+      <!-- Payment & Finance Card -->
+      <div class="card mb-4">
+        <div class="card-header">
+          <h2>Finanzas</h2>
+        </div>
+        <div class="finance-grid form-grid">
+          <div class="form-group">
+            <label>Total Estimado</label>
+            <div class="price-display">{{ order.total_amount | currency }}</div>
+          </div>
+
+          <div class="form-group">
+            <label>Anticipo Requerido</label>
+            <input type="number" [(ngModel)]="order.down_payment_amount" class="input-field" placeholder="Monto">
+          </div>
+
+          <div class="form-group" *ngIf="order.coupon_id">
+            <label>Cupón Aplicado</label>
+            <div class="badge badge-success">
+              <i class="ph ph-tag"></i> Descuento Aplicado
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Items Card -->
@@ -138,11 +176,25 @@
             </div>
             <div class="item-actions">
               <button class="btn-icon danger" (click)="deleteItem(i)" [disabled]="isCancelled">
-                <!-- <i class="ph ph-trash"></i> -->
-                <!-- Item delete disabled to prevent accidental loss of details if not intended, or keep it enable -->
                 <i class="ph ph-trash"></i>
               </button>
             </div>
+
+            <!-- Customer Uploads (Details) -->
+            @if (item.details && item.details.length > 0) {
+            <div class="customer-uploads mt-3">
+              <div class="upload-header">Archivos del Cliente:</div>
+              <div class="uploads-grid">
+                @for (detail of item.details; track detail.id) {
+                <div class="upload-item" (click)="openImageViewer(detail.image_path)">
+                  <i class="ph ph-image-square"></i>
+                  <span>{{detail.description}}</span>
+                  <small class="text-secondary">(x{{detail.quantity}})</small>
+                </div>
+                }
+              </div>
+            </div>
+            }
           </div>
           } @empty {
           <div class="empty-state">

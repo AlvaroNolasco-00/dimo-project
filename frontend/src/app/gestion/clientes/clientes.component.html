@@ -4,75 +4,92 @@
             <h1>Clientes</h1>
             <p>Gestiona la base de datos de tus clientes para pedidos rápidos.</p>
         </div>
-        <div class="actions">
-            <button class="btn-primary" routerLink="/gestion/clientes/crear">
-                <i class="fas fa-user-plus"></i> Nuevo Cliente
-            </button>
-        </div>
+        <a routerLink="/gestion/clientes/crear" class="btn-create">
+            <i class="ph ph-user-plus"></i>
+            Nuevo Cliente
+        </a>
     </div>
 
-    <div class="filters-card">
-        <div class="search-box">
-            <i class="fas fa-search"></i>
-            <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()"
-                placeholder="Buscar por nombre, teléfono o email...">
-        </div>
-    </div>
-
-    <div class="table-container card">
-        <table *ngIf="!loading && filteredClients.length > 0">
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Teléfono</th>
-                    <th>Email</th>
-                    <th>Tipo</th>
-                    <th>Creado</th>
-                    <th class="actions-col">Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr *ngFor="let client of filteredClients">
-                    <td>
-                        <div class="client-info">
-                            <div class="avatar">
-                                {{ client.full_name[0] | uppercase }}
-                            </div>
-                            <span>{{ client.full_name }}</span>
+    <div class="section-container">
+        <div class="table-container">
+            <div class="table-toolbar">
+                <div class="filters">
+                    <div class="filters-group">
+                        <div class="input-wrapper has-icon">
+                            <i class="ph ph-magnifying-glass"></i>
+                            <input type="text" [(ngModel)]="searchQuery" (input)="onSearchChange()"
+                                placeholder="Buscar por nombre, teléfono o email...">
                         </div>
-                    </td>
-                    <td>{{ client.phone_number }}</td>
-                    <td>{{ client.email || '-' }}</td>
-                    <td>
-                        <span class="badge" [class.badge-retail]="client.client_type === 'retail'"
-                            [class.badge-wholesale]="client.client_type === 'wholesale'">
-                            {{ client.client_type === 'retail' ? 'Minorista' : 'Mayorista' }}
-                        </span>
-                    </td>
-                    <td>{{ client.created_at | date:'shortDate' }}</td>
-                    <td class="actions-col">
-                        <button class="btn-icon" (click)="editClient(client)" title="Editar">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn-icon btn-danger" (click)="deleteClient(client)" title="Eliminar">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+                    </div>
+                </div>
+            </div>
 
-        <div class="empty-state" *ngIf="!loading && filteredClients.length === 0">
-            <i class="fas fa-users-slash"></i>
-            <p>{{ searchQuery ? 'No se encontraron clientes con esos criterios.' : 'Aún no tienes clientes registrados.'
-                }}</p>
-            <button *ngIf="!searchQuery" class="btn-outline" routerLink="/gestion/clientes/crear">Agregar mi primer
-                cliente</button>
-        </div>
+            @if (!loading && filteredClients.length > 0) {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Teléfono</th>
+                        <th>Email</th>
+                        <th>Tipo</th>
+                        <th>Creado</th>
+                        <th class="actions-col">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (client of filteredClients; track client.id) {
+                    <tr>
+                        <td>
+                            <div class="client-info">
+                                <div class="avatar">
+                                    {{ client.full_name[0] | uppercase }}
+                                </div>
+                                <span>{{ client.full_name }}</span>
+                            </div>
+                        </td>
+                        <td>{{ client.phone_number }}</td>
+                        <td>{{ client.email || '-' }}</td>
+                        <td>
+                            <span class="badge" [class.badge-retail]="client.client_type === 'retail'"
+                                [class.badge-wholesale]="client.client_type === 'wholesale'">
+                                {{ client.client_type === 'retail' ? 'Minorista' : 'Mayorista' }}
+                            </span>
+                        </td>
+                        <td>{{ client.created_at | date:'shortDate' }}</td>
+                        <td class="actions-col">
+                            <button class="btn-icon" (click)="editClient(client)" title="Editar">
+                                <i class="ph ph-pencil-simple"></i>
+                            </button>
+                            <button class="btn-icon btn-danger" (click)="deleteClient(client)" title="Eliminar">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+            }
 
-        <div class="loader-overlay" *ngIf="loading">
-            <div class="spinner"></div>
-            <p>Cargando clientes...</p>
+            @if (!loading && filteredClients.length === 0) {
+            <div class="empty-state-inline">
+                <i class="ph ph-users-three"></i>
+                <h3>{{ searchQuery ? 'No se encontraron clientes' : 'Aún no hay clientes' }}</h3>
+                <p>{{ searchQuery ? 'Prueba con otros criterios de búsqueda.' : 'Agrega tu primer cliente para
+                    comenzar.' }}
+                </p>
+                <a *ngIf="!searchQuery" routerLink="/gestion/clientes/crear" class="btn-create">
+                    <i class="ph ph-plus"></i>
+                    Agregar Cliente
+                </a>
+            </div>
+            }
+
+            @if (loading) {
+            <div class="loader-overlay">
+                <div class="spinner"></div>
+                <p>Cargando clientes...</p>
+            </div>
+            }
         </div>
     </div>
 </div>

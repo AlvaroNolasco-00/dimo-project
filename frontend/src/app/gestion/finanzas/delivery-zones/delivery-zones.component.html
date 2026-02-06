@@ -1,0 +1,59 @@
+<div class="container fade-in">
+    <div class="header-actions">
+        <button class="btn-secondary" routerLink="/gestion/finanzas">
+            <i class="ph ph-arrow-left"></i> Volver
+        </button>
+        <div class="spacer"></div>
+        <button class="btn-primary" (click)="addZone()">
+            <i class="ph ph-plus"></i> Nueva Zona
+        </button>
+    </div>
+
+    <h1>Zonas de Entrega</h1>
+    <p class="description">Gestiona las zonas y precios de envío disponibles para los clientes.</p>
+
+    <div class="zones-grid">
+        <div class="zone-card card" *ngFor="let zone of zones" [class.inactive]="!zone.is_active">
+            <div class="zone-header">
+                <h3>{{zone.name}}</h3>
+                <div class="header-actions-inline">
+                    <button class="btn-icon" (click)="editZone(zone)" title="Editar">
+                        <i class="ph ph-pencil"></i>
+                    </button>
+                    <label class="switch">
+                        <input type="checkbox" [checked]="zone.is_active" (change)="toggleZone(zone)">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="zone-body">
+                <div class="detail-row">
+                    <span>Tipo:</span>
+                    <span class="badge" [ngClass]="{
+                        'badge-success': zone.zone_type === 'FREE',
+                        'badge-warning': zone.zone_type === 'STANDARD_PAID',
+                        'badge-danger': zone.zone_type === 'PRIORITY_PAID'
+                    }">{{zone.zone_type}}</span>
+                </div>
+                <div class="detail-row price-row">
+                    <span>Precio:</span>
+                    <span class="price" *ngIf="zone.price > 0">{{zone.price | currency}}</span>
+                    <span class="price free" *ngIf="zone.price == 0">GRATIS</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="empty-state" *ngIf="zones.length === 0 && !loading">
+            <p>No has configurado ninguna zona de entrega.</p>
+        </div>
+    </div>
+</div>
+
+@defer (when showMapModal) {
+<app-map-zone-selector [open]="showMapModal" [zone]="editingZone" (close)="showMapModal = false; editingZone = null"
+    (save)="handleSaveZone($event)">
+</app-map-zone-selector>
+} @placeholder {
+<!-- Opcional: un placeholder mientras carga -->
+<div *ngIf="showMapModal" class="loading-placeholder">Cargando mapa...</div>
+}

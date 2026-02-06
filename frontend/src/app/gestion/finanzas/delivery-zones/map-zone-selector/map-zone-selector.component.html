@@ -1,0 +1,57 @@
+<div class="modal-overlay" *ngIf="open" (click)="$event.stopPropagation()">
+    <div class="modal-content card fade-in" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>Nueva Zona de Entrega (Mapa)</h2>
+            <button class="btn-icon-only" (click)="onClose()">
+                <i class="ph ph-x"></i>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <div class="form-container">
+                <div class="form-group">
+                    <label>Nombre de la Zona</label>
+                    <div class="input-wrapper">
+                        <input type="text" [(ngModel)]="zoneName" placeholder="Ej. Santa Tecla Centro">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group flex-1">
+                        <label>Precio</label>
+                        <div class="input-wrapper">
+                            <input type="text" [(ngModel)]="zonePrice" appMoneyMask placeholder="$0.00">
+                        </div>
+                    </div>
+                    <div class="form-group flex-1">
+                        <label>Tipo de Zona</label>
+                        <div class="input-wrapper">
+                            <select [(ngModel)]="zoneType">
+                                <option value="STANDARD_PAID">Estandar Pagado</option>
+                                <option value="PRIORITY_PAID">Prioritario Pagado</option>
+                                <option value="FREE">Gratuito</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="instruction">Haz click en el mapa para delimitar la zona. Debe tener al menos 3 puntos.</p>
+                <div id="map-container" class="map-view"></div>
+
+                <div class="map-actions">
+                    <button class="btn-secondary btn-sm" (click)="clearMap()">
+                        <i class="ph ph-trash"></i> Limpiar Puntos
+                    </button>
+                    <span class="points-count">{{coordinates.length}} puntos marcados</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-secondary" (click)="onClose()">Cancelar</button>
+            <button class="btn-primary" (click)="onSave()" [disabled]="!zoneName || coordinates.length < 3">
+                <i class="ph ph-check"></i> Guardar Zona
+            </button>
+        </div>
+    </div>
+</div>

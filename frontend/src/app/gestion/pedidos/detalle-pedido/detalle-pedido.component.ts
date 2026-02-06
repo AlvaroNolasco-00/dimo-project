@@ -251,5 +251,19 @@ export class DetallePedidoComponent implements OnInit {
     this.showImageViewer = false;
     this.currentImageUrl = null;
   }
+
+  copyLink(token: string) {
+    const url = `${window.location.origin}/track/${token}`;
+    navigator.clipboard.writeText(url).then(() => {
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: 'Enlace copiado',
+        showConfirmButton: false,
+        timer: 1500
+      });
+    });
+  }
 }
 

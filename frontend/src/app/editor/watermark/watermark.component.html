@@ -8,7 +8,7 @@
         <div class="controls-sidebar">
             <div class="control-group">
                 <label>1. Imagen Base</label>
-                <button class="btn secondary" (click)="triggerBaseUpload()">
+                <button class="btn-secondary" (click)="triggerBaseUpload()">
                     <i class="ph ph-image"></i> {{ baseImageSrc() ? 'Cambiar Imagen' : 'Subir Imagen' }}
                 </button>
                 <input #fileInputBase type="file" (change)="onBaseSelected($event)" accept="image/*" hidden>
@@ -17,7 +17,7 @@
             @if (baseImageSrc()) {
             <div class="control-group">
                 <label>2. Logo / Marca</label>
-                <button class="btn secondary" (click)="triggerWatermarkUpload()">
+                <button class="btn-secondary" (click)="triggerWatermarkUpload()">
                     <i class="ph ph-stamp"></i> {{ watermarkImageSrc() ? 'Cambiar Logo' : 'Subir Logo' }}
                 </button>
                 <input #fileInputWatermark type="file" (change)="onWatermarkSelected($event)" accept="image/*" hidden>
@@ -54,7 +54,7 @@
 
             @if (baseImageSrc() && watermarkImageSrc()) {
             <div class="action-buttons">
-                <button class="btn primary full-width" (click)="process()"
+                <button class="btn-primary full-width" (click)="process()"
                     [disabled]="isLoading() || !!resultImageSrc()">
                     @if (isLoading()) {
                     <i class="ph ph-spinner spinner"></i>
@@ -65,15 +65,15 @@
                 <!-- Moved Actions -->
                 @if (resultImageSrc() || isLoading()) {
                 <div class="post-process-actions">
-                    <a [href]="resultImageSrc()" [download]="downloadFilename()" class="btn download full-width"
+                    <a [href]="resultImageSrc()" [download]="downloadFilename()" class="btn-success full-width"
                         [class.disabled]="!resultImageSrc()">
                         <i class="ph ph-download"></i> Descargar
                     </a>
-                    <button class="btn session full-width" (click)="addToGallery()"
+                    <button class="btn-secondary session full-width" (click)="addToGallery()"
                         [disabled]="isLoading() || !resultImageSrc()">
-                        <i class="ph ph-briefcase"></i> Guardar para reusar
+                        <i class="ph ph-arrow-counter-clockwise"></i> Guardar para reusar
                     </button>
-                    <button class="btn secondary full-width" (click)="resultImageSrc.set(null)"
+                    <button class="btn-secondary full-width" (click)="resultImageSrc.set(null)"
                         [disabled]="isLoading()">
                         <i class="ph ph-arrow-left"></i> Volver a Editar
                     </button>
@@ -106,27 +106,7 @@
     </div>
 
     <!-- Session Gallery Sidebar -->
-    <div class="session-sidebar">
-        <div class="gallery-header">
-            <h3>Trabajos Recientes</h3>
-            <span class="count">{{ sessionGallery().length }}</span>
-        </div>
-
-        <div class="gallery-list">
-            @for (item of sessionGallery(); track item.id) {
-            <div class="gallery-item" (click)="loadFromGallery(item)">
-                <div class="thumb-wrapper">
-                    <img [src]="getSafeUrl(item.blob)" [alt]="item.name">
-                    <button class="delete-btn" (click)="deleteFromGallery(item.id, $event)">
-                        <i class="ph ph-x"></i>
-                    </button>
-                </div>
-                <div class="meta">
-                    <span class="name">{{ item.name }}</span>
-                    <span class="time">{{ item.timestamp | date:'shortTime' }}</span>
-                </div>
-            </div>
-            }
-        </div>
-    </div>
+    <app-editor-sidebar [galleryItems]="sessionGallery()" (imageSelected)="loadFromGallery($event)"
+        (imageDeleted)="deleteFromGallery($event)">
+    </app-editor-sidebar>
 </div>

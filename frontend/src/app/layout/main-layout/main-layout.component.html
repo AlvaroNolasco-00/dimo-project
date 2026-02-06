@@ -3,7 +3,9 @@
     <!-- Sidebar (Left Column) -->
     @if (showSidebar()) {
     <div class="sidebar-wrapper">
-        <app-sidebar></app-sidebar>
+        <app-shared-sidebar [menuItems]="currentMenuItems()" [logoText]="logoText()"
+            [isCollapsed]="isSidebarCollapsed()" (toggleCollapse)="toggleSidebar()">
+        </app-shared-sidebar>
     </div>
     }
 

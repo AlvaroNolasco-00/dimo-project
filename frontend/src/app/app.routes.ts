@@ -18,11 +18,15 @@ import { FinanzasComponent } from './gestion/finanzas/finanzas.component';
 import { CostosOperativosComponent } from './gestion/finanzas/costos-operativos/costos-operativos.component';
 import { RecuentoGastosComponent } from './gestion/finanzas/recuento-gastos/recuento-gastos.component';
 import { RecuentoGananciasComponent } from './gestion/finanzas/recuento-ganancias/recuento-ganancias.component';
+import { DeliveryZonesComponent } from './gestion/finanzas/delivery-zones/delivery-zones.component';
+import { CouponsComponent } from './gestion/finanzas/coupons/coupons.component';
 import { ProyectosComponent } from './gestion/proyectos/proyectos.component';
 import { NoProjectComponent } from './auth/no-project/no-project.component';
 import { ProfileComponent } from './profile/profile.component';
 import { ClientesComponent } from './gestion/clientes/clientes.component';
 import { ClienteFormComponent } from './gestion/clientes/cliente-form/cliente-form.component';
+import { PublicLayout } from './layout/public-layout/public-layout';
+import { OrderViewComponent } from './public/order-view/order-view';
 
 export const routes: Routes = [
     // Auth Routes (Clean layout, no sidebar)
@@ -35,6 +39,15 @@ export const routes: Routes = [
             { path: 'pending-approval', component: PendingApprovalComponent },
             { path: 'no-project', component: NoProjectComponent },
             { path: '', redirectTo: 'login', pathMatch: 'full' },
+        ]
+    },
+
+    // Public Order Tracking (No Auth Required)
+    {
+        path: 'track',
+        component: PublicLayout,
+        children: [
+            { path: ':token', component: OrderViewComponent }
         ]
     },
 
@@ -111,6 +124,8 @@ export const routes: Routes = [
                     { path: 'finanzas/costos-operativos', component: CostosOperativosComponent },
                     { path: 'finanzas/recuento-gastos', component: RecuentoGastosComponent },
                     { path: 'finanzas/recuento-ganancias', component: RecuentoGananciasComponent },
+                    { path: 'finanzas/delivery-zones', component: DeliveryZonesComponent },
+                    { path: 'finanzas/coupons', component: CouponsComponent },
                 ]
             }
         ]

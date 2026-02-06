@@ -14,42 +14,44 @@
         }
 
         @if (!isLoading()) {
-        <table class="data-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Nombre</th>
-                    <th>Descripción</th>
-                    <th>Fecha Creación</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                @for (p of projects(); track p.id) {
-                <tr>
-                    <td>{{ p.id }}</td>
-                    <td>{{ p.name }}</td>
-                    <td>{{ p.description }}</td>
-                    <td>{{ p.created_at | date:'shortDate' }}</td>
-                    <td class="actions">
-                        <button class="btn-icon" (click)="openUsersModal(p)" title="Gestionar Usuarios">
-                            <i class="ph ph-users"></i>
-                        </button>
-                        <button class="btn-icon" (click)="openEditModal(p)" title="Editar">
-                            <i class="ph ph-pencil-simple"></i>
-                        </button>
-                        <button class="btn-icon danger" (click)="deleteProject(p)" title="Eliminar">
-                            <i class="ph ph-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-                } @empty {
-                <tr>
-                    <td colspan="5" class="empty-state">No hay proyectos creados.</td>
-                </tr>
-                }
-            </tbody>
-        </table>
+        <div class="table-container">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th>Fecha Creación</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (p of projects(); track p.id) {
+                    <tr>
+                        <td>{{ p.id }}</td>
+                        <td>{{ p.name }}</td>
+                        <td>{{ p.description }}</td>
+                        <td>{{ p.created_at | date:'shortDate' }}</td>
+                        <td class="actions">
+                            <button class="btn-icon" (click)="openUsersModal(p)" title="Gestionar Usuarios">
+                                <i class="ph ph-users"></i>
+                            </button>
+                            <button class="btn-icon" (click)="openEditModal(p)" title="Editar">
+                                <i class="ph ph-pencil-simple"></i>
+                            </button>
+                            <button class="btn-icon danger" (click)="deleteProject(p)" title="Eliminar">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    } @empty {
+                    <tr>
+                        <td colspan="5" class="empty-state">No hay proyectos creados.</td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
         }
     </div>
 </div>

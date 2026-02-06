@@ -46,24 +46,32 @@
   <!-- Pedidos Activos Section -->
   <div class="section-container">
     <div class="section-header-row">
-      <h2>Pedidos Activos</h2>
-
-      <div class="filters">
-        <div class="input-wrapper small">
-          <i class="ph ph-funnel"></i>
-          <select [ngModel]="selectedStateId()" (ngModelChange)="selectedStateId.set($event); onFilterChange()">
-            <option [ngValue]="null">Todos los estados</option>
-            @for (state of projectStates(); track state.id) {
-            <option [value]="state.id">{{ state.name }}</option>
-            }
-          </select>
-          <i class="ph ph-caret-down select-icon"></i>
-        </div>
+      <div class="subtitle-group">
+        <h2>Pedidos Activos</h2>
+        <span class="count-badge">Total: {{ totalOrders() }} pedidos en el proyecto</span>
       </div>
     </div>
-    @if (filteredOrders().length > 0) {
-    <div class="table-responsive">
-      <table class="pedidos-table">
+    @if (totalOrders() > 0) {
+    <div class="table-container">
+      <div class="table-toolbar">
+        <div class="filters">
+          <div class="filters-group">
+            <div class="input-wrapper small has-icon">
+              <i class="ph ph-funnel"></i>
+              <select [ngModel]="selectedStateId()" (ngModelChange)="selectedStateId.set($event); onFilterChange()">
+                <option [ngValue]="null">Todos los estados</option>
+                @for (state of projectStates(); track state.id) {
+                <option [value]="state.id">{{ state.name }}</option>
+                }
+              </select>
+              <i class="ph ph-caret-down select-icon"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      @if (filteredOrders().length > 0) {
+      <table class="data-table">
         <thead>
           <tr>
             <th (click)="onSort('id')" class="sortable">
@@ -99,7 +107,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (pedido of filteredOrders(); track pedido.id) {
+          @for (pedido of paginatedOrders(); track pedido.id) {
           <tr>
             <td class="fw-bold">#{{ pedido.id }}</td>
             <td>{{ pedido.client_name }}</td>
@@ -111,7 +119,7 @@
                 {{ getStateName(pedido) }}
               </span>
             </td>
-            <td>
+            <td class="actions">
               <button class="btn-icon" title="Ver detalle" (click)="viewOrder(pedido.id)">
                 <i class="ph ph-eye"></i>
               </button>
@@ -120,24 +128,44 @@
           }
         </tbody>
       </table>
+
+      <!-- Pagination Controls -->
+      <div class="pagination-footer">
+        <div class="pagination-info">
+          Mostrando {{ (currentPage() - 1) * pageSize() + 1 }} - {{ Math.min(currentPage() * pageSize(),
+          filteredOrders().length) }} de {{ filteredOrders().length }} resultados
+        </div>
+        <div class="pagination-actions">
+          <button class="btn-pagination" [disabled]="currentPage() === 1" (click)="prevPage()">
+            <i class="ph ph-caret-left"></i>
+          </button>
+          <span class="page-indicator">{{ currentPage() }} / {{ totalPages() }}</span>
+          <button class="btn-pagination" [disabled]="currentPage() === totalPages()" (click)="nextPage()">
+            <i class="ph ph-caret-right"></i>
+          </button>
+        </div>
+      </div>
+      } @else if (!isLoading()) {
+      <div class="empty-state-inline">
+        <i class="ph ph-clipboard-text"></i>
+        <h3>No hay pedidos encontrados</h3>
+        <p>Intenta cambiar los filtros de búsqueda</p>
+      </div>
+      }
     </div>
     }
 
-    @if (!isLoading() && filteredOrders().length === 0) {
+    @if (!isLoading() && totalOrders() === 0) {
     <div class="empty-state">
       <i class="ph ph-clipboard-text"></i>
-      <h3>No hay pedidos encontrados</h3>
-      @if (selectedStateId()) {
-      <p>Intenta cambiar los filtros de búsqueda</p>
-      }
-      @if (!selectedStateId()) {
-      <p>Aún no hay pedidos en este proyecto. ¡Crea el primero!</p>
+      <h3>Aún no hay pedidos en este proyecto</h3>
+      <p>¡Crea el primero para comenzar a gestionar!</p>
       <a routerLink="/gestion/pedidos/crear" class="btn-create">
         <i class="ph ph-plus"></i>
         Crear Pedido
       </a>
-      }
     </div>
     }
+
   </div>
 </div>

@@ -5,6 +5,8 @@ from .. import models, schemas
 from fastapi import HTTPException
 import os
 import shutil
+import uuid
+import uuid
 
 # --- Order States Logic ---
 
@@ -74,6 +76,44 @@ def create_order(db: Session, project_id: int, order_data: schemas.OrderCreate, 
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
+    # Create or Resolve Client
+    client_id = order_data.client_id
+    client_name = order_data.client_name
+
+    if order_data.new_client:
+        # Check for existing client
+        existing_client = db.query(models.Client).filter(
+            models.Client.project_id == project_id,
+            models.Client.phone_number == order_data.new_client.phone_number
+        ).first()
+
+        if existing_client:
+            client_id = existing_client.id
+            client_name = existing_client.full_name
+            # Optional: Update basic info if needed, for now just reuse
+        else:
+            # Create new client
+            new_client = models.Client(
+                project_id=project_id,
+                phone_number=order_data.new_client.phone_number,
+                full_name=order_data.new_client.full_name,
+                email=order_data.new_client.email,
+                tax_id=order_data.new_client.tax_id,
+                client_type=order_data.new_client.client_type,
+                shipping_address=order_data.new_client.shipping_address,
+                preferences=order_data.new_client.preferences,
+                notes=order_data.new_client.notes
+            )
+            db.add(new_client)
+            db.flush()
+            client_id = new_client.id
+            client_name = new_client.full_name
+    elif client_id:
+        # If client_id provided but no name, fetch name for the record
+        client = db.query(models.Client).get(client_id)
+        if client:
+            client_name = client.full_name
+
     # Resolve state
     state_id = order_data.current_state_id
     if not state_id:
@@ -81,18 +121,39 @@ def create_order(db: Session, project_id: int, order_data: schemas.OrderCreate, 
         if default_state:
             state_id = default_state.id
 
+    # Fidelity Logic
+    applied_coupon_id = order_data.coupon_id
+    if not applied_coupon_id and client_id:
+        past_orders_count = db.query(models.Order).filter(
+            models.Order.client_id == client_id,
+            models.Order.project_id == project_id
+        ).count()
+        
+        if past_orders_count >= 5: # Threshold
+             fidelity_coupon = db.query(models.Coupon).filter(
+                models.Coupon.project_id == project_id,
+                models.Coupon.code == "FIDELITY",
+                models.Coupon.is_active == True
+            ).first()
+             if fidelity_coupon:
+                 applied_coupon_id = fidelity_coupon.id
+
     # Create Order
     new_order = models.Order(
         project_id=project_id,
-        client_name=order_data.client_name,
-        client_id=order_data.client_id,
+        client_name=client_name or "Unknown Client",
+        client_id=client_id,
         delivery_date=order_data.delivery_date,
         shipping_address=order_data.shipping_address,
         location_lat=order_data.location_lat,
         location_lng=order_data.location_lng,
         notes=order_data.notes,
         current_state_id=state_id,
-        total_amount=0
+        total_amount=0,
+        access_token=str(uuid.uuid4()),
+        down_payment_amount=order_data.down_payment_amount or 0.0,
+        coupon_id=applied_coupon_id,
+        delivery_zone_id=order_data.delivery_zone_id
     )
     db.add(new_order)
     db.flush()
@@ -125,7 +186,7 @@ def create_order(db: Session, project_id: int, order_data: schemas.OrderCreate, 
         )
         db.add(new_item)
 
-    new_order.total_amount = total_amount
+    new_order.total_amount = calculate_total(new_order, total_amount)
     
     # Log History
     history = models.OrderHistory(
@@ -139,6 +200,22 @@ def create_order(db: Session, project_id: int, order_data: schemas.OrderCreate, 
     db.commit()
     db.refresh(new_order)
     return new_order
+
+def calculate_total(order: models.Order, items_total: float) -> float:
+    final_total = items_total
+    
+    # Add Delivery (if applicable)
+    if order.delivery_zone:
+        final_total += float(order.delivery_zone.price)
+
+    if order.coupon:
+        if order.coupon.discount_type == "PERCENTAGE":
+            discount = items_total * (float(order.coupon.discount_value) / 100)
+            final_total -= discount
+        else:
+             final_total -= float(order.coupon.discount_value)
+    
+    return max(0, final_total)
 
 def update_order(db: Session, project_id: int, order_id: int, order_update: schemas.OrderUpdate, user: models.User) -> models.Order:
     order = db.query(models.Order).filter(
@@ -235,7 +312,26 @@ def update_order(db: Session, project_id: int, order_id: int, order_update: sche
             )
             db.add(new_item)
             
-        order.total_amount = total_amount
+        order.total_amount = calculate_total(order, total_amount)
+    
+    if order_update.down_payment_amount is not None:
+         order.down_payment_amount = order_update.down_payment_amount
+         
+    if order_update.coupon_id is not None and order.coupon_id != order_update.coupon_id:
+        order.coupon_id = order_update.coupon_id
+        # Recalculate total
+        current_items_total = sum(item.subtotal for item in order.items)
+        order.total_amount = calculate_total(order, float(current_items_total))
+
+    if order_update.delivery_zone_id is not None: # Check if changed
+         if order.delivery_zone_id != order_update.delivery_zone_id:
+             order.delivery_zone_id = order_update.delivery_zone_id
+             # Recalculate
+             # Need to refresh relationship to get price
+             db.flush() 
+             db.refresh(order)
+             current_items_total = sum(item.subtotal for item in order.items)
+             order.total_amount = calculate_total(order, float(current_items_total))
         
     db.commit()
     db.refresh(order)

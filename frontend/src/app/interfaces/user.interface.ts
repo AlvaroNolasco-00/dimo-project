@@ -7,5 +7,6 @@ export interface User {
     is_approved: boolean;
     is_admin: boolean;
     avatar_url?: string;
+    plan?: string;
     projects?: Project[];
 }

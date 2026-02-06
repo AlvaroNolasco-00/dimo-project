@@ -1,0 +1,295 @@
+<div class="public-order-container" *ngIf="!loading(); else loader">
+    <div class="form-card main-order-card">
+        <div class="form-header">
+            <div class="header-content">
+                <h1>Hola, {{order()?.client_name}}</h1>
+                <p>Estás a un paso de finalizar tu pedido #{{order()?.id}}</p>
+            </div>
+            <div class="order-status-badge">
+                <span class="badge badge-info">
+                    <i class="ph ph-clock"></i> Pendiente de Información
+                </span>
+            </div>
+        </div>
+
+        <div class="order-layout">
+            <!-- Left Column: Items & Uploads -->
+            <div class="order-main-content">
+                <div class="content-section">
+                    <div class="section-title">
+                        <i class="ph ph-package"></i>
+                        <h3>Items del Pedido</h3>
+                    </div>
+
+                    <div class="items-grid">
+                        <div class="item-card" *ngFor="let item of order()?.items">
+                            <div class="item-header">
+                                <div class="item-title-group">
+                                    <span class="item-qty">{{item.quantity}}x</span>
+                                    <h4>{{item.description}}</h4>
+                                </div>
+                                <div class="item-price-group">
+                                    <span class="item-unit">{{item.unit_price | currency}} c/u</span>
+                                    <span class="item-subtotal">{{item.subtotal | currency}}</span>
+                                </div>
+                            </div>
+
+                            <div class="upload-area" [class.has-file]="item.has_art">
+                                <div class="upload-button-wrapper">
+                                    <input #fileInput type="file" (change)="onFileSelected($event, item.id)"
+                                        [disabled]="uploading()" class="hidden-input" accept="image/*">
+                                    <div class="upload-content" [class.with-preview]="item.art_preview">
+                                        @if (uploading()) {
+                                        <div class="spinner"></div>
+                                        <span>Subiendo...</span>
+                                        } @else {
+                                        @if (item.art_preview) {
+                                        <img [src]="item.art_preview" class="preview-image" alt="Preview">
+                                        <div class="preview-overlay">
+                                            <div class="overlay-actions">
+                                                <span class="action-btn"
+                                                    (click)="openImage(item.art_preview); $event.stopPropagation()">
+                                                    <i class="ph ph-eye"></i> Ver
+                                                </span>
+                                                <span class="action-divider">|</span>
+                                                <span class="action-btn" (click)="fileInput.click()">
+                                                    <i class="ph ph-pencil-simple"></i> Cambiar
+                                                </span>
+                                            </div>
+                                        </div>
+                                        } @else {
+                                        <div class="upload-trigger" (click)="fileInput.click()">
+                                            <i class="ph ph-image-square"></i>
+                                            <div class="text-group">
+                                                <span class="main-text">Subir Arte</span>
+                                                <span class="sub-text">Sube el diseño para este item</span>
+                                            </div>
+                                        </div>
+                                        }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-section address-section" *ngIf="selectedZoneId()">
+                    <div class="section-title">
+                        <i class="ph ph-map-pin"></i>
+                        <h3>Dirección de Entrega</h3>
+                        <div class="address-status" *ngIf="addressLoading()">
+                            <div class="spinner tiny"></div>
+                            <span>Buscando dirección...</span>
+                        </div>
+                    </div>
+
+                    <div class="address-error" *ngIf="addressError()">
+                        <i class="ph ph-warning-circle"></i>
+                        <span>{{ addressError() }}</span>
+                    </div>
+
+                    <div class="address-form" [class.is-loading]="addressLoading()">
+                        <div class="form-row">
+                            <div class="form-group flex-2">
+                                <label>Calle / Avenida</label>
+                                <div class="input-wrapper">
+                                    <input type="text" [ngModel]="addressStreet()"
+                                        (ngModelChange)="addressStreet.set($event)" placeholder="Ej: Calle Principal">
+                                </div>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label>Número / Apto</label>
+                                <div class="input-wrapper">
+                                    <input type="text" [ngModel]="addressNumber()"
+                                        (ngModelChange)="addressNumber.set($event)" placeholder="Ej: 123-B">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Colonia / Barrio</label>
+                                <div class="input-wrapper">
+                                    <input type="text" [ngModel]="addressColony()"
+                                        (ngModelChange)="addressColony.set($event)" placeholder="Nombre de la colonia">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Ciudad</label>
+                                <div class="input-wrapper">
+                                    <input type="text" [ngModel]="addressCity()"
+                                        (ngModelChange)="addressCity.set($event)" placeholder="Ciudad">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Referencias / Instrucciones</label>
+                            <div class="input-wrapper">
+                                <textarea [ngModel]="addressReferences()"
+                                    (ngModelChange)="addressReferences.set($event)"
+                                    placeholder="Ej: Portón verde, frente al parque..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-section notes-section">
+                    <div class="section-title">
+                        <i class="ph ph-note-pencil"></i>
+                        <h3>Notas Adicionales</h3>
+                    </div>
+                    <div class="form-group">
+                        <div class="input-wrapper">
+                            <textarea [ngModel]="notes()" (ngModelChange)="notes.set($event)"
+                                placeholder="Escribe aquí cualquier petición especial o detalles sobre tus artes..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <aside class="order-sidebar">
+                <div class="sidebar-section delivery-section">
+                    <div class="section-title">
+                        <i class="ph ph-truck"></i>
+                        <div class="title-with-action">
+                            <h3>Método de Entrega</h3>
+                            <button class="btn-location" (click)="requestLocation()" [disabled]="locationLoading()">
+                                <i class="ph ph-target" [class.spinning]="locationLoading()"></i>
+                                {{ locationLoading() ? 'Detectando...' : 'Mi ubicación' }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="map-container">
+                        <div id="map"></div>
+                        <!-- Fixed Center Pin Overlay (SVG to guarantee visibility) -->
+                        <div class="fixed-pin-overlay">
+                            <div class="pin-icon">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path
+                                        d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+                                </svg>
+                                <div class="pin-shadow"></div>
+                            </div>
+                        </div>
+                        <div class="map-overlay" *ngIf="locationLoading()">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+
+                    <div class="location-status error" *ngIf="locationError()">
+                        <i class="ph ph-warning-circle"></i>
+                        <span>{{ locationError() }}</span>
+                    </div>
+
+                    <div class="zone-feedback" [class.valid]="selectedZoneId()"
+                        [class.invalid]="userLocation() && availableZones().length === 0">
+                        <!-- Case: Zones available -->
+                        <ng-container *ngIf="availableZones().length > 0; else noZone">
+
+                            <!-- Multiple Zones Choice -->
+                            <div class="multi-zone-selection" *ngIf="availableZones().length > 1">
+                                <div class="selection-header">
+                                    <i class="ph ph-list-numbers"></i>
+                                    <span>Selecciona una opción de envío:</span>
+                                </div>
+                                <div class="zone-options">
+                                    <label class="zone-option-item" *ngFor="let zone of availableZones()"
+                                        [class.active]="selectedZoneId() === zone.id">
+                                        <input type="radio" name="selectedZone" [value]="zone.id"
+                                            [checked]="selectedZoneId() === zone.id"
+                                            (change)="selectedZoneId.set(zone.id)">
+                                        <div class="zone-option-content">
+                                            <span class="z-name">{{zone.name}}</span>
+                                            <span class="z-price">{{zone.price > 0 ? (zone.price | currency) :
+                                                'Gratis'}}</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Display selected zone summary -->
+                            <div class="selected-zone-summary" *ngIf="selectedZoneId()">
+                                <i class="ph ph-check-circle-fill"></i>
+                                <div class="zone-info-text">
+                                    <span class="label">Zona seleccionada:</span>
+                                    <span class="value">{{getSelectedZoneName()}}</span>
+                                </div>
+                            </div>
+                        </ng-container>
+
+                        <ng-template #noZone>
+                            <ng-container *ngIf="userLocation()">
+                                <i class="ph ph-x-circle-fill"></i>
+                                <span>Fuera de zona de cobertura</span>
+                            </ng-container>
+                            <ng-container *ngIf="!userLocation()">
+                                <i class="ph ph-info"></i>
+                                <span>Ubica tu punto de entrega en el mapa</span>
+                            </ng-container>
+                        </ng-template>
+                    </div>
+                </div>
+
+                <div class="sidebar-section summary-section">
+                    <div class="section-title">
+                        <i class="ph ph-receipt"></i>
+                        <h3>Resumen</h3>
+                    </div>
+                    <div class="summary-details">
+                        <div class="summary-line">
+                            <span>Subtotal</span>
+                            <span class="value">{{subtotal | currency}}</span>
+                        </div>
+                        <div class="summary-line">
+                            <span>Envío</span>
+                            <span class="value">{{deliveryCost > 0 ? (deliveryCost | currency) : 'Gratis'}}</span>
+                        </div>
+                        <div class="summary-line discount" *ngIf="discount > 0">
+                            <span>Descuento</span>
+                            <span class="value">-{{discount | currency}}</span>
+                        </div>
+                        <div class="summary-divider"></div>
+                        <div class="summary-line total">
+                            <span>Total Estimado</span>
+                            <span class="value">{{total | currency}}</span>
+                        </div>
+                    </div>
+
+                    <div class="payment-note">
+                        <i class="ph ph-info"></i>
+                        <p>Se requiere un anticipo de <strong>{{order()?.down_payment_amount > 0 ?
+                                (order()?.down_payment_amount | currency) : '50%'}}</strong> para comenzar.</p>
+                    </div>
+
+                    <button class="btn-primary btn-submit" (click)="submitOrder()"
+                        [disabled]="!selectedZoneId() || loading()">
+                        <span *ngIf="!loading()">Finalizar y Enviar</span>
+                        <div class="spinner white" *ngIf="loading()"></div>
+                    </button>
+                </div>
+            </aside>
+        </div>
+    </div>
+</div>
+
+<div class="image-modal-overlay" [class.active]="modalVisible()" (click)="closeImage()">
+    <div class="image-modal-content" (click)="$event.stopPropagation()">
+        <button class="close-btn" (click)="closeImage()">
+            <i class="ph ph-x"></i>
+        </button>
+        <img *ngIf="viewingImage()" [src]="viewingImage()" alt="Full Preview">
+    </div>
+</div>
+
+<ng-template #loader>
+    <div class="full-page-loader">
+        <div class="loader-content">
+            <div class="spinner large"></div>
+            <h3>Preparando tu pedido</h3>
+            <p>Espera un momento...</p>
+        </div>
+    </div>
+</ng-template>

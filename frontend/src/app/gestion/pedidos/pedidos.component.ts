@@ -32,6 +32,7 @@ export class PedidosComponent implements OnInit {
   private apiService = inject(ApiService);
   private authService = inject(AuthService);
   private router = inject(Router);
+  protected readonly Math = Math;
 
   // State Signals
   isLoading = signal(false);
@@ -45,6 +46,8 @@ export class PedidosComponent implements OnInit {
   selectedStateId = signal<number | null>(null);
   sortField = signal<'delivery_date' | 'created_at' | 'id' | 'client_name'>('delivery_date');
   sortOrder = signal<'asc' | 'desc'>('asc');
+  currentPage = signal(1);
+  pageSize = signal(10);
 
   // Computed Views
   filteredOrders = computed(() => {
@@ -101,6 +104,19 @@ export class PedidosComponent implements OnInit {
       .slice(0, 3);
   });
 
+  totalOrders = computed(() => this.allOrders().length);
+
+  paginatedOrders = computed(() => {
+    const orders = this.filteredOrders();
+    const start = (this.currentPage() - 1) * this.pageSize();
+    return orders.slice(start, start + this.pageSize());
+  });
+
+  totalPages = computed(() => {
+    const total = this.filteredOrders().length;
+    return Math.ceil(total / this.pageSize());
+  });
+
   constructor() {
     effect(() => {
       const project = this.authService.currentProject();
@@ -139,10 +155,23 @@ export class PedidosComponent implements OnInit {
       this.sortField.set(field);
       this.sortOrder.set('asc');
     }
+    this.currentPage.set(1);
   }
 
   onFilterChange() {
-    // No-op, signals auto-update computed
+    this.currentPage.set(1);
+  }
+
+  nextPage() {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+    }
+  }
+
+  prevPage() {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+    }
   }
 
   getStateName(order: Pedido): string {

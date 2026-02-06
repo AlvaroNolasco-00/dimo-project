@@ -44,6 +44,7 @@ class CostType(Base):
     project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     description = Column(String)
+    requires_art = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
 
     __table_args__ = (
@@ -82,12 +83,56 @@ class Client(Base):
     # Relationships
     project = relationship("Project")
     orders = relationship("Order", back_populates="client")
+    addresses = relationship("ClientAddress", back_populates="client", cascade="all, delete-orphan")
 
     __table_args__ = (
         UniqueConstraint('phone_number', 'project_id', name='uq_client_phone_project'),
     )
 
 # --- Order System Models ---
+
+class DeliveryZone(Base):
+    __tablename__ = "delivery_zones"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String, nullable=False)
+    price = Column(Numeric(10, 2), default=0.00)
+    zone_type = Column(String, default="STANDARD_PAID") # FREE, STANDARD_PAID, PRIORITY_PAID
+    is_active = Column(Boolean, default=True)
+    coordinates = Column(JSON, nullable=True) # List of [lat, lng]
+    created_at = Column(DateTime, server_default=func.now())
+    
+    project = relationship("Project")
+
+class Coupon(Base):
+    __tablename__ = "coupons"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    code = Column(String, nullable=False)
+    description = Column(String)
+    discount_type = Column(String, default="FIXED") # FIXED, PERCENTAGE
+    discount_value = Column(Numeric(10, 2), nullable=False)
+    min_purchase_amount = Column(Numeric(10, 2), default=0.00)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project")
+
+class ClientAddress(Base):
+    __tablename__ = "client_addresses"
+
+    id = Column(Integer, primary_key=True, index=True)
+    client_id = Column(Integer, ForeignKey("clients.id", ondelete="CASCADE"), nullable=False)
+    address_line = Column(String, nullable=False)
+    zone_id = Column(Integer, ForeignKey("delivery_zones.id", ondelete="SET NULL"), nullable=True)
+    formatted_address = Column(String, nullable=True)
+    is_default = Column(Boolean, default=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    client = relationship("Client", back_populates="addresses")
+    zone = relationship("DeliveryZone")
 
 class OrderState(Base):
     __tablename__ = "order_states"
@@ -132,10 +177,17 @@ class Order(Base):
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
+    access_token = Column(String, unique=True, index=True, nullable=True) # For public access
+    down_payment_amount = Column(Numeric(12, 2), default=0.00)
+    coupon_id = Column(Integer, ForeignKey("coupons.id", ondelete="SET NULL"), nullable=True)
+    delivery_zone_id = Column(Integer, ForeignKey("delivery_zones.id", ondelete="SET NULL"), nullable=True)
+    
     # Relationships
     project = relationship("Project", back_populates="orders")
     client = relationship("Client", back_populates="orders")
     state = relationship("OrderState")
+    coupon = relationship("Coupon")
+    delivery_zone = relationship("DeliveryZone")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
     history = relationship("OrderHistory", back_populates="order", cascade="all, delete-orphan")
 

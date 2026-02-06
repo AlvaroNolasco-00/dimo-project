@@ -1,4 +1,4 @@
-from backend.database import engine
+from backend.core.database import engine
 from sqlalchemy import text
 
 def run_sql_file(filename):
@@ -18,4 +18,4 @@ def run_sql_file(filename):
                 print(f"Error executing {filename}: {e}")
 
 if __name__ == "__main__":
-    run_sql_file("backend/create_order_item_details.sql")
+    run_sql_file("backend/sql/add_coordinates_to_zones.sql")

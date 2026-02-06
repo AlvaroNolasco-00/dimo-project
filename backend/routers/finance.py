@@ -32,7 +32,8 @@ def create_cost_type(
     new_cost_type = models.CostType(
         name=cost_type.name, 
         description=cost_type.description,
-        project_id=cost_type.project_id
+        project_id=cost_type.project_id,
+        requires_art=cost_type.requires_art
     )
     db.add(new_cost_type)
     db.commit()

@@ -1,276 +1,369 @@
 <div class="crear-pedido-container">
   <div class="form-card">
-    <div class="form-header">
-      <h1>Crear Nuevo Pedido</h1>
-      <p>Ingresa la información detallada para registrar un nuevo pedido.</p>
+    <!-- Stepper Progress is now at the top -->
+    <div class="stepper-progress">
+      <div class="step-item" [class.active]="currentStep === 1" [class.completed]="currentStep > 1">
+        <div class="step-circle">1</div>
+        <span class="step-label">Cliente</span>
+      </div>
+      <div class="step-item" [class.active]="currentStep === 2" [class.completed]="currentStep > 2">
+        <div class="step-circle">2</div>
+        <span class="step-label">Detalle</span>
+      </div>
+      <div class="step-item" [class.active]="currentStep === 3">
+        <div class="step-circle">3</div>
+        <span class="step-label">Finalizar</span>
+      </div>
     </div>
 
-    <form (ngSubmit)="guardarPedido()">
-      <div class="form-row">
-        <div class="form-group">
-          <label for="cliente">Nombre del Cliente</label>
-          <div class="input-wrapper">
-            <i class="ph ph-user"></i>
-            <input type="text" id="cliente" [(ngModel)]="nuevoPedido.cliente" name="cliente"
-              placeholder="Ej. Empresas Polar" required>
-          </div>
-        </div>
+    <div class="form-header">
+      <h1>Crear Pedido</h1>
+      <p>Sigue los pasos para registrar el pedido y generar el enlace para el cliente.</p>
+    </div>
 
-        <div class="form-group">
-          <label for="fecha">Fecha de Entrega</label>
-          <div class="input-wrapper">
-            <i class="ph ph-calendar"></i>
-            <input type="date" id="fecha" [(ngModel)]="nuevoPedido.fechaEntrega" name="fecha" required>
-          </div>
-        </div>
-      </div>
-
-      <!-- Map Section -->
-      <div class="form-group full-width">
-        <label for="ubicacion">Lugar de Entrega</label>
-        <p class="helper-text">Busca una dirección o selecciona el punto en el mapa.</p>
-
-        <div class="search-box">
-          <div class="input-wrapper">
-            <i class="ph ph-magnifying-glass"></i>
-            <input type="text" [(ngModel)]="searchQuery" name="searchQuery"
-              placeholder="Buscar dirección (Ej. Av. Reforma 222, CDMX)"
-              (keydown.enter)="$event.preventDefault(); searchAddress()">
-          </div>
-          <button type="button" class="btn-search" (click)="searchAddress()">
-            Buscar
-          </button>
-        </div>
-
-        <div id="map" class="map-container"></div>
-        @if (nuevoPedido.direccion) {
-        <div class="selected-address">
-          <i class="ph ph-map-pin"></i>
-          <span>{{ nuevoPedido.direccion }}</span>
-        </div>
-        }
-      </div>
-
-      <!-- STATES SECTION -->
-      <div class="form-row">
-        <div class="form-group">
-          <label for="etapa">Etapa Inicial</label>
-          <div class="input-wrapper">
-            <i class="ph ph-steps"></i>
-            <select id="etapa" [(ngModel)]="nuevoPedido.current_state_id" name="etapa" required
-              [disabled]="isLoadingStates">
-              @if (isLoadingStates) {
-              <option [ngValue]="null">Cargando etapas...</option>
-              }
-              @for (state of projectStates; track state.id) {
-              <option [value]="state.id">{{ state.name }}</option>
-              }
-            </select>
-            <i class="ph ph-caret-down select-icon"></i>
-          </div>
-        </div>
-      </div>
-
-      <!-- ITEMS SECTION -->
-      <div class="form-group full-width items-section">
-        <h3>Detalle del Pedido</h3>
-
-        <!-- Add Item Form -->
-        <!-- Composite Item Builder -->
-        <div class="add-item-container">
-          <h4>Construir Item Compuesto</h4>
-          <p class="helper-text-sm">Agrega los componentes que conforman este item (ej. 1 Camisa + 1 Estampado)</p>
-
-          <!-- Sub-item Form -->
-          <div class="add-item-grid sub-item-grid">
-            <div class="form-group grid-type">
-              <label>Tipo de Costo</label>
-              <div class="input-wrapper">
-                <i class="ph ph-tag"></i>
-                <select [(ngModel)]="tempSubItem.cost_type_id" name="subCostType" (change)="onCostTypeChange()"
-                  [disabled]="isLoadingTypes">
-                  <option [ngValue]="null" disabled selected>Tipo</option>
-                  @if (isLoadingTypes) {
-                  <option [ngValue]="null" disabled>Cargando...</option>
-                  }
-                  @for (type of costTypes; track type.id) {
-                  <option [value]="type.id">{{ type.name }}</option>
-                  }
-                </select>
+    <div class="steps-wrapper" [@stepAnimation]="currentStep">
+      <!-- STEP 1: CLIENT INFORMATION -->
+      @if (currentStep === 1) {
+      <div class="step-container">
+        <div class="form-content-scrollable">
+          <div class="client-details-form">
+            <div class="form-row">
+              <div class="form-group search-phone-group">
+                <label for="searchPhone">Número de Teléfono</label>
+                <div class="input-wrapper search-input">
+                  <i class="ph ph-phone"></i>
+                  <input type="text" id="searchPhone" [(ngModel)]="clientSearchPhone" name="searchPhone"
+                    placeholder="(33) 355 0000" (keydown.enter)="searchClient()">
+                  <button type="button" class="inline-search-btn" (click)="searchClient()"
+                    [disabled]="isSearchingClient">
+                    <i class="ph" [class.ph-magnifying-glass]="!isSearchingClient"
+                      [class.ph-circle-notch]="isSearchingClient" [class.ph-spin]="isSearchingClient"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="taxid">RFC</label>
+                <div class="input-wrapper">
+                  <i class="ph ph-buildings"></i>
+                  <input type="text" id="taxid" [(ngModel)]="clientData.tax_id" name="taxid"
+                    [disabled]="isClientReadOnly" placeholder="Identificación fiscal">
+                </div>
               </div>
             </div>
 
-            <div class="form-group grid-item">
-              <label>Item / Costo</label>
-              <div class="input-wrapper">
-                <i class="ph ph-package"></i>
-                <select [(ngModel)]="tempSubItem.operative_cost_id" name="subOpCost"
-                  [disabled]="!tempSubItem.cost_type_id || isLoadingCosts" (change)="onOperativeCostChange()">
-                  <option [ngValue]="null" disabled selected>Selecciona opción</option>
-                  @if (isLoadingCosts) {
-                  <option [ngValue]="null" disabled>Cargando...</option>
-                  }
-                  @for (cost of availableOperativeCosts; track cost.id) {
-                  <option [ngValue]="cost.id">
-                    {{ cost.base_cost | currency }}
-                    @if (cost.attributes) {
-                    <span>
-                      - @for (attr of cost.attributes | keyvalue; track attr.key) {
-                      <span>{{ attr.key }}: {{ attr.value }} </span>
-                      }
-                    </span>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="nombre">Nombre del Cliente</label>
+                <div class="input-wrapper">
+                  <i class="ph ph-user"></i>
+                  <input type="text" id="nombre" [(ngModel)]="clientData.full_name" name="nombre"
+                    [disabled]="isClientReadOnly" placeholder="Nombre completo">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="phone">Teléfono de contacto</label>
+                <div class="input-wrapper">
+                  <i class="ph ph-phone"></i>
+                  <input type="text" id="phone" [(ngModel)]="clientData.phone_number" name="phone_number"
+                    [disabled]="isClientReadOnly" placeholder="Número alterno">
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="email">Correo Electrónico</label>
+                <div class="input-wrapper">
+                  <i class="ph ph-envelope"></i>
+                  <input type="email" id="email" [(ngModel)]="clientData.email" name="email"
+                    [disabled]="isClientReadOnly" placeholder="cliente@ejemplo.com">
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="etapa">Etapa Inicial</label>
+                <div class="input-wrapper">
+                  <i class="ph ph-steps"></i>
+                  <select id="etapa" [(ngModel)]="nuevoPedido.current_state_id" name="etapa" required
+                    [disabled]="isLoadingStates">
+                    @for (state of projectStates; track state.id) {
+                    <option [value]="state.id">{{ state.name }}</option>
                     }
-                  </option>
-                  }
-                </select>
+                  </select>
+                  <i class="ph ph-caret-down select-icon"></i>
+                </div>
               </div>
             </div>
 
-            <div class="form-group grid-qty">
-              <label>Cant.</label>
-              <div class="input-wrapper">
-                <i class="ph ph-hash"></i>
-                <input type="number" placeholder="1" [(ngModel)]="tempSubItem.quantity" name="subItemQty" min="1">
+            @if (clientFound) {
+            <div class="readonly-badge-container">
+              <div class="readonly-badge">
+                <i class="ph ph-lock"></i> Cliente existente (Lectura)
               </div>
-            </div>
-
-            <div class="form-group grid-button">
-              <label>&nbsp;</label>
-              <button type="button" class="btn-secondary" (click)="addSubItem()"
-                [disabled]="!tempSubItem.operative_cost_id || tempSubItem.quantity <= 0">
-                <i class="ph ph-plus"></i> Componente
+              <button type="button" class="btn-text-action" (click)="editFoundClient()">
+                <i class="ph ph-pencil"></i> Editar Cliente
               </button>
             </div>
+            }
+
+
           </div>
+        </div>
 
-          <!-- Current Composite Item Preview -->
-          @if (newItem.subItems.length > 0) {
-          <div class="composite-preview">
-            <div class="sub-items-list">
-              <h5>Componentes del Item:</h5>
-              <ul>
-                @for (sub of newItem.subItems; track i; let i = $index) {
-                <li>
-                  <span>{{ sub.quantity }}x {{ sub.description }} ({{ sub.unit_price | currency }})</span>
-                  <button type="button" class="btn-icon-danger small" (click)="removeSubItem(i)">
-                    <i class="ph ph-x"></i>
+        <div class="form-actions">
+          <button type="button" class="btn-link-cancel" (click)="cancelar()">Cancelar</button>
+          <button type="button" class="btn-save-next" (click)="setStep(2)"
+            [disabled]="!clientData.full_name || !clientData.phone_number">
+            Siguiente
+          </button>
+        </div>
+      </div>
+      }
+
+      <!-- STEP 2: ORDER ITEMS -->
+      @if (currentStep === 2) {
+      <div class="step-container">
+        <div class="form-content-scrollable">
+          <div class="items-section">
+            <h3>Detalle del Pedido</h3>
+
+            <div class="add-item-container">
+              <h4>Construir Item</h4>
+              <p class="helper-text-sm">Agrega los componentes que conforman este item.</p>
+
+              <div class="add-item-grid sub-item-grid">
+                <div class="form-group grid-type">
+                  <label>Tipo de Costo</label>
+                  <div class="input-wrapper">
+                    <i class="ph ph-tag"></i>
+                    <select [(ngModel)]="tempSubItem.cost_type_id" name="subCostType" (change)="onCostTypeChange()"
+                      [disabled]="isLoadingTypes">
+                      <option [ngValue]="null" disabled selected>Tipo</option>
+                      @for (type of costTypes; track type.id) {
+                      <option [value]="type.id">{{ type.name }}</option>
+                      }
+                    </select>
+                    <i class="ph ph-caret-down select-icon"></i>
+                  </div>
+                </div>
+
+                <div class="form-group grid-item">
+                  <label>Item / Costo</label>
+                  <div class="input-wrapper">
+                    <i class="ph ph-package"></i>
+                    <select [(ngModel)]="tempSubItem.operative_cost_id" name="subOpCost"
+                      [disabled]="!tempSubItem.cost_type_id || isLoadingCosts" (change)="onOperativeCostChange()">
+                      <option [ngValue]="null" disabled selected>Selecciona opción</option>
+                      @for (cost of availableOperativeCosts; track cost.id) {
+                      <option [ngValue]="cost.id">
+                        {{ cost.base_cost | currency }}
+                        @if (cost.attributes) {
+                        <span>
+                          - @for (attr of cost.attributes | keyvalue; track attr.key) {
+                          @if (!$any(attr.key).startsWith('__')) {
+                          <span>{{ attr.key }}: {{ attr.value }} </span>
+                          }
+                          }
+                        </span>
+                        }
+                      </option>
+                      }
+                    </select>
+                    <i class="ph ph-caret-down select-icon"></i>
+                  </div>
+                </div>
+
+                <div class="form-group grid-qty">
+                  <label>Cant.</label>
+                  <div class="quantity-control">
+                    <button type="button" class="qty-btn" (click)="decrementTempSubQty()">
+                      <i class="ph ph-minus"></i>
+                    </button>
+                    <input type="number" [(ngModel)]="tempSubItem.quantity" name="subItemQty" min="1"
+                      (change)="validateTempSubQty()">
+                    <button type="button" class="qty-btn" (click)="incrementTempSubQty()">
+                      <i class="ph ph-plus"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="form-group grid-button">
+                  <label>&nbsp;</label>
+                  <button type="button" class="btn-secondary" (click)="addSubItem()"
+                    [disabled]="!tempSubItem.operative_cost_id || tempSubItem.quantity <= 0">
+                    <i class="ph ph-plus"></i>
                   </button>
-                </li>
-                }
-              </ul>
-            </div>
-
-            <div class="composite-actions">
-              <div class="form-group">
-                <label>Cantidad de Items Compuestos</label>
-                <div class="input-wrapper">
-                  <i class="ph ph-copy"></i>
-                  <input type="number" [(ngModel)]="newItem.quantity" name="compositeQty" min="1">
                 </div>
               </div>
 
-              <div class="composite-summary">
-                <p><strong>Precio Unitario (Compuesto):</strong> {{ newItem.unit_price | currency }}</p>
-                <p><strong>Subtotal Total:</strong> {{ newItem.quantity * newItem.unit_price | currency }}</p>
-              </div>
-
-              <div class="action-buttons-wrapper">
-                @if (editingItemIndex !== null) {
-                <button type="button" class="btn-cancel-edit" (click)="cancelEdit()">
-                  <i class="ph ph-x"></i> Cancelar Edición
-                </button>
-                }
-
-                <button type="button" class="btn-add-item primary" (click)="addItem()">
-                  <i class="ph" [class.ph-check]="editingItemIndex === null"
-                    [class.ph-pencil-simple]="editingItemIndex !== null"></i>
-                  {{ editingItemIndex !== null ? 'Actualizar Item' : 'Agregar al Pedido' }}
-                </button>
-              </div>
-            </div>
-          </div>
-          }
-        </div>
-
-        <!-- Items List -->
-        @if (items.length > 0) {
-        <div class="items-table-wrapper">
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th>Descripción</th>
-                <th>Cant.</th>
-                <th>Precio</th>
-                <th>Subtotal</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (item of items; track i; let i = $index) {
-              <tr>
-                <td>
-                  <strong>{{ item.description }}</strong>
-                  @if (item.attributes?.sub_items) {
-                  <div class="item-details-small">
-                    @for (sub of item.attributes.sub_items; track sub.description) {
-                    <span>
-                      • {{ sub.quantity }}x {{ sub.description }} <br>
-                    </span>
-                    }
+              <!-- Variants Selection Area -->
+              @if (selectedCost?.attributes?.__type === 'variants' && selectedCost?.attributes?.__config?.groups) {
+              <div class="variants-selection-container">
+                <h5>Opciones de Variantes</h5>
+                <div class="variants-grid">
+                  @for (group of selectedCost.attributes.__config.groups; track group.name) {
+                  <div class="form-group">
+                    <label>{{ group.name }}</label>
+                    <div class="input-wrapper">
+                      <i class="ph ph-sliders"></i>
+                      <select [(ngModel)]="tempSubItem.variantSelections[group.name]" (change)="onVariantChange()">
+                        <option [ngValue]="null" disabled selected>Selecciona {{ group.name }}</option>
+                        @for (option of group.options; track option.label) {
+                        <option [ngValue]="option">
+                          {{ option.label }}
+                          @if (option.priceMod > 0) { (+{{ option.priceMod | currency }}) }
+                        </option>
+                        }
+                      </select>
+                      <i class="ph ph-caret-down select-icon"></i>
+                    </div>
                   </div>
                   }
-                </td>
-                <td>{{ item.quantity }}</td>
-                <td>${{ item.unit_price | number:'1.2-2' }}</td>
-                <td>${{ item.subtotal | number:'1.2-2' }}</td>
-                <td>
-                  <div class="table-actions">
-                    <button type="button" class="btn-icon-secondary" (click)="editItem(i)">
-                      <i class="ph ph-pencil-simple"></i>
-                    </button>
-                    <button type="button" class="btn-icon-danger" (click)="removeItem(i)">
-                      <i class="ph ph-trash"></i>
+                </div>
+              </div>
+              }
+
+
+              @if (newItem.subItems.length > 0) {
+              <div class="composite-preview">
+                <div class="sub-items-list">
+                  <h5>Componentes Seleccionados:</h5>
+                  <ul>
+                    @for (sub of newItem.subItems; track i; let i = $index) {
+                    <li @listItem>
+                      <span>{{ sub.quantity }}x {{ sub.description }} ({{ sub.unit_price | currency }})</span>
+                      <button type="button" class="btn-icon-danger small" (click)="removeSubItem(i)">
+                        <i class="ph ph-x"></i>
+                      </button>
+                    </li>
+                    }
+                  </ul>
+                </div>
+
+                <div class="composite-actions">
+                  <div class="form-group">
+                    <label>Cantidad total de este item</label>
+                    <div class="quantity-control">
+                      <button type="button" class="qty-btn" (click)="decrementNewItemQty()">
+                        <i class="ph ph-minus"></i>
+                      </button>
+                      <input type="number" [(ngModel)]="newItem.quantity" name="compositeQty" min="1"
+                        (change)="validateNewItemQty()">
+                      <button type="button" class="qty-btn" (click)="incrementNewItemQty()">
+                        <i class="ph ph-plus"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="composite-summary">
+                    <p><strong>P.U:</strong> {{ newItem.unit_price | currency }}</p>
+                    <p><strong>Subtotal:</strong> {{ newItem.quantity * newItem.unit_price | currency }}</p>
+                  </div>
+
+                  <div class="action-buttons-wrapper">
+                    <button type="button" class="btn-add-item primary" (click)="addItem()">
+                      <i class="ph ph-plus"></i> Agregar al Pedido
                     </button>
                   </div>
-                </td>
-              </tr>
+                </div>
+              </div>
               }
-            </tbody>
-            <tfoot>
-              <tr>
-                <td colspan="3" class="text-right"><span class="total-label">Subtotal del Pedido:</span></td>
-                <td colspan="2" class="total-amount">${{ totalAmount | number:'1.2-2' }}</td>
-              </tr>
-            </tfoot>
-          </table>
+            </div>
+
+            @if (items.length > 0) {
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Descripción</th>
+                    <th>Cant.</th>
+                    <th>Precio</th>
+                    <th>Subtotal</th>
+                    <th class="actions"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of items; track i; let i = $index) {
+                  <tr @listItem>
+                    <td>{{ item.description }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>{{ item.unit_price | currency }}</td>
+                    <td>{{ item.subtotal | currency }}</td>
+                    <td class="actions">
+                      <button type="button" class="btn-icon danger" (click)="$event.stopPropagation(); removeItem(i)">
+                        <i class="ph ph-trash"></i>
+                      </button>
+                    </td>
+                  </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colspan="3" class="text-right">Total:</td>
+                    <td colspan="2" class="total-amount">{{ totalAmount | currency }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+            }
+          </div>
+        </div>
+
+        @if (errorMessage) {
+        <div class="error-alert" @listItem>
+          <i class="ph ph-warning-circle"></i>
+          <span class="error-text">{{ errorMessage }}</span>
+          <button type="button" class="btn-close-error" (click)="errorMessage = null">
+            <i class="ph ph-x"></i>
+          </button>
         </div>
         }
-      </div>
 
-      <div class="form-group full-width">
-        <label for="notas">Notas Adicionales</label>
-        <div class="input-wrapper textarea-wrapper">
-          <i class="ph ph-note-pencil"></i>
-          <textarea id="notas" [(ngModel)]="nuevoPedido.notas" name="notas" rows="4"
-            placeholder="Información relevante sobre el pedido..."></textarea>
+        <div class="form-actions">
+          <button type="button" class="btn-link-cancel" (click)="setStep(1)">Atrás</button>
+          <button type="button" class="btn-save-next" (click)="guardarPedido()"
+            [disabled]="items.length === 0 || isSaving" [class.btn-loading]="isSaving">
+            @if (isSaving) { <span class="spinner"></span> }
+            Finalizar y Crear
+          </button>
         </div>
       </div>
+      }
 
-      <div class="form-actions">
-        <button type="button" class="btn-cancel" (click)="cancelar()" [disabled]="isSaving">
-          Cancelar
-        </button>
-        <button type="submit" class="btn-save" [disabled]="items.length === 0 || isSaving"
-          [class.btn-loading]="isSaving">
-          @if (isSaving) {
-          <span class="spinner"></span>
-          }
-          @if (!isSaving) {
-          <i class="ph ph-floppy-disk"></i>
-          }
-          Guardar Pedido
-        </button>
+      <!-- STEP 3: SUCCESS AND MAGIC LINK -->
+      @if (currentStep === 3) {
+      <div class="step-container" @successState>
+        <div class="step-content success-card">
+          <div class="success-icon">
+            <i class="ph ph-check-bold"></i>
+          </div>
+          <h2>¡Pedido Creado con Éxito!</h2>
+          <p>La orden ha sido registrada. Ahora puedes enviar el enlace mágico al cliente para que suba sus artes.</p>
+
+          <div class="magic-link-box">
+            <p>Enlace para el Cliente:</p>
+            <div class="link-input-group">
+              <input type="text" [value]="magicLink" readonly #linkInput>
+              <button type="button" class="btn-copy" [class.copied]="isCopied" (click)="copyLink()">
+                @if (isCopied) {
+                <i class="ph ph-check-bold"></i> Copiado!
+                } @else {
+                <i class="ph ph-copy"></i> Copiar
+                }
+              </button>
+            </div>
+            <p style="margin-top: 1rem; font-size: 0.85rem;">
+              Este enlace permite al cliente gestionar su pedido sin necesidad de usuario.
+            </p>
+          </div>
+
+          <div class="form-actions" style="justify-content: center;">
+            <button type="button" class="btn-save-next" (click)="cancelar()">
+              Volver a Pedidos
+            </button>
+          </div>
+        </div>
       </div>
-    </form>
-  </div>
-</div>
+      }
+    </div> <!-- .steps-wrapper -->
+  </div> <!-- .form-card -->
+</div> <!-- .crear-pedido-container -->

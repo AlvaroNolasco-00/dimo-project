@@ -3,7 +3,15 @@ import { CommonModule } from '@angular/common';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { LayoutService } from '../../services/layout.service';
-import { environment } from '../../../environments/environment';
+
+
+interface NavMenuItem {
+  label: string;
+  icon: string;
+  route: string;
+  roles?: string[];
+  children?: NavMenuItem[];
+}
 
 @Component({
   selector: 'app-navbar-top',
@@ -15,12 +23,53 @@ import { environment } from '../../../environments/environment';
 export class NavbarTopComponent implements AfterViewInit, OnDestroy {
   authService = inject(AuthService);
   layoutService = inject(LayoutService);
-  isDropdownOpen = signal(false);
+
   isProjectDropdownOpen = signal(false);
-  @ViewChild('userMenuContainer') userMenuContainer?: ElementRef;
+  activeDropdown = signal<string | null>(null);
+
   @ViewChild('projectMenuContainer') projectMenuContainer?: ElementRef;
   private clickListener?: (event: MouseEvent) => void;
   private isToggling = false;
+
+  menuItems: NavMenuItem[] = [
+    {
+      label: 'Utilidades',
+      icon: 'ph-toolbox',
+      route: '/utilidades',
+      children: [
+        { label: 'Remove BG', route: '/utilidades/remove-bg', icon: 'ph-eraser' },
+        { label: 'Remove Objects', route: '/utilidades/remove-objects', icon: 'ph-magic-wand' },
+        { label: 'Enhance', route: '/utilidades/enhance', icon: 'ph-sparkle' },
+        { label: 'Upscale', route: '/utilidades/upscale', icon: 'ph-arrows-out-simple' },
+        { label: 'Halftone', route: '/utilidades/halftone', icon: 'ph-dots-nine' },
+        { label: 'Contour Clip', route: '/utilidades/contour-clip', icon: 'ph-scissors' },
+        { label: 'Crop', route: '/utilidades/crop', icon: 'ph-crop' },
+        { label: 'Watermark', route: '/utilidades/watermark', icon: 'ph-stamp' }
+      ]
+    },
+    {
+      label: 'Usuarios',
+      icon: 'ph-users',
+      route: '/usuarios',
+      roles: ['admin'],
+      children: [
+        { label: 'Listado', route: '/usuarios/listado', icon: 'ph-list' },
+        { label: 'Permisos', route: '/usuarios/permisos', icon: 'ph-lock-key' },
+        { label: 'Creación', route: '/usuarios/creacion', icon: 'ph-plus-circle' }
+      ]
+    },
+    {
+      label: 'Gestión',
+      icon: 'ph-folder-open',
+      route: '/gestion',
+      children: [
+        { label: 'Pedidos', route: '/gestion/pedidos', icon: 'ph-shopping-cart' },
+        { label: 'Clientes', route: '/gestion/clientes', icon: 'ph-users-three' },
+        { label: 'Finanzas', route: '/gestion/finanzas', icon: 'ph-currency-dollar' },
+        { label: 'Proyectos', route: '/gestion/proyectos', icon: 'ph-folder-notch', roles: ['admin'] }
+      ]
+    }
+  ];
 
   ngAfterViewInit() {
     // Close dropdown when clicking outside
@@ -31,12 +80,6 @@ export class NavbarTopComponent implements AfterViewInit, OnDestroy {
       }
 
       const target = event.target as Node;
-
-      if (this.isDropdownOpen() && this.userMenuContainer) {
-        if (!this.userMenuContainer.nativeElement.contains(target)) {
-          this.closeDropdown();
-        }
-      }
 
       if (this.isProjectDropdownOpen() && this.projectMenuContainer) {
         if (!this.projectMenuContainer.nativeElement.contains(target)) {
@@ -57,26 +100,15 @@ export class NavbarTopComponent implements AfterViewInit, OnDestroy {
     this.layoutService.toggleSidebar();
   }
 
-  toggleDropdown(event: Event) {
-    event.stopPropagation();
-    this.isToggling = true;
-    this.closeProjectDropdown(); // close other
-    const newValue = !this.isDropdownOpen();
-    this.isDropdownOpen.set(newValue);
-    setTimeout(() => { this.isToggling = false; }, 100);
-  }
-
   toggleProjectDropdown(event: Event) {
+    if ((this.authService.user()?.projects || []).length <= 1) {
+      return;
+    }
     event.stopPropagation();
     this.isToggling = true;
-    this.closeDropdown(); // close other
     const newValue = !this.isProjectDropdownOpen();
     this.isProjectDropdownOpen.set(newValue);
     setTimeout(() => { this.isToggling = false; }, 100);
-  }
-
-  closeDropdown() {
-    this.isDropdownOpen.set(false);
   }
 
   closeProjectDropdown() {
@@ -88,29 +120,8 @@ export class NavbarTopComponent implements AfterViewInit, OnDestroy {
     this.closeProjectDropdown();
   }
 
-  logout() {
-    this.closeDropdown();
-    this.authService.logout();
-  }
-
-  getUserDisplayName(): string {
-    const user = this.authService.user();
-    if (!user) return 'Usuario';
-
-    if (user.full_name) {
-      return user.full_name.split(' ')[0];
-    }
-
-    return user.email || 'Usuario';
-  }
-
-  getUserAvatarUrl(): string | null {
-    const user = this.authService.user();
-    if (!user?.avatar_url) return null;
-
-    if (user.avatar_url.startsWith('http')) {
-      return user.avatar_url;
-    }
-    return `${environment.apiUrl}${user.avatar_url}`;
+  setActiveDropdown(label: string | null) {
+    this.activeDropdown.set(label);
   }
 }
+

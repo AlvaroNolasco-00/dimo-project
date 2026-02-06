@@ -602,3 +602,117 @@
     transform: scale(1);
   }
 }
+
+/* Magic Link & Link Box */
+.magic-link-section {
+  background: rgba(var(--accent-rgb), 0.05);
+  border: 1px dashed var(--accent-color);
+  border-radius: 8px;
+  padding: 1rem;
+
+  label {
+    color: var(--accent-color);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+}
+
+.link-box {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+
+  input {
+    flex: 1;
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-secondary);
+    font-family: monospace;
+    font-size: 0.9rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.5rem;
+    border-radius: 6px;
+
+    &:focus {
+      outline: none;
+      border-color: var(--accent-color);
+    }
+  }
+}
+
+/* Finance Card */
+.finance-grid {
+  .price-display {
+    background: rgba(0, 0, 0, 0.2);
+    color: var(--text-primary);
+    font-size: 1.5rem;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.badge-success {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* Customer Uploads (Details) */
+.customer-uploads {
+  width: 100%;
+  border-top: 1px dotted rgba(255, 255, 255, 0.1);
+  padding-top: 0.8rem;
+
+  .upload-header {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .uploads-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .upload-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid transparent;
+
+    &:hover {
+      border-color: var(--accent-color);
+      background: rgba(var(--accent-rgb), 0.1);
+    }
+
+    i {
+      color: var(--accent-color);
+      font-size: 1.1rem;
+    }
+
+    span {
+      font-size: 0.9rem;
+      color: var(--text-primary);
+    }
+  }
+}

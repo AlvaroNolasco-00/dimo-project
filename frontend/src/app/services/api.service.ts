@@ -172,6 +172,47 @@ export class ApiService {
         return this.http.post<{ url: string, filename: string }>(`${environment.apiUrl}/orders/${orderId}/upload`, formData);
     }
 
+    // --- Public Order Access ---
+
+    getPublicOrder(token: string): Observable<any> {
+        return this.http.get<any>(`${environment.apiUrl}/public/orders/${token}`);
+    }
+
+    updatePublicOrder(token: string, data: any): Observable<any> {
+        return this.http.put<any>(`${environment.apiUrl}/public/orders/${token}`, data);
+    }
+
+    uploadPublicOrderFile(token: string, file: File, itemId?: number): Observable<{ url: string, filename: string }> {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (itemId) {
+            formData.append('item_id', itemId.toString());
+        }
+        return this.http.post<{ url: string, filename: string }>(`${environment.apiUrl}/public/orders/${token}/upload?item_id=${itemId || ''}`, formData);
+    }
+
+    // --- Configs (Zones / Coupons) ---
+
+    getDeliveryZones(projectId: number): Observable<any[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}/projects/${projectId}/delivery-zones`);
+    }
+
+    createDeliveryZone(projectId: number, zone: any): Observable<any> {
+        return this.http.post<any>(`${environment.apiUrl}/projects/${projectId}/delivery-zones`, zone);
+    }
+
+    updateDeliveryZone(projectId: number, zoneId: number, zone: any): Observable<any> {
+        return this.http.put<any>(`${environment.apiUrl}/projects/${projectId}/delivery-zones/${zoneId}`, zone);
+    }
+
+    getCoupons(projectId: number): Observable<any[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}/projects/${projectId}/coupons`);
+    }
+
+    createCoupon(projectId: number, coupon: any): Observable<any> {
+        return this.http.post<any>(`${environment.apiUrl}/projects/${projectId}/coupons`, coupon);
+    }
+
     // --- Costs ---
 
     getCostTypes(projectId: number): Observable<any[]> {
@@ -206,6 +247,12 @@ export class ApiService {
 
     deleteClient(projectId: number, clientId: number): Observable<any> {
         return this.http.delete<any>(`${environment.apiUrl}/projects/${projectId}/clients/${clientId}`);
+    }
+
+    // --- Geocoding ---
+    getReverseGeocoding(lat: number, lng: number): Observable<any> {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
+        return this.http.get<any>(url);
     }
 }
 

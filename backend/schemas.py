@@ -6,6 +6,7 @@ from datetime import datetime
 class CostTypeBase(BaseModel):
     name: str
     description: Optional[str] = None
+    requires_art: bool = False
 
 class CostTypeCreate(CostTypeBase):
     project_id: int
@@ -59,6 +60,61 @@ class Project(ProjectBase):
         from_attributes = True
 
 # --- Order Systems ---
+
+class DeliveryZoneBase(BaseModel):
+    name: str
+    price: float = 0.0
+    zone_type: str = "STANDARD_PAID"
+    is_active: bool = True
+    coordinates: Optional[List[List[float]]] = None
+
+class DeliveryZoneCreate(DeliveryZoneBase):
+    project_id: int
+
+class DeliveryZone(DeliveryZoneBase):
+    id: int
+    project_id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class CouponBase(BaseModel):
+    code: str
+    description: Optional[str] = None
+    discount_type: str = "FIXED"
+    discount_value: float
+    min_purchase_amount: float = 0.0
+    is_active: bool = True
+
+class CouponCreate(CouponBase):
+    project_id: int
+
+class Coupon(CouponBase):
+    id: int
+    project_id: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class ClientAddressBase(BaseModel):
+    address_line: str
+    zone_id: Optional[int] = None
+    formatted_address: Optional[str] = None
+    is_default: bool = False
+
+class ClientAddressCreate(ClientAddressBase):
+    pass
+
+class ClientAddress(ClientAddressBase):
+    id: int
+    client_id: int
+    created_at: datetime
+    zone: Optional[DeliveryZone] = None
+
+    class Config:
+        from_attributes = True
 
 class OrderStateBase(BaseModel):
     name: str
@@ -124,65 +180,6 @@ class OrderItem(OrderItemBase):
     class Config:
         from_attributes = True
 
-class OrderBase(BaseModel):
-    client_name: str
-    client_id: Optional[int] = None
-    delivery_date: Optional[datetime] = None
-    shipping_address: Optional[str] = None
-    location_lat: Optional[float] = None
-    location_lng: Optional[float] = None
-    notes: Optional[str] = None
-    total_amount: Optional[float] = 0.0
-
-class OrderCreate(OrderBase):
-    project_id: int
-    current_state_id: Optional[int] = None # Can be null initially (uses default)
-    items: List[OrderItemCreate] = []
-
-class Order(OrderBase):
-    id: int
-    project_id: int
-    current_state_id: Optional[int] = None
-    created_at: datetime
-    updated_at: datetime
-    state: Optional[OrderState] = None
-    items: List[OrderItem] = []
-
-    class Config:
-        from_attributes = True
-
-class OrderUpdate(BaseModel):
-    current_state_id: Optional[int] = None
-    notes: Optional[str] = None
-    items: Optional[List[OrderItemCreate]] = None # Use OrderItemCreate for simplicity in full alignment
-    # If items are sent, we replace them or merge logic in router 
-
-    class Config:
-        from_attributes = True
-
-# --- Order History ---
-
-class UserBasic(BaseModel):
-    id: int
-    full_name: str
-    
-    class Config:
-        from_attributes = True
-
-class OrderHistoryBase(BaseModel):
-    action_type: str
-    description: str
-    created_at: datetime
-
-class OrderHistory(OrderHistoryBase):
-    id: int
-    order_id: int
-    user_id: Optional[int] = None
-    user: Optional[UserBasic] = None
-
-    class Config:
-        from_attributes = True
-
 # --- Clients ---
 class ClientBase(BaseModel):
     phone_number: str
@@ -212,9 +209,85 @@ class Client(ClientBase):
     project_id: int
     created_at: datetime
     updated_at: datetime
+    addresses: List[ClientAddress] = []
 
     class Config:
         from_attributes = True
+
+class OrderBase(BaseModel):
+    client_name: Optional[str] = None
+    client_id: Optional[int] = None
+    delivery_date: Optional[datetime] = None
+    shipping_address: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lng: Optional[float] = None
+    notes: Optional[str] = None
+    total_amount: Optional[float] = 0.0
+
+    project_id: int
+    current_state_id: Optional[int] = None # Can be null initially (uses default)
+    coupon_id: Optional[int] = None
+    delivery_zone_id: Optional[int] = None
+    down_payment_amount: Optional[float] = 0.0
+    items: List[OrderItemCreate] = []
+
+class OrderCreate(OrderBase):
+    new_client: Optional[ClientCreate] = None
+
+class Order(OrderBase):
+    id: int
+    project_id: int
+    current_state_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+    state: Optional[OrderState] = None
+    items: List[OrderItem] = []
+    
+    access_token: Optional[str] = None
+    down_payment_amount: float = 0.0
+    coupon_id: Optional[int] = None
+    coupon: Optional[Coupon] = None
+    delivery_zone_id: Optional[int] = None
+    delivery_zone: Optional[DeliveryZone] = None
+
+    class Config:
+        from_attributes = True
+
+class OrderUpdate(BaseModel):
+    current_state_id: Optional[int] = None
+    notes: Optional[str] = None
+    coupon_id: Optional[int] = None
+    delivery_zone_id: Optional[int] = None
+    down_payment_amount: Optional[float] = None
+    items: Optional[List[OrderItemCreate]] = None # Use OrderItemCreate for simplicity in full alignment
+    # If items are sent, we replace them or merge logic in router 
+
+    class Config:
+        from_attributes = True
+
+# --- Order History ---
+
+class UserBasic(BaseModel):
+    id: int
+    full_name: str
+    
+    class Config:
+        from_attributes = True
+
+class OrderHistoryBase(BaseModel):
+    action_type: str
+    description: str
+    created_at: datetime
+
+class OrderHistory(OrderHistoryBase):
+    id: int
+    order_id: int
+    user_id: Optional[int] = None
+    user: Optional[UserBasic] = None
+
+    class Config:
+        from_attributes = True
+
 
 # --- Processing Tasks ---
 class TaskResponse(BaseModel):

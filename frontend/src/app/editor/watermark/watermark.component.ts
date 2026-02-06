@@ -5,11 +5,12 @@ import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ApiService } from '../../services/api.service';
 import { ImagePersistenceService, SessionImage } from '../../services/image-persistence.service';
 import { AuthService } from '../../services/auth.service';
+import { EditorSidebarComponent } from '../components/editor-sidebar/editor-sidebar.component';
 
 @Component({
     selector: 'app-watermark',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, EditorSidebarComponent],
     templateUrl: './watermark.component.html',
     styleUrl: './watermark.component.scss'
 })
@@ -125,8 +126,7 @@ export class WatermarkComponent implements AfterViewInit {
         img.src = url;
     }
 
-    async deleteFromGallery(id: string, event: Event) {
-        event.stopPropagation();
+    async deleteFromGallery(id: string) {
         try {
             await this.imageService.deleteImage(id);
             this.sessionGallery.update(prev => prev.filter(img => img.id !== id));

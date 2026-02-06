@@ -38,11 +38,19 @@ export class CostosOperativosComponent {
   // Forms
   newTypeName = '';
   newTypeDesc = '';
+  newTypeRequiresArt = false;
 
   selectedTypeId: number | null = null;
   editingCostId: number | null = null;
+  costMode: 'simple' | 'variants' | 'material' = 'simple';
   newCostBase: number = 0;
   newCostAttributes: { key: string, value: string }[] = [];
+
+  // Variant Mode Data
+  variantGroups: { name: string, options: { label: string, priceMod: number }[] }[] = [];
+
+  // Material Mode Data
+  materialDims = { width: 0, height: 0, unit: 'cm' };
 
   private financeService = inject(FinanceService);
   private authService = inject(AuthService);
@@ -81,7 +89,9 @@ export class CostosOperativosComponent {
     const costs = this.groupedCosts[typeId] || [];
     const keys = new Set<string>();
     costs.forEach(c => {
-      Object.keys(c.attributes || {}).forEach(k => keys.add(k));
+      Object.keys(c.attributes || {}).forEach(k => {
+        if (!k.startsWith('__')) keys.add(k);
+      });
     });
     this.typeColumns[typeId] = Array.from(keys);
   }
@@ -90,6 +100,7 @@ export class CostosOperativosComponent {
   openTypeModal() {
     this.newTypeName = '';
     this.newTypeDesc = '';
+    this.newTypeRequiresArt = false;
     this.showTypeModal = true;
   }
 
@@ -105,7 +116,8 @@ export class CostosOperativosComponent {
     this.financeService.createCostType({
       name: this.newTypeName,
       description: this.newTypeDesc,
-      project_id: project.id
+      project_id: project.id,
+      requires_art: this.newTypeRequiresArt
     })
       .subscribe(() => {
         this.loadData(project.id);
@@ -118,6 +130,9 @@ export class CostosOperativosComponent {
     this.selectedTypeId = typeId;
     this.editingCostId = null;
     this.newCostBase = 0;
+    this.costMode = 'simple';
+    this.variantGroups = [];
+    this.materialDims = { width: 0, height: 0, unit: 'cm' };
 
     // Pre-fill attributes based on existing columns
     this.newCostAttributes = (this.typeColumns[typeId] || []).map(key => ({ key, value: '' }));
@@ -142,6 +157,23 @@ export class CostosOperativosComponent {
     this.newCostAttributes.splice(index, 1);
   }
 
+  // Variant Helpers
+  addVariantGroup() {
+    this.variantGroups.push({ name: '', options: [{ label: '', priceMod: 0 }] });
+  }
+
+  removeVariantGroup(index: number) {
+    this.variantGroups.splice(index, 1);
+  }
+
+  addVariantOption(groupIndex: number) {
+    this.variantGroups[groupIndex].options.push({ label: '', priceMod: 0 });
+  }
+
+  removeVariantOption(groupIndex: number, optionIndex: number) {
+    this.variantGroups[groupIndex].options.splice(optionIndex, 1);
+  }
+
   async saveCost() {
     if (!this.selectedTypeId) return;
 
@@ -149,6 +181,15 @@ export class CostosOperativosComponent {
     this.newCostAttributes.forEach(attr => {
       if (attr.key) attributes[attr.key] = attr.value;
     });
+
+    // Add Metadata based on Mode
+    if (this.costMode === 'variants') {
+      attributes['__type'] = 'variants';
+      attributes['__config'] = { groups: this.variantGroups };
+    } else if (this.costMode === 'material') {
+      attributes['__type'] = 'material';
+      attributes['__config'] = { dims: this.materialDims };
+    }
 
     const payload = {
       cost_type_id: this.selectedTypeId,
@@ -158,24 +199,11 @@ export class CostosOperativosComponent {
 
     if (this.editingCostId) {
       // Edit Mode
-      const result = await Swal.fire({
-        title: '¿Confirmar edición?',
-        text: "Se actualizarán los datos del costo.",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33',
-        confirmButtonText: 'Sí, guardar',
-        cancelButtonText: 'Cancelar'
+      this.financeService.updateCost(this.editingCostId, payload).subscribe(() => {
+        Swal.fire('Guardado', 'El costo ha sido actualizado.', 'success');
+        this.refreshData();
+        this.closeCostModal();
       });
-
-      if (result.isConfirmed) {
-        this.financeService.updateCost(this.editingCostId, payload).subscribe(() => {
-          Swal.fire('Guardado', 'El costo ha sido actualizado.', 'success');
-          this.refreshData();
-          this.closeCostModal();
-        });
-      }
     } else {
       // Create Mode
       this.financeService.createCost(payload).subscribe(() => {
@@ -219,13 +247,27 @@ export class CostosOperativosComponent {
     this.editingCostId = cost.id;
     this.newCostBase = cost.base_cost;
 
-    // Convert attributes object to array for form
-    this.newCostAttributes = [];
-    if (cost.attributes) {
-      Object.keys(cost.attributes).forEach(key => {
-        this.newCostAttributes.push({ key, value: cost.attributes[key] });
-      });
+    // Detect Mode
+    const attrs = cost.attributes || {};
+    if (attrs['__type'] === 'variants') {
+      this.costMode = 'variants';
+      this.variantGroups = attrs['__config']?.groups || [];
+    } else if (attrs['__type'] === 'material') {
+      this.costMode = 'material';
+      this.materialDims = attrs['__config']?.dims || { width: 0, height: 0, unit: 'cm' };
+    } else {
+      this.costMode = 'simple';
+      this.variantGroups = [];
+      this.materialDims = { width: 0, height: 0, unit: 'cm' };
     }
+
+    // Convert attributes object to array for form, filtering metadata
+    this.newCostAttributes = [];
+    Object.keys(attrs).forEach(key => {
+      if (!key.startsWith('__')) {
+        this.newCostAttributes.push({ key, value: attrs[key] });
+      }
+    });
 
     // Ensure at least one empty if none
     if (this.newCostAttributes.length === 0) {
