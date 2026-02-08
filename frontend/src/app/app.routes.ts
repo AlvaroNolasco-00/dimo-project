@@ -1,43 +1,16 @@
 import { Routes } from '@angular/router';
-import { EditorComponent } from './editor/editor.component';
-import { LoginComponent } from './auth/login/login.component';
-import { RegisterComponent } from './auth/register/register.component';
-import { PendingApprovalComponent } from './auth/pending-approval/pending-approval.component';
 import { approvedGuard, adminGuard, projectGuard } from './guards/auth.guard';
-import { AuthLayoutComponent } from './layout/auth-layout/auth-layout.component';
-import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
-import { UsuariosLayoutComponent } from './usuarios/usuarios-layout/usuarios-layout.component';
-import { PermisosComponent } from './usuarios/permisos/permisos.component';
-import { CreacionComponent } from './usuarios/creacion/creacion.component';
-import { ListadoComponent } from './usuarios/listado/listado.component';
-import { GestionLayoutComponent } from './gestion/gestion-layout/gestion-layout.component';
-import { PedidosComponent } from './gestion/pedidos/pedidos.component';
-import { CrearPedidoComponent } from './gestion/pedidos/crear-pedido/crear-pedido.component';
-import { DetallePedidoComponent } from './gestion/pedidos/detalle-pedido/detalle-pedido.component';
-import { FinanzasComponent } from './gestion/finanzas/finanzas.component';
-import { CostosOperativosComponent } from './gestion/finanzas/costos-operativos/costos-operativos.component';
-import { RecuentoGastosComponent } from './gestion/finanzas/recuento-gastos/recuento-gastos.component';
-import { RecuentoGananciasComponent } from './gestion/finanzas/recuento-ganancias/recuento-ganancias.component';
-import { DeliveryZonesComponent } from './gestion/finanzas/delivery-zones/delivery-zones.component';
-import { CouponsComponent } from './gestion/finanzas/coupons/coupons.component';
-import { ProyectosComponent } from './gestion/proyectos/proyectos.component';
-import { NoProjectComponent } from './auth/no-project/no-project.component';
-import { ProfileComponent } from './profile/profile.component';
-import { ClientesComponent } from './gestion/clientes/clientes.component';
-import { ClienteFormComponent } from './gestion/clientes/cliente-form/cliente-form.component';
-import { PublicLayout } from './layout/public-layout/public-layout';
-import { OrderViewComponent } from './public/order-view/order-view';
 
 export const routes: Routes = [
     // Auth Routes (Clean layout, no sidebar)
     {
         path: 'auth',
-        component: AuthLayoutComponent,
+        loadComponent: () => import('./layout/auth-layout/auth-layout.component').then(m => m.AuthLayoutComponent),
         children: [
-            { path: 'login', component: LoginComponent },
-            { path: 'register', component: RegisterComponent },
-            { path: 'pending-approval', component: PendingApprovalComponent },
-            { path: 'no-project', component: NoProjectComponent },
+            { path: 'login', loadComponent: () => import('./auth/login/login.component').then(m => m.LoginComponent) },
+            { path: 'register', loadComponent: () => import('./auth/register/register.component').then(m => m.RegisterComponent) },
+            { path: 'pending-approval', loadComponent: () => import('./auth/pending-approval/pending-approval.component').then(m => m.PendingApprovalComponent) },
+            { path: 'no-project', loadComponent: () => import('./auth/no-project/no-project.component').then(m => m.NoProjectComponent) },
             { path: '', redirectTo: 'login', pathMatch: 'full' },
         ]
     },
@@ -45,26 +18,26 @@ export const routes: Routes = [
     // Public Order Tracking (No Auth Required)
     {
         path: 'track',
-        component: PublicLayout,
+        loadComponent: () => import('./layout/public-layout/public-layout').then(m => m.PublicLayout),
         children: [
-            { path: ':token', component: OrderViewComponent }
+            { path: ':token', loadComponent: () => import('./public/order-view/order-view').then(m => m.OrderViewComponent) }
         ]
     },
 
     // Main App Routes (Sidebar layout)
     {
         path: 'utilidades',
-        component: MainLayoutComponent,
+        loadComponent: () => import('./layout/main-layout/main-layout.component').then(m => m.MainLayoutComponent),
         canActivate: [approvedGuard, projectGuard],
         children: [
             { path: '', redirectTo: 'remove-bg', pathMatch: 'full' },
-            { path: 'remove-bg', component: EditorComponent },
-            { path: 'remove-objects', component: EditorComponent },
-            { path: 'enhance', component: EditorComponent },
-            { path: 'upscale', component: EditorComponent },
-            { path: 'halftone', component: EditorComponent },
-            { path: 'contour-clip', component: EditorComponent },
-            { path: 'crop', component: EditorComponent },
+            { path: 'remove-bg', loadComponent: () => import('./editor/editor.component').then(m => m.EditorComponent) },
+            { path: 'remove-objects', loadComponent: () => import('./editor/editor.component').then(m => m.EditorComponent) },
+            { path: 'enhance', loadComponent: () => import('./editor/editor.component').then(m => m.EditorComponent) },
+            { path: 'upscale', loadComponent: () => import('./editor/editor.component').then(m => m.EditorComponent) },
+            { path: 'halftone', loadComponent: () => import('./editor/editor.component').then(m => m.EditorComponent) },
+            { path: 'contour-clip', loadComponent: () => import('./editor/editor.component').then(m => m.EditorComponent) },
+            { path: 'crop', loadComponent: () => import('./editor/editor.component').then(m => m.EditorComponent) },
             { path: 'watermark', loadComponent: () => import('./editor/watermark/watermark.component').then(m => m.WatermarkComponent) },
         ]
     },
@@ -72,31 +45,31 @@ export const routes: Routes = [
     // Profile Routes
     {
         path: 'profile',
-        component: MainLayoutComponent,
+        loadComponent: () => import('./layout/main-layout/main-layout.component').then(m => m.MainLayoutComponent),
         canActivate: [approvedGuard],
         children: [
-            { path: '', component: ProfileComponent }
+            { path: '', loadComponent: () => import('./profile/profile.component').then(m => m.ProfileComponent) }
         ]
     },
 
     // Usuarios Routes
     {
         path: 'usuarios',
-        component: MainLayoutComponent,
+        loadComponent: () => import('./layout/main-layout/main-layout.component').then(m => m.MainLayoutComponent),
         canActivate: [approvedGuard],
         children: [
             {
                 path: '',
-                component: UsuariosLayoutComponent,
+                loadComponent: () => import('./usuarios/usuarios-layout/usuarios-layout.component').then(m => m.UsuariosLayoutComponent),
                 children: [
                     { path: '', redirectTo: 'listado', pathMatch: 'full' },
-                    { path: 'permisos', component: PermisosComponent },
+                    { path: 'permisos', loadComponent: () => import('./usuarios/permisos/permisos.component').then(m => m.PermisosComponent) },
                     {
                         path: 'creacion',
-                        component: CreacionComponent,
+                        loadComponent: () => import('./usuarios/creacion/creacion.component').then(m => m.CreacionComponent),
                         canActivate: [adminGuard]
                     },
-                    { path: 'listado', component: ListadoComponent },
+                    { path: 'listado', loadComponent: () => import('./usuarios/listado/listado.component').then(m => m.ListadoComponent) },
                 ]
             }
         ]
@@ -105,27 +78,27 @@ export const routes: Routes = [
     // Gestión Routes
     {
         path: 'gestion',
-        component: MainLayoutComponent,
+        loadComponent: () => import('./layout/main-layout/main-layout.component').then(m => m.MainLayoutComponent),
         canActivate: [approvedGuard],
         children: [
             {
                 path: '',
-                component: GestionLayoutComponent,
+                loadComponent: () => import('./gestion/gestion-layout/gestion-layout.component').then(m => m.GestionLayoutComponent),
                 children: [
                     { path: '', redirectTo: 'pedidos', pathMatch: 'full' },
-                    { path: 'pedidos', component: PedidosComponent },
-                    { path: 'pedidos/crear', component: CrearPedidoComponent },
-                    { path: 'pedidos/:id', component: DetallePedidoComponent },
-                    { path: 'clientes', component: ClientesComponent },
-                    { path: 'clientes/crear', component: ClienteFormComponent },
-                    { path: 'clientes/editar/:id', component: ClienteFormComponent },
-                    { path: 'proyectos', component: ProyectosComponent, canActivate: [adminGuard] },
-                    { path: 'finanzas', component: FinanzasComponent },
-                    { path: 'finanzas/costos-operativos', component: CostosOperativosComponent },
-                    { path: 'finanzas/recuento-gastos', component: RecuentoGastosComponent },
-                    { path: 'finanzas/recuento-ganancias', component: RecuentoGananciasComponent },
-                    { path: 'finanzas/delivery-zones', component: DeliveryZonesComponent },
-                    { path: 'finanzas/coupons', component: CouponsComponent },
+                    { path: 'pedidos', loadComponent: () => import('./gestion/pedidos/pedidos.component').then(m => m.PedidosComponent) },
+                    { path: 'pedidos/crear', loadComponent: () => import('./gestion/pedidos/crear-pedido/crear-pedido.component').then(m => m.CrearPedidoComponent) },
+                    { path: 'pedidos/:id', loadComponent: () => import('./gestion/pedidos/detalle-pedido/detalle-pedido.component').then(m => m.DetallePedidoComponent) },
+                    { path: 'clientes', loadComponent: () => import('./gestion/clientes/clientes.component').then(m => m.ClientesComponent) },
+                    { path: 'clientes/crear', loadComponent: () => import('./gestion/clientes/cliente-form/cliente-form.component').then(m => m.ClienteFormComponent) },
+                    { path: 'clientes/editar/:id', loadComponent: () => import('./gestion/clientes/cliente-form/cliente-form.component').then(m => m.ClienteFormComponent) },
+                    { path: 'proyectos', loadComponent: () => import('./gestion/proyectos/proyectos.component').then(m => m.ProyectosComponent), canActivate: [adminGuard] },
+                    { path: 'finanzas', loadComponent: () => import('./gestion/finanzas/finanzas.component').then(m => m.FinanzasComponent) },
+                    { path: 'finanzas/costos-operativos', loadComponent: () => import('./gestion/finanzas/costos-operativos/costos-operativos.component').then(m => m.CostosOperativosComponent) },
+                    { path: 'finanzas/recuento-gastos', loadComponent: () => import('./gestion/finanzas/recuento-gastos/recuento-gastos.component').then(m => m.RecuentoGastosComponent) },
+                    { path: 'finanzas/recuento-ganancias', loadComponent: () => import('./gestion/finanzas/recuento-ganancias/recuento-ganancias.component').then(m => m.RecuentoGananciasComponent) },
+                    { path: 'finanzas/delivery-zones', loadComponent: () => import('./gestion/finanzas/delivery-zones/delivery-zones.component').then(m => m.DeliveryZonesComponent) },
+                    { path: 'finanzas/coupons', loadComponent: () => import('./gestion/finanzas/coupons/coupons.component').then(m => m.CouponsComponent) },
                 ]
             }
         ]
