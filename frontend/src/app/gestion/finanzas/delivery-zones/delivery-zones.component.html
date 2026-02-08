@@ -17,6 +17,9 @@
             <div class="zone-header">
                 <h3>{{zone.name}}</h3>
                 <div class="header-actions-inline">
+                    <button class="btn-icon" (click)="viewHistory(zone)" title="Ver Historial">
+                        <i class="ph ph-clock-counter-clockwise"></i>
+                    </button>
                     <button class="btn-icon" (click)="editZone(zone)" title="Editar">
                         <i class="ph ph-pencil"></i>
                     </button>
@@ -45,6 +48,43 @@
 
         <div class="empty-state" *ngIf="zones.length === 0 && !loading">
             <p>No has configurado ninguna zona de entrega.</p>
+        </div>
+    </div>
+</div>
+
+<!-- History Modal -->
+<div class="modal-overlay" *ngIf="showHistoryModal" (click)="showHistoryModal = false">
+    <div class="modal-content card history-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>Historial: {{selectedZoneName}}</h2>
+            <button class="btn-icon-only" (click)="showHistoryModal = false">
+                <i class="ph ph-x"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="history-list">
+                <div class="history-item" *ngFor="let h of zoneHistory">
+                    <div class="history-header">
+                        <span class="modifier-name">{{h.modified_by?.full_name || 'Desconocido'}}</span>
+                        <span class="modify-date">{{h.modified_at | date:'short'}}</span>
+                    </div>
+                    <div class="history-reason" *ngIf="h.change_reason">
+                        <strong>Motivo:</strong> {{h.change_reason}}
+                    </div>
+                    <div class="history-details">
+                        <div class="field-change" *ngFor="let prop of getChangedProperties(h.previous_state)">
+                            <span class="prop-label">{{prop}}:</span>
+                            <span class="old-value">{{h.previous_state[prop]}}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="empty-state" *ngIf="zoneHistory.length === 0">
+                    <p>No hay cambios registrados para esta zona.</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-primary" (click)="showHistoryModal = false">Cerrar</button>
         </div>
     </div>
 </div>

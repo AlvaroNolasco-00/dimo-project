@@ -4,21 +4,41 @@
             <i class="ph ph-arrow-left"></i> Volver
         </button>
         <div class="spacer"></div>
+        <button class="btn-secondary" (click)="openStats()">
+            <i class="ph ph-chart-bar"></i> Ver Estadísticas
+        </button>
         <button class="btn-primary" (click)="openModal()">
             <i class="ph ph-plus"></i> Nuevo Cupón
         </button>
     </div>
 
+
     <h1>Cupones de Descuento</h1>
     <p class="description">Gestiona los cupones disponibles, incluido el cupón FIDELITY (automático).</p>
 
-    <div class="coupons-grid">
-        <div class="coupon-card card" *ngFor="let coupon of coupons">
+    <div class="loading-state" *ngIf="loading()">
+        <div class="spinner"></div>
+        <p>Cargando cupones...</p>
+    </div>
+
+    <div class="coupons-grid" *ngIf="checkDetection()">
+        <div class="coupon-card card" *ngFor="let coupon of coupons()">
             <div class="coupon-header">
-                <h3>{{coupon.code}}</h3>
-                <span class="badge" [ngClass]="coupon.is_active ? 'badge-success' : 'badge-danger'">
-                    {{coupon.is_active ? 'Activo' : 'Inactivo'}}
-                </span>
+                <div class="header-main">
+                    <h3>{{coupon.code}}</h3>
+                    <div class="header-meta">
+                        <button class="btn-icon-sm" (click)="openHistory(coupon)" title="Ver Historial">
+                            <i class="ph ph-clock-counter-clockwise"></i>
+                        </button>
+                        <button class="btn-icon-sm" (click)="openModal(coupon)" title="Editar Cupón">
+                            <i class="ph ph-pencil-simple"></i>
+                        </button>
+                        <label class="switch">
+                            <input type="checkbox" [checked]="coupon.is_active" (change)="toggleCouponStatus(coupon)">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                </div>
             </div>
 
             <div class="coupon-body">
@@ -33,22 +53,110 @@
                     <span>{{coupon.min_purchase_amount | currency}}</span>
                 </div>
 
+                <div class="detail-row" *ngIf="coupon.single_use">
+                    <span>Uso:</span>
+                    <span class="text-info"><i class="ph ph-user-circle"></i> Un solo uso por cliente</span>
+                </div>
+
                 <div class="fidelity-tag" *ngIf="coupon.code === 'FIDELITY'">
                     <i class="ph ph-star"></i> Automático (Fidelidad)
                 </div>
+
+                <div class="creator-info" *ngIf="coupon.created_by">
+                    <i class="ph ph-user"></i> Creado por: {{coupon.created_by.full_name}}
+                </div>
             </div>
+
         </div>
 
-        <div class="empty-state" *ngIf="coupons.length === 0 && !loading">
+
+        <div class="empty-state" *ngIf="coupons().length === 0 && !loading()">
             <p>No tienes cupones creados.</p>
         </div>
     </div>
 </div>
 
-<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+<!-- Modal Historial -->
+<div class="modal-overlay" *ngIf="showHistoryModal()" (click)="closeHistoryModal()">
+    <div class="modal-content card history-modal fade-in" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <h2>Historial de Versiones Anteriores</h2>
+                <p class="subtitle" *ngIf="editingCoupon()">Cupón: <strong>{{editingCoupon().code}}</strong></p>
+            </div>
+            <button class="btn-icon-only" (click)="closeHistoryModal()">
+                <i class="ph ph-x"></i>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <div class="loading-state" *ngIf="loadingHistory()">
+                <div class="spinner"></div>
+                <p>Cargando historial...</p>
+            </div>
+
+            <div class="history-list" *ngIf="!loadingHistory()">
+                <div class="history-item card" *ngFor="let item of couponHistory()">
+                    <div class="history-header">
+                        <div class="history-user">
+                            <i class="ph ph-user-circle"></i>
+                            <div>
+                                <strong>{{item.modified_by?.full_name || 'Sistema'}}</strong>
+                                <small>{{item.created_at | date:'medium'}}</small>
+                            </div>
+                        </div>
+                        <button class="btn-secondary btn-sm" (click)="revertTo(item)">
+                            <i class="ph ph-arrow-counter-clockwise"></i> Restaurar este estado
+                        </button>
+                    </div>
+                    <div class="history-reason" *ngIf="item.change_reason">
+                        <i class="ph ph-chat-centered-dots"></i> {{item.change_reason}}
+                    </div>
+                    <div class="history-details">
+                        <div class="detail-pill" *ngIf="item.previous_state.code !== editingCoupon().code">
+                            <span>Código:</span>
+                            <strong>{{item.previous_state.code}}</strong>
+                        </div>
+                        <div class="detail-pill">
+                            <span>Descuento:</span>
+                            <strong>
+                                {{item.previous_state.discount_type === 'FIXED' ? (item.previous_state.discount_value |
+                                currency) : item.previous_state.discount_value + '%'}}
+                            </strong>
+                        </div>
+                        <div class="detail-pill" *ngIf="item.previous_state.min_purchase_amount > 0">
+                            <span>Mín. Compra:</span>
+                            <strong>{{item.previous_state.min_purchase_amount | currency}}</strong>
+                        </div>
+                        <div class="detail-pill" *ngIf="item.previous_state.single_use">
+                            <span>Uso:</span>
+                            <strong>Único</strong>
+                        </div>
+                        <div class="detail-pill">
+                            <span>Estado:</span>
+                            <span [ngClass]="item.previous_state.is_active ? 'text-success' : 'text-danger'">
+                                {{item.previous_state.is_active ? 'Activo' : 'Inactivo'}}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="empty-state" *ngIf="couponHistory().length === 0">
+                    <p>No hay cambios registrados en este cupón.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-secondary" (click)="closeHistoryModal()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" *ngIf="showModal()" (click)="closeModal()">
     <div class="modal-content card fade-in" (click)="$event.stopPropagation()">
         <div class="modal-header">
-            <h2>Nuevo Cupón</h2>
+            <h2>{{editingCoupon() ? 'Editar Cupón' : 'Nuevo Cupón'}}</h2>
             <button class="btn-icon-only" (click)="closeModal()">
                 <i class="ph ph-x"></i>
             </button>
@@ -60,8 +168,8 @@
                     <label>Código del Cupón</label>
                     <div class="input-wrapper">
                         <i class="ph ph-tag left-icon"></i>
-                        <input type="text" [(ngModel)]="newCoupon.code" placeholder="Ej. SUMMER2024"
-                            (input)="newCoupon.code = newCoupon.code.toUpperCase()">
+                        <input type="text" [(ngModel)]="newCouponState.code" placeholder="Ej. SUMMER2024"
+                            (input)="newCouponState.code = newCouponState.code.toUpperCase()">
                     </div>
                     <small>Se mostrará en mayúsculas automáticamente.</small>
                 </div>
@@ -70,7 +178,7 @@
                     <div class="form-group flex-1">
                         <label>Tipo de Descuento</label>
                         <div class="input-wrapper">
-                            <select [(ngModel)]="newCoupon.discount_type">
+                            <select [(ngModel)]="newCouponState.discount_type">
                                 <option value="FIXED">Monto Fijo ($)</option>
                                 <option value="PERCENTAGE">Porcentaje (%)</option>
                             </select>
@@ -79,9 +187,11 @@
                     <div class="form-group flex-1">
                         <label>Valor</label>
                         <div class="input-wrapper">
-                            <i class="ph ph-currency-dollar left-icon" *ngIf="newCoupon.discount_type === 'FIXED'"></i>
-                            <i class="ph ph-percent left-icon" *ngIf="newCoupon.discount_type === 'PERCENTAGE'"></i>
-                            <input type="number" [(ngModel)]="newCoupon.discount_value" placeholder="0.00">
+                            <i class="ph ph-currency-dollar left-icon"
+                                *ngIf="newCouponState.discount_type === 'FIXED'"></i>
+                            <i class="ph ph-percent left-icon"
+                                *ngIf="newCouponState.discount_type === 'PERCENTAGE'"></i>
+                            <input type="number" [(ngModel)]="newCouponState.discount_value" placeholder="0.00">
                         </div>
                     </div>
                 </div>
@@ -90,7 +200,23 @@
                     <label>Compra Mínima (Opcional)</label>
                     <div class="input-wrapper">
                         <i class="ph ph-currency-dollar left-icon"></i>
-                        <input type="number" [(ngModel)]="newCoupon.min_purchase_amount" placeholder="0.00">
+                        <input type="number" [(ngModel)]="newCouponState.min_purchase_amount" placeholder="0.00">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" [(ngModel)]="newCouponState.single_use">
+                        <span>Permitir solo un uso por cliente</span>
+                    </label>
+                </div>
+
+                <div class="form-group" *ngIf="editingCoupon()">
+                    <label>Motivo del cambio (Opcional)</label>
+                    <div class="input-wrapper">
+                        <i class="ph ph-note left-icon"></i>
+                        <input type="text" [(ngModel)]="newCouponState.change_reason"
+                            placeholder="Ej. Actualización de temporada">
                     </div>
                 </div>
             </div>
@@ -99,9 +225,128 @@
         <div class="modal-footer">
             <button class="btn-secondary" (click)="closeModal()">Cancelar</button>
             <button class="btn-primary" (click)="saveCoupon()"
-                [disabled]="!newCoupon.code || !newCoupon.discount_value">
-                <i class="ph ph-check"></i> Crear Cupón
+                [disabled]="!newCouponState.code || !newCouponState.discount_value">
+                <i class="ph" [ngClass]="editingCoupon() ? 'ph-floppy-disk' : 'ph-check'"></i>
+                {{editingCoupon() ? 'Guardar Cambios' : 'Crear Cupón'}}
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Estadísticas -->
+<div class="modal-overlay" *ngIf="showStatsModal()" (click)="closeStatsModal()">
+    <div class="modal-content card stats-modal fade-in" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <div>
+                <h2>Estadísticas de Uso de Cupones</h2>
+                <p class="subtitle">Análisis del rendimiento general y específico</p>
+            </div>
+            <button class="btn-icon-only" (click)="closeStatsModal()">
+                <i class="ph ph-x"></i>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <div class="loading-state" *ngIf="loadingStats()">
+                <div class="spinner"></div>
+                <p>Calculando estadísticas...</p>
+            </div>
+
+            <div class="stats-container" *ngIf="!loadingStats() && statistics()">
+                <!-- Summary Cards -->
+                <div class="summary-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon"><i class="ph ph-ticket"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Total Cupones</span>
+                            <span class="stat-value">{{statistics().summary.total_coupons}}</span>
+                        </div>
+                    </div>
+                    <div class="stat-card primary">
+                        <div class="stat-icon"><i class="ph ph-handshake"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Usos Totales</span>
+                            <span class="stat-value">{{statistics().summary.total_uses}}</span>
+                        </div>
+                    </div>
+                    <div class="stat-card info">
+                        <div class="stat-icon"><i class="ph ph-calendar"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-label">Usos (Último Mes)</span>
+                            <span class="stat-value">{{statistics().summary.total_last_month}}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Lists -->
+                <div class="stats-sections">
+                    <div class="stats-section">
+                        <h3><i class="ph ph-trend-up"></i> Top 5 Más Usados</h3>
+                        <div class="stats-table-wrapper">
+                            <table class="stats-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Tipo</th>
+                                        <th class="text-right">Usos (Mes)</th>
+                                        <th class="text-right">Usos (Total)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let s of statistics().top_used">
+                                        <td><strong>{{s.code}}</strong></td>
+                                        <td>
+                                            <span class="type-pill">
+                                                {{s.discount_type === 'FIXED' ? '$' : '%'}} {{s.discount_value}}
+                                            </span>
+                                        </td>
+                                        <td class="text-right">{{s.last_month_uses}}</td>
+                                        <td class="text-right"><strong>{{s.total_uses}}</strong></td>
+                                    </tr>
+                                    <tr *ngIf="statistics().top_used.length === 0">
+                                        <td colspan="4" class="text-center">No hay datos suficientes</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="stats-section">
+                        <h3><i class="ph ph-trend-down"></i> Top 5 Menos Usados</h3>
+                        <div class="stats-table-wrapper">
+                            <table class="stats-table">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Tipo</th>
+                                        <th class="text-right">Usos (Mes)</th>
+                                        <th class="text-right">Usos (Total)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let s of statistics().least_used">
+                                        <td><strong>{{s.code}}</strong></td>
+                                        <td>
+                                            <span class="type-pill">
+                                                {{s.discount_type === 'FIXED' ? '$' : '%'}} {{s.discount_value}}
+                                            </span>
+                                        </td>
+                                        <td class="text-right">{{s.last_month_uses}}</td>
+                                        <td class="text-right"><strong>{{s.total_uses}}</strong></td>
+                                    </tr>
+                                    <tr *ngIf="statistics().least_used.length === 0">
+                                        <td colspan="4" class="text-center">No hay datos suficientes</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-secondary" (click)="closeStatsModal()">Cerrar</button>
         </div>
     </div>
 </div>

@@ -104,6 +104,22 @@ class DeliveryZone(Base):
     created_at = Column(DateTime, server_default=func.now())
     
     project = relationship("Project")
+    history = relationship("DeliveryZoneHistory", back_populates="zone", cascade="all, delete-orphan")
+
+class DeliveryZoneHistory(Base):
+    __tablename__ = "delivery_zone_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    zone_id = Column(Integer, ForeignKey("delivery_zones.id", ondelete="CASCADE"), nullable=False)
+    modified_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    
+    modified_at = Column(DateTime, server_default=func.now())
+    previous_state = Column(JSON, nullable=False) # Store zone state as JSON
+    change_reason = Column(String, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    zone = relationship("DeliveryZone", back_populates="history")
+    modified_by = relationship("User")
 
 class Coupon(Base):
     __tablename__ = "coupons"
@@ -116,9 +132,28 @@ class Coupon(Base):
     discount_value = Column(Numeric(10, 2), nullable=False)
     min_purchase_amount = Column(Numeric(10, 2), default=0.00)
     is_active = Column(Boolean, default=True)
+    single_use = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
+    created_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
 
     project = relationship("Project")
+    created_by = relationship("User")
+    history = relationship("CouponHistory", back_populates="coupon", cascade="all, delete-orphan")
+
+class CouponHistory(Base):
+    __tablename__ = "coupon_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    coupon_id = Column(Integer, ForeignKey("coupons.id", ondelete="CASCADE"), nullable=False)
+    modified_by_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    
+    modified_at = Column(DateTime, server_default=func.now())
+    previous_state = Column(JSON, nullable=False) # Store coupon state as JSON
+    change_reason = Column(String, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    coupon = relationship("Coupon", back_populates="history")
+    modified_by = relationship("User")
 
 class ClientAddress(Base):
     __tablename__ = "client_addresses"

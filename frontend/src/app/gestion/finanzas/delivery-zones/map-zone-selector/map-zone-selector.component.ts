@@ -22,6 +22,7 @@ export class MapZoneSelectorComponent implements OnInit, AfterViewInit, OnDestro
   zoneName = '';
   zonePrice: number = 0;
   zoneType = 'STANDARD_PAID';
+  changeReason = '';
 
   private map: L.Map | null = null;
   private polygon: L.Polygon | null = null;
@@ -134,6 +135,7 @@ export class MapZoneSelectorComponent implements OnInit, AfterViewInit, OnDestro
     }
 
     // Trigger change detection to ensure fields are updated in the UI
+    this.changeReason = ''; // Reset reason when loading
     setTimeout(() => {
       this.cdr.detectChanges();
     }, 0);
@@ -191,7 +193,8 @@ export class MapZoneSelectorComponent implements OnInit, AfterViewInit, OnDestro
       name: this.zoneName,
       price: this.zonePrice,
       zone_type: this.zoneType,
-      coordinates: this.coordinates.map(c => [c.lat, c.lng])
+      coordinates: this.coordinates.map(c => [c.lat, c.lng]),
+      change_reason: this.changeReason
     });
 
     this.onClose();
@@ -206,6 +209,7 @@ export class MapZoneSelectorComponent implements OnInit, AfterViewInit, OnDestro
     this.zoneName = '';
     this.zonePrice = 0;
     this.zoneType = 'STANDARD_PAID';
+    this.changeReason = '';
     this.clearMap();
   }
 

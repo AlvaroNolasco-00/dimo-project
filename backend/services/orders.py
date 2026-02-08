@@ -137,6 +137,17 @@ def create_order(db: Session, project_id: int, order_data: schemas.OrderCreate, 
             ).first()
              if fidelity_coupon:
                  applied_coupon_id = fidelity_coupon.id
+    
+    # Validation for single use coupons
+    if applied_coupon_id:
+        coupon = db.query(models.Coupon).get(applied_coupon_id)
+        if coupon and coupon.single_use and client_id:
+            already_used = db.query(models.Order).filter(
+                models.Order.client_id == client_id,
+                models.Order.coupon_id == coupon.id
+            ).count()
+            if already_used > 0:
+                raise HTTPException(status_code=400, detail=f"El cupón {coupon.code} ya ha sido utilizado por este cliente.")
 
     # Create Order
     new_order = models.Order(
@@ -318,6 +329,17 @@ def update_order(db: Session, project_id: int, order_id: int, order_update: sche
          order.down_payment_amount = order_update.down_payment_amount
          
     if order_update.coupon_id is not None and order.coupon_id != order_update.coupon_id:
+        if order_update.coupon_id:
+            coupon = db.query(models.Coupon).get(order_update.coupon_id)
+            if coupon and coupon.single_use and order.client_id:
+                already_used = db.query(models.Order).filter(
+                    models.Order.client_id == order.client_id,
+                    models.Order.coupon_id == coupon.id,
+                    models.Order.id != order.id
+                ).count()
+                if already_used > 0:
+                    raise HTTPException(status_code=400, detail=f"El cupón {coupon.code} ya ha sido utilizado por este cliente.")
+        
         order.coupon_id = order_update.coupon_id
         # Recalculate total
         current_items_total = sum(item.subtotal for item in order.items)

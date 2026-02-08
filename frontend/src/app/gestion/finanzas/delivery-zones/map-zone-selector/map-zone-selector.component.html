@@ -38,7 +38,13 @@
                 <p class="instruction">Haz click en el mapa para delimitar la zona. Debe tener al menos 3 puntos.</p>
                 <div id="map-container" class="map-view"></div>
 
-                <div class="map-actions">
+                <div class="form-group" *ngIf="zone">
+                    <label>Motivo del cambio</label>
+                    <textarea [(ngModel)]="changeReason" name="changeReason"
+                        placeholder="Describe por qué estás haciendo este cambio..." rows="2"></textarea>
+                </div>
+
+                <div class="actions">
                     <button class="btn-secondary btn-sm" (click)="clearMap()">
                         <i class="ph ph-trash"></i> Limpiar Puntos
                     </button>

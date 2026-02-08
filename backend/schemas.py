@@ -61,6 +61,19 @@ class Project(ProjectBase):
 
 # --- Order Systems ---
 
+class DeliveryZoneHistory(BaseModel):
+    id: int
+    zone_id: int
+    modified_by_id: Optional[int] = None
+    modified_by: Optional['UserBasic'] = None
+    modified_at: datetime
+    previous_state: Dict[str, Any]
+    change_reason: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class DeliveryZoneBase(BaseModel):
     name: str
     price: float = 0.0
@@ -71,10 +84,32 @@ class DeliveryZoneBase(BaseModel):
 class DeliveryZoneCreate(DeliveryZoneBase):
     project_id: int
 
+class DeliveryZoneUpdate(BaseModel):
+    name: Optional[str] = None
+    price: Optional[float] = None
+    zone_type: Optional[str] = None
+    is_active: Optional[bool] = None
+    coordinates: Optional[List[List[float]]] = None
+    change_reason: Optional[str] = None
+
+class DeliveryZoneHistory(BaseModel):
+    id: int
+    zone_id: int
+    modified_by_id: Optional[int] = None
+    modified_by: Optional['UserBasic'] = None
+    modified_at: datetime
+    previous_state: Dict[str, Any]
+    change_reason: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
 class DeliveryZone(DeliveryZoneBase):
     id: int
     project_id: int
     created_at: datetime
+    history: List[DeliveryZoneHistory] = []
     
     class Config:
         from_attributes = True
@@ -86,6 +121,7 @@ class CouponBase(BaseModel):
     discount_value: float
     min_purchase_amount: float = 0.0
     is_active: bool = True
+    single_use: bool = False
 
 class CouponCreate(CouponBase):
     project_id: int
@@ -94,9 +130,49 @@ class Coupon(CouponBase):
     id: int
     project_id: int
     created_at: datetime
+    created_by_id: Optional[int] = None
+    created_by: Optional['UserBasic'] = None
     
     class Config:
         from_attributes = True
+
+class CouponUpdate(BaseModel):
+    code: Optional[str] = None
+    description: Optional[str] = None
+    discount_type: Optional[str] = None
+    discount_value: Optional[float] = None
+    min_purchase_amount: Optional[float] = None
+    is_active: Optional[bool] = None
+    single_use: Optional[bool] = None
+    change_reason: Optional[str] = None # Optional reason for the change
+
+class CouponHistory(BaseModel):
+    id: int
+    coupon_id: int
+    modified_by_id: Optional[int] = None
+    modified_by: Optional['UserBasic'] = None
+    modified_at: datetime
+    previous_state: Dict[str, Any]
+    change_reason: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# --- Coupon Usage Stats ---
+class CouponUsageStats(BaseModel):
+    id: int
+    code: str
+    total_uses: int
+    last_month_uses: int
+    discount_type: str
+    discount_value: float
+
+class CouponStatisticsResponse(BaseModel):
+    summary: Dict[str, Any]
+    top_used: List[CouponUsageStats]
+    least_used: List[CouponUsageStats]
+
 
 class ClientAddressBase(BaseModel):
     address_line: str
@@ -249,6 +325,7 @@ class Order(OrderBase):
     coupon: Optional[Coupon] = None
     delivery_zone_id: Optional[int] = None
     delivery_zone: Optional[DeliveryZone] = None
+    history: List[DeliveryZoneHistory] = []
 
     class Config:
         from_attributes = True

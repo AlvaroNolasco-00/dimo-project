@@ -20,6 +20,9 @@ export class DeliveryZonesComponent implements OnInit {
   loading = true;
   showMapModal = false;
   editingZone: any = null;
+  showHistoryModal = false;
+  zoneHistory: any[] = [];
+  selectedZoneName: string = '';
 
   private cd = inject(ChangeDetectorRef);
 
@@ -88,6 +91,24 @@ export class DeliveryZonesComponent implements OnInit {
         this.cd.detectChanges();
       }
     });
+  }
+
+  viewHistory(zone: any) {
+    this.selectedZoneName = zone.name;
+    this.api.getDeliveryZoneHistory(this.projectId, zone.id).subscribe({
+      next: (history) => {
+        this.zoneHistory = history;
+        this.showHistoryModal = true;
+        this.cd.detectChanges();
+      }
+    });
+  }
+
+  getChangedProperties(state: any): string[] {
+    // This is a simplified version, it could be more sophisticated
+    return Object.keys(state).filter(key =>
+      ['name', 'price', 'zone_type', 'is_active'].includes(key)
+    );
   }
 
   toggleZone(zone: any) {

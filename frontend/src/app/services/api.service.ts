@@ -205,6 +205,10 @@ export class ApiService {
         return this.http.put<any>(`${environment.apiUrl}/projects/${projectId}/delivery-zones/${zoneId}`, zone);
     }
 
+    getDeliveryZoneHistory(projectId: number, zoneId: number): Observable<any[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}/projects/${projectId}/delivery-zones/${zoneId}/history`);
+    }
+
     getCoupons(projectId: number): Observable<any[]> {
         return this.http.get<any[]>(`${environment.apiUrl}/projects/${projectId}/coupons`);
     }
@@ -212,6 +216,23 @@ export class ApiService {
     createCoupon(projectId: number, coupon: any): Observable<any> {
         return this.http.post<any>(`${environment.apiUrl}/projects/${projectId}/coupons`, coupon);
     }
+
+    updateCoupon(projectId: number, couponId: number, coupon: any): Observable<any> {
+        return this.http.put<any>(`${environment.apiUrl}/projects/${projectId}/coupons/${couponId}`, coupon);
+    }
+
+    getCouponHistory(projectId: number, couponId: number): Observable<any[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}/projects/${projectId}/coupons/${couponId}/history`);
+    }
+
+    revertCoupon(projectId: number, couponId: number, historyId: number): Observable<any> {
+        return this.http.post<any>(`${environment.apiUrl}/projects/${projectId}/coupons/${couponId}/revert/${historyId}`, {});
+    }
+
+    getCouponStatistics(projectId: number): Observable<any> {
+        return this.http.get<any>(`${environment.apiUrl}/projects/${projectId}/coupons/stats`);
+    }
+
 
     // --- Costs ---
 
