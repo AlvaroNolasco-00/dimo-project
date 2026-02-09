@@ -165,9 +165,10 @@
             }
         }
 
-        @for $i from 1 through 10 {
+        animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+
+        @for $i from 1 through 5 {
             &:nth-child(#{$i}) {
-                animation: slideUpFade 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
                 animation-delay: #{0.2 + ($i * 0.1)}s;
             }
         }
@@ -386,39 +387,6 @@
         }
     }
 
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-        }
-
-        to {
-            opacity: 1;
-        }
-    }
-
-    @keyframes zoomIn {
-        from {
-            transform: scale(0.95);
-            opacity: 0;
-        }
-
-        to {
-            transform: scale(1);
-            opacity: 1;
-        }
-    }
-
-    @keyframes slideUpFade {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
 
     .address-section {
         .address-form {
@@ -473,29 +441,6 @@
             animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
         }
 
-        @keyframes shake {
-
-            10%,
-            90% {
-                transform: translate3d(-1px, 0, 0);
-            }
-
-            20%,
-            80% {
-                transform: translate3d(2px, 0, 0);
-            }
-
-            30%,
-            50%,
-            70% {
-                transform: translate3d(-4px, 0, 0);
-            }
-
-            40%,
-            60% {
-                transform: translate3d(4px, 0, 0);
-            }
-        }
 
         .form-row {
             display: flex;
@@ -506,13 +451,6 @@
                 gap: 1.25rem;
             }
 
-            .flex-2 {
-                flex: 2;
-            }
-
-            .flex-1 {
-                flex: 1;
-            }
         }
 
         .form-group {
@@ -642,15 +580,6 @@
     }
 }
 
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
-
-    to {
-        transform: rotate(360deg);
-    }
-}
 
 .order-sidebar {
     .sidebar-section {
@@ -732,15 +661,6 @@
         }
     }
 
-    @keyframes bouncePin {
-        0% {
-            transform: translateY(-10px);
-        }
-
-        100% {
-            transform: translateY(0);
-        }
-    }
 
     :host ::ng-deep .zone-tooltip {
         background: rgba(255, 255, 255, 0.9);
@@ -1022,16 +942,3 @@
     animation: badgePulse 2s infinite;
 }
 
-@keyframes badgePulse {
-    0% {
-        background-color: rgba(var(--accent-rgb), 0.1);
-    }
-
-    50% {
-        background-color: rgba(var(--accent-rgb), 0.2);
-    }
-
-    100% {
-        background-color: rgba(var(--accent-rgb), 0.1);
-    }
-}

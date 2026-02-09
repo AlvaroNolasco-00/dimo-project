@@ -47,15 +47,6 @@ p.description {
         animation: spin 1s linear infinite;
     }
 
-    @keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-
-        100% {
-            transform: rotate(360deg);
-        }
-    }
 }
 
 .coupons-grid {
@@ -415,9 +406,6 @@ p.description {
     display: flex;
     gap: 1.5rem;
 
-    .flex-1 {
-        flex: 1;
-    }
 
     @include mobile {
         flex-direction: column;
