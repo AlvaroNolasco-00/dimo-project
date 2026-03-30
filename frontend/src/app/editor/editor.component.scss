@@ -3,17 +3,14 @@
 :host {
     display: flex;
     flex-direction: column;
-    height: 100%;
-    overflow: hidden;
+    min-height: 100%;
 }
 
 .editor-main-wrapper {
     display: flex;
     flex-direction: column;
     padding: 20px;
-    overflow: hidden;
     flex: 1;
-    min-height: 0;
     gap: 20px;
 
     @media (max-width: 1440px),
@@ -60,8 +57,6 @@ header {
     gap: 2rem;
     width: 100%;
     flex: 1;
-    overflow: hidden;
-    min-height: 0;
     max-width: 1200px;
     margin-inline: auto;
     width: 100%;

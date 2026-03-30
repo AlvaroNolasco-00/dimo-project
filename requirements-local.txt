@@ -1,0 +1,35 @@
+# ============================================================
+# requirements-local.txt — Apple Silicon M4 (macOS)
+# ============================================================
+# Instalar con:
+#   pip uninstall onnxruntime -y  # Remover versión genérica si existe
+#   pip install -r requirements-local.txt
+#
+# Diferencias vs requirements.txt (producción/Koyeb Linux):
+#   - onnxruntime-silicon  → CoreML + Neural Engine (reemplaza onnxruntime)
+#   - torch                → PyTorch para MPS (Metal Performance Shaders)
+# ============================================================
+
+fastapi
+uvicorn
+python-multipart
+opencv-python-headless
+pillow
+rembg
+numpy
+
+# Apple Silicon: CoreML + Neural Engine (reemplaza onnxruntime genérico)
+onnxruntime-silicon
+
+sqlalchemy
+passlib[bcrypt]
+python-jose[cryptography]
+psycopg2-binary
+python-dotenv
+gunicorn
+httpx
+
+# PyTorch para MPS acceleration (M1/M2/M3/M4)
+# Ver https://pytorch.org para instalación específica si falla:
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+torch

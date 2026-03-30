@@ -56,11 +56,13 @@ class OperativeCost(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     cost_type_id = Column(Integer, ForeignKey("cost_types.id", ondelete="CASCADE"))
+    parent_cost_id = Column(Integer, ForeignKey("operative_costs.id", ondelete="CASCADE"), nullable=True)
     base_cost = Column(Numeric(10, 2), nullable=False)
     attributes = Column(JSON, default={})
     created_at = Column(DateTime, server_default=func.now())
 
     cost_type = relationship("CostType")
+    derived_costs = relationship("OperativeCost", backref="parent_cost", remote_side=[id])
 
 class Client(Base):
     __tablename__ = "clients"

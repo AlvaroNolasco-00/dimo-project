@@ -23,6 +23,7 @@ class CostType(CostTypeBase):
 class OperativeCostBase(BaseModel):
     base_cost: float
     attributes: Dict[str, Any] = {}
+    parent_cost_id: Optional[int] = None
 
 class OperativeCostCreate(OperativeCostBase):
     cost_type_id: int
@@ -30,6 +31,7 @@ class OperativeCostCreate(OperativeCostBase):
 class OperativeCostUpdate(BaseModel):
     base_cost: Optional[float] = None
     attributes: Optional[Dict[str, Any]] = None
+    parent_cost_id: Optional[int] = None
 
 class OperativeCost(OperativeCostBase):
     id: int
@@ -290,6 +292,29 @@ class Client(ClientBase):
     class Config:
         from_attributes = True
 
+# --- Order History ---
+
+class UserBasic(BaseModel):
+    id: int
+    full_name: str
+
+    class Config:
+        from_attributes = True
+
+class OrderHistoryBase(BaseModel):
+    action_type: str
+    description: str
+    created_at: datetime
+
+class OrderHistory(OrderHistoryBase):
+    id: int
+    order_id: int
+    user_id: Optional[int] = None
+    user: Optional[UserBasic] = None
+
+    class Config:
+        from_attributes = True
+
 class OrderBase(BaseModel):
     client_name: Optional[str] = None
     client_id: Optional[int] = None
@@ -325,7 +350,7 @@ class Order(OrderBase):
     coupon: Optional[Coupon] = None
     delivery_zone_id: Optional[int] = None
     delivery_zone: Optional[DeliveryZone] = None
-    history: List[DeliveryZoneHistory] = []
+    history: List[OrderHistory] = []
 
     class Config:
         from_attributes = True
@@ -341,30 +366,6 @@ class OrderUpdate(BaseModel):
 
     class Config:
         from_attributes = True
-
-# --- Order History ---
-
-class UserBasic(BaseModel):
-    id: int
-    full_name: str
-    
-    class Config:
-        from_attributes = True
-
-class OrderHistoryBase(BaseModel):
-    action_type: str
-    description: str
-    created_at: datetime
-
-class OrderHistory(OrderHistoryBase):
-    id: int
-    order_id: int
-    user_id: Optional[int] = None
-    user: Optional[UserBasic] = None
-
-    class Config:
-        from_attributes = True
-
 
 # --- Processing Tasks ---
 class TaskResponse(BaseModel):

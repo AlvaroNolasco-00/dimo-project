@@ -244,6 +244,10 @@ export class ApiService {
         return this.http.get<any[]>(`${environment.apiUrl}/finance/costs?cost_type_id=${costTypeId}`);
     }
 
+    getDerivedCosts(parentCostId: number): Observable<any[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}/finance/costs?parent_cost_id=${parentCostId}`);
+    }
+
     // --- Clients ---
 
     getProjectClients(projectId: number): Observable<any[]> {

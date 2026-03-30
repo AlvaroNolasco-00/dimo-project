@@ -33,7 +33,7 @@
                 <div class="input-wrapper search-input">
                   <i class="ph ph-phone"></i>
                   <input type="text" id="searchPhone" [(ngModel)]="clientSearchPhone" name="searchPhone"
-                    placeholder="(33) 355 0000" (keydown.enter)="searchClient()">
+                    placeholder="(33) 355 0000" (keydown.enter)="searchClient()" (blur)="searchClient()">
                   <button type="button" class="inline-search-btn" (click)="searchClient()"
                     [disabled]="isSearchingClient">
                     <i class="ph" [class.ph-magnifying-glass]="!isSearchingClient"
@@ -194,6 +194,34 @@
                   </button>
                 </div>
               </div>
+
+              <!-- Derived costs selector (complementos del costo padre) -->
+              @if (availableDerivedCosts.length > 0) {
+              <div class="derived-costs-row">
+                <p class="derived-costs-label">
+                  <i class="ph ph-git-branch"></i>
+                  Complementos disponibles
+                  <span class="derived-count">{{ selectedDerivedCostIds.size }} seleccionado(s)</span>
+                </p>
+                <div class="derived-costs-list">
+                  @for (cost of availableDerivedCosts; track cost.id) {
+                  <label class="derived-cost-option" [class.selected]="isDerivedCostSelected(cost.id)"
+                    (click)="toggleDerivedCost(cost.id)">
+                    <span class="derived-checkbox">
+                      <i class="ph" [class.ph-check-square]="isDerivedCostSelected(cost.id)"
+                        [class.ph-square]="!isDerivedCostSelected(cost.id)"></i>
+                    </span>
+                    <span class="derived-info">
+                      <span class="derived-name">
+                        {{ cost.attributes?.['Descripción'] || 'Complemento' }}
+                      </span>
+                      <span class="derived-price">{{ cost.base_cost | currency }}</span>
+                    </span>
+                  </label>
+                  }
+                </div>
+              </div>
+              }
 
               <!-- Variants Selection Area -->
               @if (selectedCost?.attributes?.__type === 'variants' && selectedCost?.attributes?.__config?.groups) {

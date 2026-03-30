@@ -71,7 +71,8 @@ def create_operative_cost(
     new_cost = models.OperativeCost(
         cost_type_id=cost.cost_type_id,
         base_cost=cost.base_cost,
-        attributes=cost.attributes
+        attributes=cost.attributes,
+        parent_cost_id=cost.parent_cost_id
     )
     db.add(new_cost)
     db.commit()
@@ -81,6 +82,7 @@ def create_operative_cost(
 @router.get("/costs", response_model=List[schemas.OperativeCost])
 def read_operative_costs(
     cost_type_id: int = None,
+    parent_cost_id: int = None,
     skip: int = 0, 
     limit: int = 100, 
     db: Session = Depends(get_db),
@@ -89,6 +91,14 @@ def read_operative_costs(
     query = db.query(models.OperativeCost)
     if cost_type_id:
         query = query.filter(models.OperativeCost.cost_type_id == cost_type_id)
+    
+    if parent_cost_id is not None:
+        # Explicitly requested derived costs for a specific parent
+        query = query.filter(models.OperativeCost.parent_cost_id == parent_cost_id)
+    else:
+        # Default: only top-level costs (no parent). Derived costs are hidden
+        # unless a parent_cost_id is explicitly requested.
+        query = query.filter(models.OperativeCost.parent_cost_id == None)
     
     costs = query.offset(skip).limit(limit).all()
     return costs
@@ -109,6 +119,9 @@ def update_operative_cost(
     
     if cost_update.attributes is not None:
         db_cost.attributes = cost_update.attributes
+    
+    if cost_update.parent_cost_id is not None:
+        db_cost.parent_cost_id = cost_update.parent_cost_id
 
     db.commit()
     db.refresh(db_cost)

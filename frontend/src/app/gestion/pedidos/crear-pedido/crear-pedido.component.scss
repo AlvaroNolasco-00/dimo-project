@@ -1,3 +1,17 @@
+// ─── Animations ──────────────────────────────────────────────────────────────
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.ph-spin {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 .crear-pedido-container {
   padding: 2rem;
   max-width: 100%;
@@ -587,6 +601,91 @@
         .grid-qty,
         .grid-button {
           grid-column: span 1;
+        }
+      }
+    }
+
+    .derived-costs-row {
+      padding: 0.75rem 0;
+      border-top: 1px dashed var(--border-color);
+      margin-top: 0.5rem;
+
+      .derived-costs-label {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--accent-color);
+        margin: 0 0 0.6rem;
+
+        i { font-size: 0.95rem; }
+
+        .derived-count {
+          margin-left: auto;
+          font-size: 0.75rem;
+          font-weight: 500;
+          color: var(--text-secondary);
+          background: var(--bg-color);
+          padding: 0.1rem 0.5rem;
+          border-radius: 50px;
+        }
+      }
+
+      .derived-costs-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+
+      .derived-cost-option {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.6rem 0.85rem;
+        border-radius: 10px;
+        border: 1.5px solid var(--border-color);
+        cursor: pointer;
+        transition: border-color 0.15s, background 0.15s;
+        user-select: none;
+
+        &:hover {
+          border-color: rgba(var(--accent-rgb), 0.4);
+          background: rgba(var(--accent-rgb), 0.03);
+        }
+
+        &.selected {
+          border-color: var(--accent-color);
+          background: rgba(var(--accent-rgb), 0.06);
+
+          .derived-checkbox i { color: var(--accent-color); }
+        }
+
+        .derived-checkbox i {
+          font-size: 1.15rem;
+          color: var(--text-secondary);
+          transition: color 0.15s;
+        }
+
+        .derived-info {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          flex: 1;
+          gap: 0.5rem;
+        }
+
+        .derived-name {
+          font-size: 0.85rem;
+          font-weight: 500;
+          color: var(--text-primary);
+        }
+
+        .derived-price {
+          font-size: 0.82rem;
+          font-weight: 600;
+          color: var(--text-secondary);
+          white-space: nowrap;
         }
       }
     }

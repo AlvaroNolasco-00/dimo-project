@@ -120,6 +120,9 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
   // Cost management
   costTypes: any[] = [];
   availableOperativeCosts: any[] = [];
+  availableDerivedCosts: any[] = [];
+  selectedDerivedCostIds = new Set<number>();
+  isLoadingDerivedCosts = false;
 
   // Item management
   items: any[] = [];
@@ -199,7 +202,7 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
   // --- Client Logic ---
 
   searchClient() {
-    if (!this.clientSearchPhone) return;
+    if (!this.clientSearchPhone || this.isSearchingClient) return;
 
     this.isSearchingClient = true;
     this.apiService.searchClientByPhone(this.projectId, this.clientSearchPhone).subscribe({
@@ -209,8 +212,12 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
         this.isClientReadOnly = true;
         this.nuevoPedido.client_id = client.id;
         this.nuevoPedido.direccion = client.shipping_address;
-        this.isSearchingClient = false;
         this.cd.detectChanges();
+        // Cooldown: mantener animación por 1.5s antes de permitir otro click
+        setTimeout(() => {
+          this.isSearchingClient = false;
+          this.cd.detectChanges();
+        }, 1500);
       },
       error: (err) => {
         console.log('Client not found, creating new flow');
@@ -225,8 +232,12 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
           shipping_address: '',
           notes: ''
         };
-        this.isSearchingClient = false;
         this.cd.detectChanges();
+        // Cooldown: mantener animación por 1.5s antes de permitir otro click
+        setTimeout(() => {
+          this.isSearchingClient = false;
+          this.cd.detectChanges();
+        }, 1500);
       }
     });
   }
@@ -293,10 +304,11 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
   // --- Item Logic ---
 
   onCostTypeChange() {
-    // Reset operative cost selection when type changes
     this.tempSubItem.operative_cost_id = null;
     this.tempSubItem.unit_price = 0;
     this.availableOperativeCosts = [];
+    this.availableDerivedCosts = [];
+    this.selectedDerivedCostIds = new Set();
     this.selectedCost = null;
 
     if (this.tempSubItem.cost_type_id) {
@@ -317,7 +329,22 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
   }
 
   onOperativeCostChange() {
+    this.availableDerivedCosts = [];
+    this.selectedDerivedCostIds = new Set();
     this.selectedCost = this.availableOperativeCosts.find(c => c.id == this.tempSubItem.operative_cost_id);
+
+    // Load derived costs for the selected parent cost
+    if (this.selectedCost) {
+      this.isLoadingDerivedCosts = true;
+      this.apiService.getDerivedCosts(this.selectedCost.id).subscribe({
+        next: (derived) => {
+          this.availableDerivedCosts = derived;
+          this.isLoadingDerivedCosts = false;
+          this.cd.detectChanges();
+        },
+        error: () => { this.isLoadingDerivedCosts = false; }
+      });
+    }
 
     if (this.selectedCost) {
       this.tempSubItem.unit_price = parseFloat(this.selectedCost.base_cost);
@@ -358,6 +385,18 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
       this.tempSubItem.attributes = {};
       this.tempSubItem.variantSelections = {};
     }
+  }
+
+  toggleDerivedCost(id: number) {
+    if (this.selectedDerivedCostIds.has(id)) {
+      this.selectedDerivedCostIds.delete(id);
+    } else {
+      this.selectedDerivedCostIds.add(id);
+    }
+  }
+
+  isDerivedCostSelected(id: number): boolean {
+    return this.selectedDerivedCostIds.has(id);
   }
 
   onVariantChange() {
@@ -412,11 +451,34 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
       selected_variants: this.tempSubItem.variantSelections
     };
 
-    // Add to subItems list
+    // Add parent cost sub-item
     this.newItem.subItems.push({
       ...this.tempSubItem,
       attributes: finalAttributes
     });
+
+    // Add each selected derived cost as a companion sub-item
+    for (const derivedId of this.selectedDerivedCostIds) {
+      const derivedCost = this.availableDerivedCosts.find(c => c.id === derivedId);
+      if (derivedCost) {
+        const derivedAttrs = Object.fromEntries(
+          Object.entries(derivedCost.attributes || {}).filter(([k]) => !k.startsWith('__'))
+        );
+        const derivedDesc = derivedCost.attributes?.['Descripción'] ||
+          Object.entries(derivedAttrs).map(([k, v]) => `${k}: ${v}`).join(', ') ||
+          'Complemento';
+
+        this.newItem.subItems.push({
+          quantity: this.tempSubItem.quantity,
+          unit_price: parseFloat(derivedCost.base_cost),
+          cost_type_id: derivedCost.cost_type_id,
+          operative_cost_id: derivedCost.id,
+          description: derivedDesc,
+          attributes: { ...derivedCost.attributes },
+          variantSelections: {}
+        });
+      }
+    }
 
     // Update composite item price
     this.updateCompositeItemPrice();
@@ -456,9 +518,9 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
       variantSelections: {}
     };
     this.selectedCost = null;
-    // Don't necessarily clear availableOperativeCosts if we want to keep selecting from same type, 
-    // but looking at UI flow, valid to reset.
     this.availableOperativeCosts = [];
+    this.availableDerivedCosts = [];
+    this.selectedDerivedCostIds = new Set();
   }
 
   addItem() {
@@ -629,7 +691,7 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
       error: (err) => {
         console.error('Error creating order', err);
         this.isSaving = false;
-        this.errorMessage = err.error?.message || 'Error al crear el pedido. Por favor verifica los datos e intenta de nuevo.';
+        this.errorMessage = err.error?.detail || err.error?.message || 'Error al crear el pedido. Por favor verifica los datos e intenta de nuevo.';
         this.cd.detectChanges();
       }
     });

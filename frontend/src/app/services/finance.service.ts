@@ -16,6 +16,7 @@ export interface OperativeCost {
     cost_type_id: number;
     base_cost: number;
     attributes: any; // Dynamic JSON
+    parent_cost_id?: number;
     created_at: string;
 }
 
@@ -36,19 +37,22 @@ export class FinanceService {
         return this.http.post<CostType>(`${this.apiUrl}/cost-types`, costType);
     }
 
-    getCosts(costTypeId?: number): Observable<OperativeCost[]> {
+    getCosts(costTypeId?: number, parentCostId?: number): Observable<OperativeCost[]> {
         let params: any = {};
         if (costTypeId) {
             params.cost_type_id = costTypeId;
         }
+        if (parentCostId !== undefined) {
+            params.parent_cost_id = parentCostId;
+        }
         return this.http.get<OperativeCost[]>(`${this.apiUrl}/costs`, { params });
     }
 
-    createCost(cost: { cost_type_id: number, base_cost: number, attributes: any }): Observable<OperativeCost> {
+    createCost(cost: { cost_type_id: number, base_cost: number, attributes: any, parent_cost_id?: number }): Observable<OperativeCost> {
         return this.http.post<OperativeCost>(`${this.apiUrl}/costs`, cost);
     }
 
-    updateCost(id: number, cost: { base_cost?: number, attributes?: any }): Observable<OperativeCost> {
+    updateCost(id: number, cost: { base_cost?: number, attributes?: any, parent_cost_id?: number }): Observable<OperativeCost> {
         return this.http.put<OperativeCost>(`${this.apiUrl}/costs/${id}`, cost);
     }
 

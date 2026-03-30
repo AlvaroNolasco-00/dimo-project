@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /Users/alvaronolasco/Documents/Projects/dimo-project -maxdepth 3 -type f -name *.json -o -name *.txt -o -name *.md -o -name .cursorrules -o -name Makefile)",
+      "Bash(pip show:*)",
+      "Bash(pyenv versions:*)",
+      "Bash(grep -l User /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/interfaces/*.ts)",
+      "Bash(grep:*)"
+    ]
+  }
+}

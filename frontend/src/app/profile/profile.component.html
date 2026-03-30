@@ -1,10 +1,11 @@
 <div class="profile-container">
     <div class="profile-header">
         <h1>Mi Perfil</h1>
+        <p class="profile-subtitle">Administra tu información personal y seguridad</p>
     </div>
 
     <div class="profile-grid">
-        <!-- Left Column: User Info & Avatar -->
+        <!-- Left Column: Avatar & User Info -->
         <div class="profile-card user-card">
             <div class="avatar-wrapper" (click)="triggerFileInput()">
                 <div class="avatar-container">
@@ -18,6 +19,7 @@
                     }
                     <div class="avatar-overlay">
                         <i class="ph ph-camera"></i>
+                        <span>Cambiar</span>
                     </div>
                 </div>
                 <input type="file" #fileInput class="hidden-input" (change)="onFileSelected($event)" accept="image/*">
@@ -27,85 +29,177 @@
             <h2 class="user-name">{{ user()?.full_name }}</h2>
             <p class="user-email">{{ user()?.email }}</p>
 
+            <div class="user-badge">
+                <i class="ph ph-seal-check"></i>
+                <span>Cuenta Regular</span>
+            </div>
+
             @if (isRegularAccount) {
             <button class="btn-premium">
                 <i class="ph ph-crown"></i> Conseguir Premium
             </button>
             }
-            <p class="account-status">Actualmente tienes Cuenta Regular</p>
         </div>
 
-        <!-- Right Column: Settings -->
+        <!-- Right Column -->
         <div class="settings-column">
-            <!-- Email Verification -->
+
+            <!-- Información de Contacto -->
             <div class="profile-card">
-                <h3 class="card-title">Información de Contacto</h3>
+                <h3 class="card-title">
+                    <i class="ph ph-envelope"></i>
+                    Información de Contacto
+                </h3>
                 <div class="info-row">
-                    <div>
+                    <div class="info-group">
                         <p class="info-label">Correo Electrónico</p>
                         <p class="info-value">{{ user()?.email }}</p>
                     </div>
-                    <button (click)="validateEmail()" class="btn-secondary">
-                        <i class="ph ph-check-circle"></i> Validar Correo
+                    <button (click)="validateEmail()" class="btn-outline">
+                        <i class="ph ph-check-circle"></i> Validar
                     </button>
                 </div>
-                <p *ngIf="validationMessage" class="success-message">{{ validationMessage }}</p>
+                @if (validationMessage) {
+                <p class="feedback-message success">
+                    <i class="ph ph-check-circle"></i> {{ validationMessage }}
+                </p>
+                }
             </div>
 
-            <!-- Change Password -->
+            <!-- Cambiar Contraseña -->
             <div class="profile-card">
-                <h3 class="card-title">Seguridad</h3>
+                <h3 class="card-title">
+                    <i class="ph ph-lock-key"></i>
+                    Seguridad
+                </h3>
 
                 <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="password-form">
+
+                    <!-- Contraseña actual -->
                     <div class="form-group">
-                        <label>Contraseña Actual</label>
-                        <input type="password" formControlName="currentPassword" class="form-input">
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Nueva Contraseña</label>
-                            <input type="password" formControlName="newPassword" class="form-input">
+                        <label class="form-label">Contraseña actual</label>
+                        <div class="input-wrapper">
+                            <i class="ph ph-lock input-icon"></i>
+                            <input
+                                [type]="showCurrentPassword() ? 'text' : 'password'"
+                                formControlName="currentPassword"
+                                class="form-input"
+                                [class.is-invalid]="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched"
+                                placeholder="••••••••">
+                            <button type="button" class="toggle-visibility" (click)="showCurrentPassword.set(!showCurrentPassword())">
+                                <i class="ph" [class.ph-eye]="!showCurrentPassword()" [class.ph-eye-slash]="showCurrentPassword()"></i>
+                            </button>
                         </div>
-                        <div class="form-group">
-                            <label>Confirmar Contraseña</label>
-                            <input type="password" formControlName="confirmPassword" class="form-input">
-                        </div>
+                        @if (passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched) {
+                        <span class="field-error">Ingresa tu contraseña actual</span>
+                        }
                     </div>
 
-                    <div *ngIf="passwordForm.errors?.['mismatch'] && passwordForm.touched" class="error-message">
-                        Las contraseñas no coinciden.
+                    <!-- Nueva contraseña -->
+                    <div class="form-group">
+                        <label class="form-label">Nueva contraseña</label>
+                        <div class="input-wrapper">
+                            <i class="ph ph-lock-open input-icon"></i>
+                            <input
+                                [type]="showNewPassword() ? 'text' : 'password'"
+                                formControlName="newPassword"
+                                class="form-input"
+                                [class.is-invalid]="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched"
+                                placeholder="Mínimo 6 caracteres">
+                            <button type="button" class="toggle-visibility" (click)="showNewPassword.set(!showNewPassword())">
+                                <i class="ph" [class.ph-eye]="!showNewPassword()" [class.ph-eye-slash]="showNewPassword()"></i>
+                            </button>
+                        </div>
+                        @if (passwordForm.get('newPassword')?.touched) {
+                            @if (passwordForm.get('newPassword')?.errors?.['required']) {
+                            <span class="field-error">Ingresa una nueva contraseña</span>
+                            } @else if (passwordForm.get('newPassword')?.errors?.['minlength']) {
+                            <span class="field-error">Mínimo 6 caracteres</span>
+                            }
+                        }
+
+                        <!-- Indicador de fortaleza -->
+                        @if (newPasswordValue()) {
+                        <div class="strength-bar-wrapper">
+                            <div class="strength-bars">
+                                @for (step of [1,2,3,4]; track step) {
+                                <div class="strength-bar" [class.active]="passwordStrength() >= step" [class]="passwordStrength() >= step ? passwordStrengthClass() : ''"></div>
+                                }
+                            </div>
+                            <span class="strength-label" [class]="passwordStrengthClass()">{{ passwordStrengthLabel() }}</span>
+                        </div>
+                        }
                     </div>
+
+                    <!-- Confirmar contraseña -->
+                    <div class="form-group">
+                        <label class="form-label">Confirmar nueva contraseña</label>
+                        <div class="input-wrapper">
+                            <i class="ph ph-check input-icon"></i>
+                            <input
+                                [type]="showConfirmPassword() ? 'text' : 'password'"
+                                formControlName="confirmPassword"
+                                class="form-input"
+                                [class.is-invalid]="passwordForm.errors?.['mismatch'] && passwordForm.get('confirmPassword')?.touched"
+                                placeholder="Repite la contraseña">
+                            <button type="button" class="toggle-visibility" (click)="showConfirmPassword.set(!showConfirmPassword())">
+                                <i class="ph" [class.ph-eye]="!showConfirmPassword()" [class.ph-eye-slash]="showConfirmPassword()"></i>
+                            </button>
+                        </div>
+                        @if (passwordForm.errors?.['mismatch'] && passwordForm.get('confirmPassword')?.touched) {
+                        <span class="field-error">Las contraseñas no coinciden</span>
+                        }
+                    </div>
+
+                    <!-- Feedback y submit -->
+                    @if (passwordMessage()) {
+                    <div class="feedback-message success">
+                        <i class="ph ph-check-circle"></i> {{ passwordMessage() }}
+                    </div>
+                    }
+                    @if (passwordError()) {
+                    <div class="feedback-message error">
+                        <i class="ph ph-warning-circle"></i> {{ passwordError() }}
+                    </div>
+                    }
 
                     <div class="form-footer">
-                        <div class="message-container">
-                            <span *ngIf="passwordMessage" class="success-message">{{ passwordMessage }}</span>
-                            <span *ngIf="passwordError" class="error-message">{{ passwordError }}</span>
-                        </div>
-                        <button type="submit" [disabled]="passwordForm.invalid" class="btn-primary">
-                            Cambiar Contraseña
+                        <button
+                            type="submit"
+                            class="btn-primary"
+                            [disabled]="passwordForm.invalid || isChangingPassword()">
+                            @if (isChangingPassword()) {
+                            <i class="ph ph-circle-notch spin"></i> Guardando...
+                            } @else {
+                            <i class="ph ph-floppy-disk"></i> Guardar contraseña
+                            }
                         </button>
                     </div>
                 </form>
             </div>
 
-            <!-- Linked Projects -->
+            <!-- Proyectos Vinculados -->
             <div class="profile-card">
-                <h3 class="card-title">Proyectos Vinculados</h3>
+                <h3 class="card-title">
+                    <i class="ph ph-folders"></i>
+                    Proyectos Vinculados
+                </h3>
                 @if (user()?.projects?.length) {
-                <div>
-                    <ul class="project-list">
-                        @for (project of user()?.projects; track project.id) {
-                        <li class="project-item">
+                <ul class="project-list">
+                    @for (project of user()?.projects; track project.id) {
+                    <li class="project-item">
+                        <div class="project-icon">
                             <i class="ph ph-folder"></i>
-                            <span>{{ project.name }}</span>
-                        </li>
-                        }
-                    </ul>
-                </div>
+                        </div>
+                        <span>{{ project.name }}</span>
+                    </li>
+                    }
+                </ul>
                 } @else {
                 <p class="empty-state">No tienes proyectos vinculados.</p>
                 }
             </div>
+
         </div>
     </div>
 </div>

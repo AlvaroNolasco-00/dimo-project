@@ -11,10 +11,9 @@ import logging
 # Configure Logging
 logger = logging.getLogger(__name__)
 
-# GPU Service Configuration
-# We support distinct URLs for each microservice (Modal/Serverless style)
-GPU_UPSCALE_URL = os.getenv("GPU_UPSCALE_URL") 
-GPU_REMOVER_URL = os.getenv("GPU_REMOVER_URL") 
+# Cloud GPU Service Configuration (Modal/Serverless style)
+GPU_UPSCALE_URL = os.getenv("GPU_UPSCALE_URL")
+GPU_REMOVER_URL = os.getenv("GPU_REMOVER_URL")
 GPU_SERVICE_SECRET = os.getenv("GPU_SERVICE_SECRET")
 # Legacy/Koyeb Fallback URL
 GPU_SERVICE_URL = os.getenv("GPU_SERVICE_URL")
@@ -22,31 +21,83 @@ GPU_SERVICE_URL = os.getenv("GPU_SERVICE_URL")
 # App Environment
 APP_ENV = os.getenv("APP_ENV", "local")
 
-def _should_use_gpu(capability: str = None) -> bool:
+# ─── Local Hardware Accelerator Detection ───────────────────────────────────
+
+_LOCAL_ACCELERATOR_CACHE = None
+
+def _get_local_accelerator() -> str:
     """
-    Determines if we should use the GPU Service based on functionality available.
+    Detects best available local hardware accelerator.
+    Returns: 'mps' (Apple Silicon GPU), 'coreml' (Neural Engine), or 'cpu'.
+    Result is cached after first call.
     """
-    # 0. Force local processing if APP_ENV is local to avoid cloud costs
+    global _LOCAL_ACCELERATOR_CACHE
+    if _LOCAL_ACCELERATOR_CACHE is not None:
+        return _LOCAL_ACCELERATOR_CACHE
+
+    # Check MPS (Metal Performance Shaders — Apple Silicon GPU via PyTorch)
+    try:
+        import torch
+        if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+            _LOCAL_ACCELERATOR_CACHE = 'mps'
+            logger.info("🍎 Apple Silicon detected: MPS (Metal Performance Shaders) available")
+            return _LOCAL_ACCELERATOR_CACHE
+    except ImportError:
+        logger.debug("PyTorch not installed — MPS not available")
+
+    # Check CoreML (Neural Engine via onnxruntime-silicon)
+    try:
+        import onnxruntime as ort
+        if 'CoreMLExecutionProvider' in ort.get_available_providers():
+            _LOCAL_ACCELERATOR_CACHE = 'coreml'
+            logger.info("🍎 Apple Silicon detected: CoreML (Neural Engine) available via onnxruntime-silicon")
+            return _LOCAL_ACCELERATOR_CACHE
+    except Exception:
+        pass
+
+    _LOCAL_ACCELERATOR_CACHE = 'cpu'
+    logger.info("💻 No hardware accelerator detected — using CPU")
+    return _LOCAL_ACCELERATOR_CACHE
+
+# ─── Cloud GPU Routing ───────────────────────────────────────────────────────
+
+def _should_use_cloud_gpu(capability: str = None) -> bool:
+    """
+    Determines if we should route to the Cloud GPU Service.
+    Only active in production and only if the service URLs are configured.
+    """
     if APP_ENV == "local":
         return False
 
-    # 1. Check if we have a specific URL (e.g. upscaler-specific)
     if capability == "upscale" and GPU_UPSCALE_URL:
         return True
     if capability == "remove-background" and GPU_REMOVER_URL:
         return True
-        
-    # 2. Check generic service URL
+
     if GPU_SERVICE_URL:
         return True
-        
+
     return False
 
+# Keep backward-compatible alias (used in existing call sites)
+def _should_use_gpu(capability: str = None) -> bool:
+    return _should_use_cloud_gpu(capability)
+
+# ─── Dimension limits per accelerator ────────────────────────────────────────
+# MPS (M-chip GPU): high limit — M4 has unified memory and handles large tensors well.
+# CPU / cloud:      conservative limit — avoids OOM on cloud free tiers.
+MAX_DIMENSION_MPS = 8000
+MAX_DIMENSION_CPU = 4000
+
 # Log startup mode
-if _should_use_gpu():
-    logger.info(f"🚀 PROCESSING MODE: CLOUD GPU ENABLED (Env: {APP_ENV})")
+if APP_ENV == "local":
+    _accel = _get_local_accelerator()
+    logger.info(f"🍎 PROCESSING MODE: LOCAL — Hardware accelerator: {_accel.upper()} (Env: {APP_ENV})")
 else:
-    logger.info(f"💻 PROCESSING MODE: LOCAL CPU FALLBACK (Env: {APP_ENV}) - Optimized for Apple Silicon/Local Dev")
+    if _should_use_cloud_gpu():
+        logger.info(f"🚀 PROCESSING MODE: CLOUD GPU ENABLED (Env: {APP_ENV})")
+    else:
+        logger.info(f"💻 PROCESSING MODE: CLOUD CPU FALLBACK (Env: {APP_ENV})")
 
 async def call_gpu_service(service_type: str, image_bytes: bytes, params: dict = None, data: dict = None) -> bytes:
     """
@@ -252,36 +303,46 @@ def remove_specific_colors(image_bytes: bytes, colors: list, tolerance: int = 30
 # 2. Quitar Fondo
 async def remove_background(image_bytes: bytes) -> bytes:
     """
-    Removes background. Tries GPU service first, falls back to CPU (rembg).
+    Removes background.
+    - Production: tries Cloud GPU first, falls back to local.
+    - Local: uses CoreML (Neural Engine on M-chips) or CPU via rembg.
     """
-    if _should_use_gpu("remove-background"):
+    if _should_use_cloud_gpu("remove-background"):
         try:
             logger.info("🎨 Removing background via Cloud GPU...")
             return await call_gpu_service("remove-background", image_bytes)
         except Exception as e:
-            logger.error(f"❌ GPU BG Removal failed: {e}. Falling back to Local CPU.")
-            pass
+            logger.error(f"❌ Cloud GPU BG Removal failed: {e}. Falling back to local engine.")
 
-    # Legacy Fallback (CPU/M4 Neural Engine)
-    logger.info("💻 Removing background via Local Engine...")
-    
-    # Optimize: Use persistent session and try CoreML (Apple Silicon)
-    # We load this lazily to avoid overhead if not used
+    # Local processing — use best available accelerator
+    accelerator = _get_local_accelerator()
+    logger.info(f"🍎 Removing background via local engine (accelerator: {accelerator.upper()})...")
+
     global _LOCAL_REMBG_SESSION
     if '_LOCAL_REMBG_SESSION' not in globals() or _LOCAL_REMBG_SESSION is None:
         from rembg import new_session
-        # Providers: CoreML for macOS (M-chips), CUDA for NVIDIA, CPU fallback
-        # Note: Requires 'onnxruntime-silicon' installed on Mac for CoreML support
-        providers = ['CoreMLExecutionProvider', 'CUDAExecutionProvider', 'CPUExecutionProvider']
+
+        # Order providers by what's actually available on this machine.
+        # CoreML → Neural Engine on M-chips (requires onnxruntime-silicon).
+        # CUDA   → NVIDIA GPU (not present on Mac, ignored gracefully).
+        # CPU    → universal fallback.
+        if accelerator == 'coreml':
+            providers = ['CoreMLExecutionProvider', 'CPUExecutionProvider']
+        elif accelerator == 'mps':
+            # onnxruntime doesn't support MPS directly; CoreML is still the right
+            # ONNX backend on Apple Silicon even when PyTorch MPS is available.
+            providers = ['CoreMLExecutionProvider', 'CPUExecutionProvider']
+        else:
+            providers = ['CPUExecutionProvider']
+
         try:
             _LOCAL_REMBG_SESSION = new_session("u2net", providers=providers)
-            logger.info(f"✅ Local rembg session initialized with providers: {providers}")
+            logger.info(f"✅ rembg session initialized — providers: {providers}")
         except Exception as e:
-            logger.warning(f"⚠️ Failed to init accelerated rembg session: {e}. Falling back to default.")
+            logger.warning(f"⚠️ Accelerated rembg session failed ({e}). Using default session.")
             _LOCAL_REMBG_SESSION = new_session("u2net")
 
     from rembg import remove
-    # Run blocking task in thread
     output_bytes = await asyncio.to_thread(remove, image_bytes, session=_LOCAL_REMBG_SESSION)
     return output_bytes
 
@@ -320,17 +381,30 @@ async def run_upscale_task(task_id: str, image_bytes: bytes, factor: float, deta
                 # We will fall through to Legacy CPU logic below
                 result_bytes = None
         
-        # 2. Fallback to Local CPU if needed
+        # 2. Local processing (MPS on Apple Silicon, or CPU fallback)
         if result_bytes is None:
-            logger.info(f"🔄 Task {task_id}: Using Local CPU fallback.")
-            
-            # Check for safety limits before attempting CPU upscale to avoid OOM/Crash
+            accelerator = _get_local_accelerator()
+            logger.info(f"🔄 Task {task_id}: Using local upscaling (accelerator: {accelerator.upper()}).")
+
+            # Safety limits — higher on MPS (M-chip GPU), conservative on CPU
             img_pil = read_image_file(image_bytes)
             w, h = img_pil.size
-            if (w * factor) > 4000 or (h * factor) > 4000:
-                raise ValueError(f"Image too large for Local CPU upscale ({w}x{h} -> x{factor}). Max limit is 4000px.")
-            
-            result_bytes = await asyncio.to_thread(upscale_image_legacy, image_bytes, factor, detail_boost)
+            max_dim = MAX_DIMENSION_MPS if accelerator == 'mps' else MAX_DIMENSION_CPU
+            if (w * factor) > max_dim or (h * factor) > max_dim:
+                raise ValueError(
+                    f"El resultado sería demasiado grande ({w}x{h} → x{factor} = "
+                    f"{int(w*factor)}x{int(h*factor)}px). Límite: {max_dim}px."
+                )
+
+            if accelerator == 'mps':
+                try:
+                    result_bytes = await asyncio.to_thread(upscale_image_mps, image_bytes, factor, detail_boost)
+                    logger.info(f"✅ Task {task_id}: MPS upscale completed.")
+                except Exception as e:
+                    logger.warning(f"⚠️ Task {task_id}: MPS upscale failed ({e}). Falling back to CPU Lanczos.")
+                    result_bytes = await asyncio.to_thread(upscale_image_legacy, image_bytes, factor, detail_boost)
+            else:
+                result_bytes = await asyncio.to_thread(upscale_image_legacy, image_bytes, factor, detail_boost)
 
         # 3. Save Success
         if result_bytes:
@@ -364,55 +438,98 @@ async def run_upscale_task(task_id: str, image_bytes: bytes, factor: float, deta
 # 4. Aumentar Resolución (Upscaling)
 async def upscale_image(image_bytes: bytes, factor=2, detail_boost=1.5) -> bytes:
     """
-    Upscales image using AI (Real-ESRGAN) via GPU Service.
-    NO AUTOMATIC FALLBACK HERE - Controlled by run_upscale_task.
+    Upscales image. Routes to Cloud GPU (production) or local hardware (local).
+    NOTE: run_upscale_task controls fallback logic — this function raises on cloud failure.
     """
-    if _should_use_gpu("upscale"):
+    if _should_use_cloud_gpu("upscale"):
         logger.info(f"🔍 Upscaling image x{factor} via Cloud GPU...")
-        form_data = {
-            "scale": factor, 
-            "factor": factor, # Send both just in case
-            "detail_boost": detail_boost
-        }
-        # This will Raise exception if it fails, allowing run_upscale_task to handle it
+        form_data = {"scale": factor, "factor": factor, "detail_boost": detail_boost}
         return await call_gpu_service("upscale", image_bytes, data=form_data)
-            
-    # If GPU not configured, use legacy immediately (or could raise error depending on policy)
-    # For now, if no GPU configured, return None to signal fallback needed or just run legacy?
-    # run_upscale_task handles the logic. If we are here, it means we probably want legacy.
-    # BUT, to keep this function clean, if GPU is OFF, we might as well return the legacy result directly.
-    # However, run_upscale_task calls checking _should_use_gpu explicitly.
-    # So if we are here, and _should_use_gpu is True, it means we called call_gpu_service.
-    # If _should_use_gpu is False, we shouldn't be calling this if we want strict separation, 
-    # OR we just return local.
-    
-    # Safe default:
-    logger.info(f"💻 Upscaling image x{factor} via Local CPU (Lanczos)...")
+
+    # Local path — MPS preferred, CPU fallback
+    accelerator = _get_local_accelerator()
+    logger.info(f"🍎 Upscaling image x{factor} via local engine (accelerator: {accelerator.upper()})...")
+
+    if accelerator == 'mps':
+        return await asyncio.to_thread(upscale_image_mps, image_bytes, factor, detail_boost)
+
     return await asyncio.to_thread(upscale_image_legacy, image_bytes, factor, detail_boost)
 
 def upscale_image_legacy(image_bytes: bytes, factor=2, detail_boost=1.5) -> bytes:
-    """Legacy CPU upscaling using Lanczos."""
+    """CPU upscaling using Lanczos — universal fallback."""
     img_pil = read_image_file(image_bytes)
     width, height = img_pil.size
-    MAX_DIMENSION = 4000 # Reduced from 10000 to prevent OOM on Cloud Free tiers/Local
-    
+
     new_width = int(width * factor)
     new_height = int(height * factor)
-    
-    if new_width > MAX_DIMENSION or new_height > MAX_DIMENSION:
-        raise ValueError(f"Upscale factor too large. Resulting image would exceed {MAX_DIMENSION}x{MAX_DIMENSION} pixels.")
-    
+
+    if new_width > MAX_DIMENSION_CPU or new_height > MAX_DIMENSION_CPU:
+        raise ValueError(f"Upscale factor too large. Result would exceed {MAX_DIMENSION_CPU}px.")
+
     if width < 1000:
         img_pil = img_pil.filter(ImageFilter.MedianFilter(size=3))
 
     res_pil = img_pil.resize((new_width, new_height), Image.Resampling.LANCZOS)
-    
+
     if detail_boost > 0:
         radius = 1 + (factor / 4)
         percent = int(100 * detail_boost)
         res_pil = res_pil.filter(ImageFilter.UnsharpMask(radius=radius, percent=percent, threshold=3))
-    
+
     return pil_to_bytes(res_pil)
+
+
+def upscale_image_mps(image_bytes: bytes, factor: float, detail_boost: float) -> bytes:
+    """
+    Upscaling via PyTorch MPS (Metal Performance Shaders) on Apple Silicon.
+    Uses bicubic interpolation on the M-chip GPU — significantly faster than CPU Lanczos.
+    Falls back to Lanczos if MPS is unavailable at runtime.
+    """
+    import torch
+    import torch.nn.functional as F
+
+    img_pil = read_image_file(image_bytes)
+    has_alpha = img_pil.mode == 'RGBA'
+    width, height = img_pil.size
+
+    new_width = int(width * factor)
+    new_height = int(height * factor)
+
+    if new_width > MAX_DIMENSION_MPS or new_height > MAX_DIMENSION_MPS:
+        raise ValueError(f"Upscale factor too large. Result would exceed {MAX_DIMENSION_MPS}px.")
+
+    device = torch.device('mps')
+
+    def _resize_tensor(arr: np.ndarray) -> np.ndarray:
+        """Move a CHW float32 tensor to MPS, interpolate, return numpy HWC uint8."""
+        t = torch.from_numpy(arr).float().div(255.0).unsqueeze(0).to(device)
+        t = F.interpolate(t, size=(new_height, new_width), mode='bicubic', align_corners=False)
+        return t.squeeze(0).permute(1, 2, 0).clamp(0, 1).cpu().numpy()
+
+    if has_alpha:
+        rgb_np = np.array(img_pil.convert('RGB'))          # HWC uint8
+        alpha_np = np.array(img_pil.split()[3])             # HW  uint8
+
+        rgb_chw = rgb_np.transpose(2, 0, 1)                # CHW
+        alpha_chw = alpha_np[np.newaxis, :, :]              # 1HW
+
+        rgb_out = (_resize_tensor(rgb_chw) * 255).astype(np.uint8)
+        alpha_out = (_resize_tensor(alpha_chw) * 255).astype(np.uint8).squeeze()
+
+        result = Image.fromarray(rgb_out, 'RGB').convert('RGBA')
+        result.putalpha(Image.fromarray(alpha_out))
+    else:
+        rgb_np = np.array(img_pil.convert('RGB'))
+        rgb_chw = rgb_np.transpose(2, 0, 1)
+        rgb_out = (_resize_tensor(rgb_chw) * 255).astype(np.uint8)
+        result = Image.fromarray(rgb_out, 'RGB')
+
+    if detail_boost > 0:
+        radius = 1 + (factor / 4)
+        percent = int(100 * detail_boost)
+        result = result.filter(ImageFilter.UnsharpMask(radius=radius, percent=percent, threshold=3))
+
+    return pil_to_bytes(result)
 
 def generate_halftone(image_bytes: bytes, dot_size: int = 10, scale: float = 1.0, remove_colors: list = None, tolerance: int = 30, spacing: int = 0) -> bytes:
     """

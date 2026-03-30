@@ -52,6 +52,15 @@ export class CostosOperativosComponent {
   // Material Mode Data
   materialDims = { width: 0, height: 0, unit: 'cm' };
 
+  // Derived Costs Data
+  derivedCosts: OperativeCost[] = [];
+  showDerivedForm = false;
+  selectedDerivedTypeId: number | null = null;
+  newDerivedBaseCost = 0;
+  newDerivedVariantSelection = ''; // For backward compatibility if needed, but we'll use array
+  selectedDerivedVariants: string[] = [];
+  newDerivedDescription = '';
+
   private financeService = inject(FinanceService);
   private authService = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
@@ -275,6 +284,73 @@ export class CostosOperativosComponent {
     }
 
     this.showCostModal = true;
+    this.loadDerivedCosts(cost.id);
+  }
+
+  loadDerivedCosts(parentId: number) {
+    this.financeService.getCosts(undefined, parentId).subscribe(costs => {
+      this.derivedCosts = costs;
+    });
+  }
+
+  toggleDerivedForm() {
+    this.showDerivedForm = !this.showDerivedForm;
+    this.selectedDerivedTypeId = null;
+    this.newDerivedBaseCost = 0;
+    this.newDerivedVariantSelection = '';
+    this.selectedDerivedVariants = [];
+    this.newDerivedDescription = '';
+  }
+
+  saveDerivedCost() {
+    if (!this.editingCostId || !this.selectedDerivedTypeId) return;
+
+    this.financeService.createCost({
+      cost_type_id: this.selectedDerivedTypeId,
+      base_cost: this.newDerivedBaseCost,
+      parent_cost_id: this.editingCostId,
+      attributes: {
+        '__dependent_variants': this.selectedDerivedVariants,
+        'Descripción': this.newDerivedDescription,
+        '__type': 'derived'
+      }
+    }).subscribe(() => {
+      this.loadDerivedCosts(this.editingCostId!);
+      this.toggleDerivedForm();
+    });
+  }
+
+  deleteDerivedCost(id: number) {
+    this.financeService.deleteCost(id).subscribe(() => {
+      if (this.editingCostId) this.loadDerivedCosts(this.editingCostId);
+    });
+  }
+
+  getAvailableVariants(): string[] {
+    const variants: string[] = [];
+    this.variantGroups.forEach(group => {
+      group.options.forEach(opt => {
+        variants.push(`${group.name}: ${opt.label}`);
+      });
+    });
+    return variants;
+  }
+
+  getTypeName(typeId: number): string {
+    return this.costTypes.find(t => t.id === typeId)?.name || 'Desconocido';
+  }
+
+  toggleVariantSelection(variant: string) {
+    const index = this.selectedDerivedVariants.indexOf(variant);
+    if (index === -1) {
+      this.selectedDerivedVariants.push(variant);
+    } else {
+      this.selectedDerivedVariants.splice(index, 1);
+    }
+  }
+
+  isVariantSelected(variant: string): boolean {
+    return this.selectedDerivedVariants.includes(variant);
   }
 }
 
