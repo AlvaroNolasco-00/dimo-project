@@ -342,7 +342,7 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
           this.isLoadingDerivedCosts = false;
           this.cd.detectChanges();
         },
-        error: () => { this.isLoadingDerivedCosts = false; }
+        error: () => { this.isLoadingDerivedCosts = false; this.cd.detectChanges(); }
       });
     }
 

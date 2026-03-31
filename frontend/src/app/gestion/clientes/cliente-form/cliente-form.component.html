@@ -1,128 +1,171 @@
-<div class="form-container">
-    <div class="header">
-        <div class="title-section">
+<div class="cliente-form-container">
+    <div class="form-card">
+
+        <div class="form-header">
             <button class="btn-back" (click)="cancel()">
-                <i class="fas fa-arrow-left"></i>
+                <i class="ph ph-arrow-left"></i>
             </button>
             <div>
                 <h1>{{ isEditMode ? 'Editar Cliente' : 'Nuevo Cliente' }}</h1>
-                <p>{{ isEditMode ? 'Actualiza los datos de tu cliente.' : 'Registra un nuevo cliente para agilizar tus
-                    ventas.' }}</p>
+                <p>{{ isEditMode ? 'Actualiza los datos de tu cliente.' : 'Registra un nuevo cliente para agilizar tus ventas.' }}</p>
             </div>
         </div>
-    </div>
 
-    <div class="form-grid">
-        <!-- Main Info Card -->
-        <div class="card main-form">
-            <div class="card-header">
-                <h3>Información General</h3>
-            </div>
-            <div class="card-body">
-                <div class="input-group">
-                    <label>Nombre Completo *</label>
+        <div class="section-title">
+            <i class="ph ph-user-circle"></i>
+            <span>Información General</span>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group" style="flex: 1 1 100%;">
+                <label>Nombre Completo *</label>
+                <div class="input-wrapper">
+                    <i class="ph ph-user"></i>
                     <input type="text" [(ngModel)]="client.full_name" placeholder="Ej. Juan Pérez">
                 </div>
+            </div>
+        </div>
 
-                <div class="row">
-                    <div class="input-group">
-                        <label>Teléfono *</label>
-                        <input type="text" [(ngModel)]="client.phone_number" placeholder="Ej. 1234 5678">
-                    </div>
-                    <div class="input-group">
-                        <label>Email (Opcional)</label>
-                        <input type="email" [(ngModel)]="client.email" placeholder="ejemplo@correo.com">
-                    </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Teléfono *</label>
+                <div class="input-wrapper">
+                    <i class="ph ph-phone"></i>
+                    <input type="text" [(ngModel)]="client.phone_number" placeholder="Ej. 1234 5678">
                 </div>
-
-                <div class="row">
-                    <div class="input-group">
-                        <label>Tipo de Cliente</label>
-                        <select [(ngModel)]="client.client_type">
-                            <option value="retail">Minorista</option>
-                            <option value="wholesale">Mayorista</option>
-                            <option value="reseller">Revendedor</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>NIT / RFC / ID Fiscal (Opcional)</label>
-                        <input type="text" [(ngModel)]="client.tax_id" placeholder="ID de facturación">
-                    </div>
+            </div>
+            <div class="form-group">
+                <label>Email (Opcional)</label>
+                <div class="input-wrapper">
+                    <i class="ph ph-envelope"></i>
+                    <input type="email" [(ngModel)]="client.email" placeholder="ejemplo@correo.com">
                 </div>
+            </div>
+        </div>
 
-                <div class="input-group">
-                    <label>Dirección de Envío</label>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Tipo de Cliente</label>
+                <div class="input-wrapper">
+                    <i class="ph ph-identification-card"></i>
+                    <select [(ngModel)]="client.client_type">
+                        <option value="retail">Minorista</option>
+                        <option value="wholesale">Mayorista</option>
+                        <option value="reseller">Revendedor</option>
+                    </select>
+                    <i class="ph ph-caret-down select-icon"></i>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>NIT / RFC / ID Fiscal (Opcional)</label>
+                <div class="input-wrapper">
+                    <i class="ph ph-buildings"></i>
+                    <input type="text" [(ngModel)]="client.tax_id" placeholder="ID de facturación">
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group" style="flex: 1 1 100%;">
+                <label>Dirección de Envío</label>
+                <div class="input-wrapper textarea-wrapper">
+                    <i class="ph ph-map-pin"></i>
                     <textarea rows="2" [(ngModel)]="client.shipping_address"
                         placeholder="Calle, número, colonia, código postal..."></textarea>
                 </div>
+            </div>
+        </div>
 
-                <div class="input-group">
-                    <label>Notas Internas</label>
+        <div class="form-row">
+            <div class="form-group" style="flex: 1 1 100%;">
+                <label>Notas Internas</label>
+                <div class="input-wrapper textarea-wrapper">
+                    <i class="ph ph-note"></i>
                     <textarea rows="2" [(ngModel)]="client.notes"
                         placeholder="Detalles importantes sobre este cliente..."></textarea>
                 </div>
             </div>
         </div>
 
-        <!-- Preferences Card -->
-        <div class="card preferences-form">
-            <div class="card-header">
-                <h3>Venta Inteligente (Preferencias)</h3>
-                <p>Configura estos datos para auto-sugerir en pedidos.</p>
-            </div>
-            <div class="card-body">
-                <div class="input-group">
-                    <label>Talla Habitual</label>
-                    <div class="size-selector">
-                        <button *ngFor="let size of sizes" [class.active]="client.preferences.default_size === size"
-                            (click)="client.preferences.default_size = size">
-                            {{ size }}
-                        </button>
-                    </div>
-                </div>
+        <div class="section-title">
+            <i class="ph ph-star"></i>
+            <span>Venta Inteligente</span>
+            <small>Configura preferencias para auto-sugerir en pedidos</small>
+        </div>
 
-                <div class="input-group">
-                    <label>Corte / Fit Preferido</label>
-                    <input type="text" [(ngModel)]="client.preferences.preferred_fit"
-                        placeholder="Ej. Oversized, Slim Fit...">
-                </div>
-
-                <div class="input-group">
-                    <label>Técnica Habitual</label>
-                    <select [(ngModel)]="client.preferences.preferred_technique">
-                        <option value="">Seleccionar...</option>
-                        <option *ngFor="let t of techniques" [value]="t">{{ t }}</option>
-                    </select>
-                </div>
-
-                <div class="input-group">
-                    <label>Horario de Entrega Preferido</label>
-                    <select [(ngModel)]="client.preferences.delivery_window">
-                        <option value="">Cualquiera</option>
-                        <option *ngFor="let w of windows" [value]="w">{{ w }}</option>
-                    </select>
-                </div>
-
-                <div class="input-group">
-                    <label>Canal de Comunicación</label>
-                    <div class="pill-selector">
-                        <button *ngFor="let ch of channels"
-                            [class.active]="client.preferences.communication_channel === ch"
-                            (click)="client.preferences.communication_channel = ch">
-                            {{ ch }}
-                        </button>
-                    </div>
+        <div class="form-row">
+            <div class="form-group" style="flex: 1 1 100%;">
+                <label>Talla Habitual</label>
+                <div class="size-selector">
+                    @for (size of sizes; track size) {
+                    <button [class.active]="client.preferences.default_size === size"
+                        (click)="client.preferences.default_size = size">
+                        {{ size }}
+                    </button>
+                    }
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="form-actions">
-        <button class="btn-cancel" (click)="cancel()">Cancelar</button>
-        <button class="btn-submit" (click)="saveClient()" [disabled]="isSaving">
-            <i class="fas fa-save" *ngIf="!isSaving"></i>
-            <span class="spinner" *ngIf="isSaving"></span>
-            {{ isSaving ? 'Guardando...' : 'Guardar Cliente' }}
-        </button>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Corte / Fit Preferido</label>
+                <div class="input-wrapper">
+                    <i class="ph ph-t-shirt"></i>
+                    <input type="text" [(ngModel)]="client.preferences.preferred_fit"
+                        placeholder="Ej. Oversized, Slim Fit...">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Técnica Habitual</label>
+                <div class="input-wrapper">
+                    <i class="ph ph-paint-brush"></i>
+                    <select [(ngModel)]="client.preferences.preferred_technique">
+                        <option value="">Seleccionar...</option>
+                        @for (t of techniques; track t) {
+                        <option [value]="t">{{ t }}</option>
+                        }
+                    </select>
+                    <i class="ph ph-caret-down select-icon"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Horario de Entrega Preferido</label>
+                <div class="input-wrapper">
+                    <i class="ph ph-clock"></i>
+                    <select [(ngModel)]="client.preferences.delivery_window">
+                        <option value="">Cualquiera</option>
+                        @for (w of windows; track w) {
+                        <option [value]="w">{{ w }}</option>
+                        }
+                    </select>
+                    <i class="ph ph-caret-down select-icon"></i>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Canal de Comunicación</label>
+                <div class="pill-selector">
+                    @for (ch of channels; track ch) {
+                    <button [class.active]="client.preferences.communication_channel === ch"
+                        (click)="client.preferences.communication_channel = ch">
+                        {{ ch }}
+                    </button>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <button type="button" class="btn-link-cancel" (click)="cancel()">Cancelar</button>
+            <button type="button" class="btn-save-next" (click)="saveClient()" [disabled]="isSaving"
+                [class.btn-loading]="isSaving">
+                @if (isSaving) { <span class="spinner"></span> }
+                {{ isSaving ? 'Guardando...' : 'Guardar Cliente' }}
+            </button>
+        </div>
+
     </div>
 </div>
