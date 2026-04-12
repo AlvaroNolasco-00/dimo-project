@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 
-from .. import models, schemas
-from ..core.database import get_db
-from ..core.deps import get_current_user
+from backend import models
+from backend import schemas
+from backend.core.database import get_db
+from backend.core.deps import get_current_user
 
 router = APIRouter(
     prefix="/api/finance",
@@ -30,10 +31,11 @@ def create_cost_type(
         raise HTTPException(status_code=400, detail="Cost type already exists in this project")
     
     new_cost_type = models.CostType(
-        name=cost_type.name, 
+        name=cost_type.name,
         description=cost_type.description,
         project_id=cost_type.project_id,
-        requires_art=cost_type.requires_art
+        requires_art=cost_type.requires_art,
+        profit_margin=cost_type.profit_margin or 0
     )
     db.add(new_cost_type)
     db.commit()
@@ -54,6 +56,30 @@ def read_cost_types(
     
     cost_types = query.offset(skip).limit(limit).all()
     return cost_types
+
+@router.put("/cost-types/{cost_type_id}", response_model=schemas.CostType)
+def update_cost_type(
+    cost_type_id: int,
+    cost_type_update: schemas.CostTypeUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user)
+):
+    db_type = db.query(models.CostType).filter(models.CostType.id == cost_type_id).first()
+    if not db_type:
+        raise HTTPException(status_code=404, detail="Cost type not found")
+
+    if cost_type_update.name is not None:
+        db_type.name = cost_type_update.name
+    if cost_type_update.description is not None:
+        db_type.description = cost_type_update.description
+    if cost_type_update.requires_art is not None:
+        db_type.requires_art = cost_type_update.requires_art
+    if cost_type_update.profit_margin is not None:
+        db_type.profit_margin = cost_type_update.profit_margin
+
+    db.commit()
+    db.refresh(db_type)
+    return db_type
 
 # --- OPERATIVE COSTS ---
 

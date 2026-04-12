@@ -1,4 +1,4 @@
-import { Component, computed, signal, inject, effect, ViewChild, AfterViewInit, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
+import { Component, computed, signal, inject, effect, ViewChild, AfterViewInit, OnDestroy, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -7,6 +7,17 @@ import { lastValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ImagePersistenceService, SessionImage } from '../services/image-persistence.service';
 import { AuthService } from '../services/auth.service';
+import { ToastService } from '../services/toast.service';
+
+// Operation types for non-destructive editing pipeline
+export type OperationType = 'enhance' | 'upscale' | 'remove-bg' | 'remove-objects' | 'halftone' | 'contour-clip' | 'crop';
+
+export interface Operation {
+  id: string;
+  type: OperationType;
+  params: Record<string, any>;
+  timestamp: number;
+}
 
 // Sub-components
 import { EditorUploadComponent } from './components/editor-upload/editor-upload.component';
@@ -30,12 +41,13 @@ import { EditorSidebarComponent } from './components/editor-sidebar/editor-sideb
   // encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class EditorComponent implements AfterViewInit {
+export class EditorComponent implements AfterViewInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private api = inject(ApiService);
   private imageService = inject(ImagePersistenceService);
   private sanitizer = inject(DomSanitizer);
   private authService = inject(AuthService);
+  private toastService = inject(ToastService);
 
   @ViewChild(EditorPreviewComponent) previewComponent!: EditorPreviewComponent;
 
@@ -46,8 +58,17 @@ export class EditorComponent implements AfterViewInit {
   hasFile = signal(false);
   sessionGallery = signal<SessionImage[]>([]);
 
+  // Operation Pipeline State (Non-destructive editing)
+  operationQueue = signal<Operation[]>([]);
+  isPipelineMode = signal(false);
+
   // UI State
   isLoading = signal(false);
+  processingState = signal<{
+    step: string;
+    progress: number;
+    estimatedSecondsRemaining: number | null;
+  } | null>(null);
 
   // Params - Enhance
   contrast = signal(1.2);
@@ -82,6 +103,9 @@ export class EditorComponent implements AfterViewInit {
 
   // Canvas State (Managed by Preview, but we track history length for controls)
   canvasHistoryLength = signal(0);
+
+  // Object URL tracking for memory leak prevention
+  private objectUrls = new Set<string>();
 
   mode = signal('remove-bg');
 
@@ -154,15 +178,11 @@ export class EditorComponent implements AfterViewInit {
   handleFile(file: File) {
     if (!file.type.startsWith('image/')) return;
 
-    if (this.currentImageSource()) {
-      URL.revokeObjectURL(this.currentImageSource()!);
-    }
-    if (this.processedImageSource()) {
-      URL.revokeObjectURL(this.processedImageSource()!);
-    }
+    this.cleanupObjectURLs();
 
     this.currentImageBlob.set(file);
     const url = URL.createObjectURL(file);
+    this.objectUrls.add(url);
     this.currentImageSource.set(url);
     this.processedImageSource.set(null);
     this.hasFile.set(true);
@@ -173,8 +193,7 @@ export class EditorComponent implements AfterViewInit {
   }
 
   reset() {
-    if (this.currentImageSource()) URL.revokeObjectURL(this.currentImageSource()!);
-    if (this.processedImageSource()) URL.revokeObjectURL(this.processedImageSource()!);
+    this.cleanupObjectURLs();
 
     this.currentImageBlob.set(null);
     this.currentImageSource.set(null);
@@ -206,84 +225,114 @@ export class EditorComponent implements AfterViewInit {
     if (!blob) return;
 
     this.isLoading.set(true);
+    this.processingState.set({ step: 'Iniciando...', progress: 0, estimatedSecondsRemaining: null });
     let resultBlob: Blob;
 
     try {
       switch (this.mode()) {
         case 'remove-bg':
+          this.processingState.set({ step: 'Analizando imagen...', progress: 20, estimatedSecondsRemaining: 5 });
           if (this.bgRemovalMode() === 'draw') {
             const maskBlob = await this.previewComponent.getMaskBlob();
             if (!maskBlob) throw new Error('Por favor dibuja una máscara primero');
+            this.processingState.set({ step: 'Eliminando fondo con IA...', progress: 50, estimatedSecondsRemaining: 3 });
             resultBlob = await lastValueFrom(this.api.removeBackground(blob, undefined, undefined, maskBlob, this.smartRefine()));
           } else if (this.bgRemovalMode() === 'manual' && this.selectedColors().length > 0) {
+            this.processingState.set({ step: 'Procesando colores seleccionados...', progress: 50, estimatedSecondsRemaining: 3 });
             resultBlob = await lastValueFrom(this.api.removeBackground(blob, this.selectedColors(), this.colorTolerance()));
           } else {
+            this.processingState.set({ step: 'Eliminando fondo automáticamente...', progress: 50, estimatedSecondsRemaining: 5 });
             resultBlob = await lastValueFrom(this.api.removeBackground(blob));
           }
           break;
 
         case 'remove-objects':
+          this.processingState.set({ step: 'Detectando objetos...', progress: 20, estimatedSecondsRemaining: 5 });
           if (this.removalMethod() === 'magic-wand') {
             const coords = this.lastClickCoords();
             if (!coords) throw new Error('Por favor haz clic en la imagen primero');
+            this.processingState.set({ step: 'Reconstruyendo área...', progress: 50, estimatedSecondsRemaining: 3 });
             resultBlob = await lastValueFrom(this.api.removeObjects(blob, undefined, { ...coords, tolerance: this.colorTolerance() }));
           } else {
             const maskBlob = await this.previewComponent.getMaskBlob();
             if (!maskBlob) throw new Error('Por favor dibuja una máscara primero');
+            this.processingState.set({ step: 'Eliminando objetos...', progress: 50, estimatedSecondsRemaining: 5 });
             resultBlob = await lastValueFrom(this.api.removeObjects(blob, maskBlob));
           }
           break;
 
         case 'enhance':
+          this.processingState.set({ step: 'Aplicando mejoras...', progress: 30, estimatedSecondsRemaining: 2 });
           resultBlob = await lastValueFrom(this.api.enhanceQuality(blob, this.contrast(), this.brightness(), this.sharpness()));
           break;
 
         case 'upscale':
-          resultBlob = await lastValueFrom(this.api.upscale(blob, this.upscaleFactor(), this.upscaleDetailBoost()));
+          resultBlob = await lastValueFrom(this.api.upscale(blob, this.upscaleFactor(), this.upscaleDetailBoost(), (progress, step) => {
+            this.processingState.set({ step, progress, estimatedSecondsRemaining: this.calculateRemainingTime(progress, 30) });
+          }));
           break;
 
         case 'halftone':
+          this.processingState.set({ step: 'Generando semitonos...', progress: 30, estimatedSecondsRemaining: 3 });
           resultBlob = await lastValueFrom(this.api.halftone(blob, this.dotSize(), this.halftoneScale(), this.selectedColors(), this.colorTolerance(), this.halftoneSpacing()));
           break;
 
         case 'contour-clip':
+          this.processingState.set({ step: 'Detectando contorno...', progress: 20, estimatedSecondsRemaining: 5 });
           if (this.bgRemovalMode() === 'manual') {
             const maskBlob = await this.previewComponent.getMaskBlob();
             if (!maskBlob) throw new Error('Por favor marca el objeto primero');
+            this.processingState.set({ step: 'Recortando objeto...', progress: 50, estimatedSecondsRemaining: 3 });
             resultBlob = await lastValueFrom(this.api.contourClip(blob, maskBlob, 'manual', this.smartRefine()));
           } else {
+            this.processingState.set({ step: 'Recortando automáticamente...', progress: 50, estimatedSecondsRemaining: 5 });
             resultBlob = await lastValueFrom(this.api.contourClip(blob, undefined, 'auto', false, this.selectedColors(), this.colorTolerance()));
           }
           break;
 
         case 'crop':
+          this.processingState.set({ step: 'Recortando imagen...', progress: 50, estimatedSecondsRemaining: 1 });
           // Use the preview component to get the cropped blob
           const cropped = await this.previewComponent.getCroppedBlob();
           if (cropped) {
             resultBlob = cropped;
           } else {
             this.isLoading.set(false);
+            this.processingState.set(null);
             return;
           }
           break;
 
         default:
           this.isLoading.set(false);
+          this.processingState.set(null);
           return;
       }
 
+      this.processingState.set({ step: 'Finalizando...', progress: 95, estimatedSecondsRemaining: 1 });
+
       if (this.processedImageSource()) {
-        URL.revokeObjectURL(this.processedImageSource()!);
+        const oldUrl = this.processedImageSource()!;
+        URL.revokeObjectURL(oldUrl);
+        this.objectUrls.delete(oldUrl);
       }
       const url = URL.createObjectURL(resultBlob);
+      this.objectUrls.add(url);
       this.processedImageSource.set(url);
 
     } catch (err: any) {
       console.error(err);
-      alert(err.message || 'Error al procesar');
+      const errorMessage = err.message || 'Error al procesar';
+      this.toastService.error(errorMessage, true, () => this.process());
     } finally {
       this.isLoading.set(false);
+      this.processingState.set(null);
     }
+  }
+
+  private calculateRemainingTime(progress: number, estimatedTotalSeconds: number): number {
+    const remainingPercentage = 100 - progress;
+    return Math.round((remainingPercentage / 100) * estimatedTotalSeconds);
   }
 
   // Gallery Actions
@@ -316,7 +365,7 @@ export class EditorComponent implements AfterViewInit {
       }
     } catch (e) {
       console.error(e);
-      alert('No se pudo guardar en la galería');
+      this.toastService.error('No se pudo guardar en la galería', true, () => this.addToGallery());
     }
   }
 
@@ -331,6 +380,177 @@ export class EditorComponent implements AfterViewInit {
       this.sessionGallery.update(prev => prev.filter(img => img.id !== id));
     } catch (e) {
       console.error(e);
+    }
+  }
+
+  ngOnDestroy() {
+    this.cleanupObjectURLs();
+  }
+
+  private cleanupObjectURLs() {
+    this.objectUrls.forEach(url => {
+      URL.revokeObjectURL(url);
+    });
+    this.objectUrls.clear();
+  }
+
+  // Pipeline Management Methods
+
+  togglePipelineMode() {
+    this.isPipelineMode.update(v => !v);
+    if (!this.isPipelineMode()) {
+      this.operationQueue.set([]);
+    }
+  }
+
+  addToPipeline() {
+    const operation: Operation = {
+      id: Date.now().toString(),
+      type: this.mode() as OperationType,
+      params: this.getCurrentParams(),
+      timestamp: Date.now()
+    };
+
+    this.operationQueue.update(queue => [...queue, operation]);
+    this.toastService.success('Operación agregada al pipeline');
+  }
+
+  removeFromPipeline(operationId: string) {
+    this.operationQueue.update(queue => queue.filter(op => op.id !== operationId));
+  }
+
+  moveOperationInQueue(fromIndex: number, toIndex: number) {
+    this.operationQueue.update(queue => {
+      const newQueue = [...queue];
+      const [moved] = newQueue.splice(fromIndex, 1);
+      newQueue.splice(toIndex, 0, moved);
+      return newQueue;
+    });
+  }
+
+  async executePipeline() {
+    const queue = this.operationQueue();
+    if (queue.length === 0) {
+      this.toastService.warning('No hay operaciones en el pipeline');
+      return;
+    }
+
+    let currentBlob = this.currentImageBlob();
+    if (!currentBlob) return;
+
+    this.isLoading.set(true);
+
+    try {
+      for (let i = 0; i < queue.length; i++) {
+        const operation = queue[i];
+        this.processingState.set({
+          step: `Procesando ${i + 1}/${queue.length}: ${this.getOperationName(operation.type)}`,
+          progress: Math.round(((i + 1) / queue.length) * 100),
+          estimatedSecondsRemaining: null
+        });
+
+        currentBlob = await this.executeOperation(currentBlob, operation);
+      }
+
+      // Set final result
+      if (this.processedImageSource()) {
+        const oldUrl = this.processedImageSource()!;
+        URL.revokeObjectURL(oldUrl);
+        this.objectUrls.delete(oldUrl);
+      }
+      const url = URL.createObjectURL(currentBlob);
+      this.objectUrls.add(url);
+      this.processedImageSource.set(url);
+
+      this.toastService.success('Pipeline completado exitosamente');
+      this.operationQueue.set([]);
+    } catch (err: any) {
+      console.error(err);
+      this.toastService.error(err.message || 'Error al ejecutar pipeline', true, () => this.executePipeline());
+    } finally {
+      this.isLoading.set(false);
+      this.processingState.set(null);
+    }
+  }
+
+  private getCurrentParams(): Record<string, any> {
+    switch (this.mode()) {
+      case 'enhance':
+        return { contrast: this.contrast(), brightness: this.brightness(), sharpness: this.sharpness() };
+      case 'upscale':
+        return { factor: this.upscaleFactor(), detailBoost: this.upscaleDetailBoost() };
+      case 'remove-bg':
+        return { mode: this.bgRemovalMode(), smartRefine: this.smartRefine(), selectedColors: this.selectedColors(), colorTolerance: this.colorTolerance() };
+      case 'remove-objects':
+        return { method: this.removalMethod(), brushSize: this.brushSize(), colorTolerance: this.colorTolerance() };
+      case 'halftone':
+        return { dotSize: this.dotSize(), scale: this.halftoneScale(), spacing: this.halftoneSpacing(), selectedColors: this.selectedColors(), colorTolerance: this.colorTolerance() };
+      case 'contour-clip':
+        return { mode: this.bgRemovalMode(), smartRefine: this.smartRefine(), selectedColors: this.selectedColors(), colorTolerance: this.colorTolerance() };
+      case 'crop':
+        return { aspectRatio: this.cropAspectRatio() };
+      default:
+        return {};
+    }
+  }
+
+  protected getOperationName(type: OperationType): string {
+    const names: Record<OperationType, string> = {
+      enhance: 'Mejorar Calidad',
+      upscale: 'Upscaling',
+      'remove-bg': 'Quitar Fondo',
+      'remove-objects': 'Borrar Objetos',
+      halftone: 'Semitonos',
+      'contour-clip': 'Recorte de Contorno',
+      crop: 'Recortar'
+    };
+    return names[type] || type;
+  }
+
+  private async executeOperation(blob: Blob, operation: Operation): Promise<Blob> {
+    const { type, params } = operation;
+
+    switch (type) {
+      case 'enhance':
+        return await lastValueFrom(this.api.enhanceQuality(blob, params['contrast'], params['brightness'], params['sharpness']));
+      case 'upscale':
+        return await lastValueFrom(this.api.upscale(blob, params['factor'], params['detailBoost']));
+      case 'remove-bg':
+        if (params['mode'] === 'draw') {
+          const maskBlob = await this.previewComponent.getMaskBlob();
+          if (!maskBlob) throw new Error('Por favor dibuja una máscara primero');
+          return await lastValueFrom(this.api.removeBackground(blob, undefined, undefined, maskBlob, params['smartRefine']));
+        } else if (params['mode'] === 'manual' && params['selectedColors']?.length > 0) {
+          return await lastValueFrom(this.api.removeBackground(blob, params['selectedColors'], params['colorTolerance']));
+        } else {
+          return await lastValueFrom(this.api.removeBackground(blob));
+        }
+      case 'remove-objects':
+        if (params['method'] === 'magic-wand') {
+          const coords = this.lastClickCoords();
+          if (!coords) throw new Error('Por favor haz clic en la imagen primero');
+          return await lastValueFrom(this.api.removeObjects(blob, undefined, { ...coords, tolerance: params['colorTolerance'] }));
+        } else {
+          const maskBlob = await this.previewComponent.getMaskBlob();
+          if (!maskBlob) throw new Error('Por favor dibuja una máscara primero');
+          return await lastValueFrom(this.api.removeObjects(blob, maskBlob));
+        }
+      case 'halftone':
+        return await lastValueFrom(this.api.halftone(blob, params['dotSize'], params['scale'], params['selectedColors'], params['colorTolerance'], params['spacing']));
+      case 'contour-clip':
+        if (params['mode'] === 'manual') {
+          const maskBlob = await this.previewComponent.getMaskBlob();
+          if (!maskBlob) throw new Error('Por favor marca el objeto primero');
+          return await lastValueFrom(this.api.contourClip(blob, maskBlob, 'manual', params['smartRefine']));
+        } else {
+          return await lastValueFrom(this.api.contourClip(blob, undefined, 'auto', false, params['selectedColors'], params['colorTolerance']));
+        }
+      case 'crop':
+        const cropped = await this.previewComponent.getCroppedBlob();
+        if (!cropped) throw new Error('Por favor selecciona un área para recortar');
+        return cropped;
+      default:
+        throw new Error(`Unknown operation type: ${type}`);
     }
   }
 }

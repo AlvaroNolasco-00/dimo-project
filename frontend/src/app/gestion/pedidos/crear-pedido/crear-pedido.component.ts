@@ -347,7 +347,8 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
     }
 
     if (this.selectedCost) {
-      this.tempSubItem.unit_price = parseFloat(this.selectedCost.base_cost);
+      const margin = this.getEffectiveMargin(this.selectedCost);
+      this.tempSubItem.unit_price = parseFloat(this.selectedCost.base_cost) * (1 + margin / 100);
       this.tempSubItem.variantSelections = {}; // Reset selections
 
       // Initial Description
@@ -407,7 +408,8 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
       return acc + (val?.priceMod || 0);
     }, 0);
 
-    this.tempSubItem.unit_price = basePrice + variantMods;
+    const margin = this.getEffectiveMargin(this.selectedCost);
+    this.tempSubItem.unit_price = (basePrice + variantMods) * (1 + margin / 100);
 
     // Update Description
     let desc = '';
@@ -468,9 +470,11 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
           Object.entries(derivedAttrs).map(([k, v]) => `${k}: ${v}`).join(', ') ||
           'Complemento';
 
+        const derivedMargin = this.getEffectiveMargin(derivedCost);
+        const derivedFinalPrice = parseFloat(derivedCost.base_cost) * (1 + derivedMargin / 100);
         this.newItem.subItems.push({
           quantity: this.tempSubItem.quantity,
-          unit_price: parseFloat(derivedCost.base_cost),
+          unit_price: derivedFinalPrice,
           cost_type_id: derivedCost.cost_type_id,
           operative_cost_id: derivedCost.id,
           description: derivedDesc,
@@ -709,6 +713,13 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
         this.cd.detectChanges();
       }, 5000);
     });
+  }
+
+  getEffectiveMargin(cost: any): number {
+    const itemMargin = cost.attributes?.__profit_margin;
+    if (itemMargin !== undefined && itemMargin !== null) return Number(itemMargin);
+    const type = this.costTypes.find((t: any) => t.id === cost.cost_type_id);
+    return Number(type?.profit_margin || 0);
   }
 
   cancelar() {

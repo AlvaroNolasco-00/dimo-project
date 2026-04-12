@@ -1,0 +1,21 @@
+name: Deploy backend to Koyeb
+
+on:
+  push:
+    branches:
+      - production
+    paths:
+      - 'backend/**'
+      - 'requirements.txt'
+      - 'koyeb.yaml'
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: koyeb-community/koyeb-actions@v2
+        with:
+          api_token: ${{ secrets.KOYEB_API_TOKEN }}
+
+      - name: Redeploy Koyeb service
+        run: koyeb service redeploy genuine-nertie/dimo-project

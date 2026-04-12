@@ -24,6 +24,24 @@ export const routes: Routes = [
         ]
     },
 
+    // Public Product Shop (No Auth Required)
+    {
+        path: 'shop',
+        loadComponent: () => import('./layout/public-layout/public-layout').then(m => m.PublicLayout),
+        children: [
+            { path: ':token', loadComponent: () => import('./public/product-view/product-view.component').then(m => m.ProductViewComponent) }
+        ]
+    },
+
+    // Public Category Catalog (No Auth Required)
+    {
+        path: 'catalogo',
+        loadComponent: () => import('./layout/public-layout/public-layout').then(m => m.PublicLayout),
+        children: [
+            { path: ':token', loadComponent: () => import('./public/category-view/category-view.component').then(m => m.CategoryViewComponent) }
+        ]
+    },
+
     // Main App Routes (Sidebar layout)
     {
         path: 'utilidades',
@@ -99,6 +117,11 @@ export const routes: Routes = [
                     { path: 'finanzas/recuento-ganancias', loadComponent: () => import('./gestion/finanzas/recuento-ganancias/recuento-ganancias.component').then(m => m.RecuentoGananciasComponent) },
                     { path: 'finanzas/delivery-zones', loadComponent: () => import('./gestion/finanzas/delivery-zones/delivery-zones.component').then(m => m.DeliveryZonesComponent) },
                     { path: 'finanzas/coupons', loadComponent: () => import('./gestion/finanzas/coupons/coupons.component').then(m => m.CouponsComponent) },
+                    { path: 'catalogo', loadComponent: () => import('./gestion/catalogo/catalogo.component').then(m => m.CatalogoComponent) },
+                    { path: 'catalogo/nuevo', loadComponent: () => import('./gestion/catalogo/producto-form/producto-form.component').then(m => m.ProductoFormComponent) },
+                    { path: 'catalogo/:id/editar', loadComponent: () => import('./gestion/catalogo/producto-form/producto-form.component').then(m => m.ProductoFormComponent) },
+                    { path: 'catalogo/categorias', loadComponent: () => import('./gestion/catalogo/categorias/categorias.component').then(m => m.CategoriasComponent) },
+                    { path: 'bitacora', loadComponent: () => import('./gestion/bitacora/bitacora.component').then(m => m.BitacoraComponent), canActivate: [adminGuard] },
                 ]
             }
         ]

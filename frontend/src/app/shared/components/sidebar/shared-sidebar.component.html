@@ -1,4 +1,8 @@
 <aside class="sidebar" [class.collapsed]="isCollapsed">
+    <button class="collapse-btn" (click)="onToggle()" [title]="isCollapsed ? 'Expandir' : 'Contraer'">
+        <i class="ph" [class.ph-caret-left]="!isCollapsed" [class.ph-caret-right]="isCollapsed"></i>
+    </button>
+
     <div class="sidebar-header">
         <div class="logo">
             <div class="logo-icon">

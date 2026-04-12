@@ -1,0 +1,188 @@
+<div class="bitacora-page">
+
+    <!-- Encabezado -->
+    <div class="page-header">
+        <div class="header-text">
+            <h1>Bitácora de Procesamiento</h1>
+            <p>Registro completo de operaciones de edición de imágenes</p>
+        </div>
+        <div class="stats-days-selector">
+            <label>Estadísticas de los últimos</label>
+            <select [(ngModel)]="statsDays" (change)="onStatsDaysChange()">
+                <option [ngValue]="7">7 días</option>
+                <option [ngValue]="30">30 días</option>
+                <option [ngValue]="90">90 días</option>
+                <option [ngValue]="365">365 días</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Tarjetas de estadísticas -->
+    @if (stats()) {
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon total"><i class="ph ph-chart-bar"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">{{ stats()!.total_operations }}</span>
+                <span class="stat-label">Total operaciones</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon success"><i class="ph ph-check-circle"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">{{ successRate() }}%</span>
+                <span class="stat-label">Tasa de éxito ({{ stats()!.success_count }} exitosas)</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon failed"><i class="ph ph-x-circle"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">{{ stats()!.failure_count }}</span>
+                <span class="stat-label">Fallidas</span>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon duration"><i class="ph ph-clock"></i></div>
+            <div class="stat-info">
+                <span class="stat-value">{{ formatDuration(stats()!.avg_duration_ms) }}</span>
+                <span class="stat-label">Duración promedio</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Operaciones por tipo -->
+    @if (topOperations().length > 0) {
+    <div class="breakdown-section">
+        <h3>Operaciones por tipo</h3>
+        <div class="breakdown-chips">
+            @for (op of topOperations(); track op.label) {
+            <div class="breakdown-chip">
+                <span class="chip-label">{{ op.label }}</span>
+                <span class="chip-count">{{ op.count }}</span>
+            </div>
+            }
+        </div>
+    </div>
+    }
+    }
+
+    <!-- Filtros -->
+    <div class="filters-bar">
+        <select [(ngModel)]="filterOperation">
+            <option value="">Todas las operaciones</option>
+            @for (op of operations; track op.value) {
+            <option [value]="op.value">{{ op.label }}</option>
+            }
+        </select>
+
+        <select [(ngModel)]="filterStatus">
+            <option value="">Todos los estados</option>
+            @for (s of statuses; track s.value) {
+            <option [value]="s.value">{{ s.label }}</option>
+            }
+        </select>
+
+        <input type="datetime-local" [(ngModel)]="filterDateFrom" placeholder="Desde" title="Fecha desde">
+        <input type="datetime-local" [(ngModel)]="filterDateTo" placeholder="Hasta" title="Fecha hasta">
+
+        <button class="btn-primary" (click)="applyFilters()">
+            <i class="ph ph-magnifying-glass"></i> Filtrar
+        </button>
+        <button class="btn-ghost" (click)="clearFilters()">
+            <i class="ph ph-x"></i> Limpiar
+        </button>
+    </div>
+
+    <!-- Tabla de registros -->
+    <div class="table-container">
+        @if (loading()) {
+        <div class="loading-state">
+            <i class="ph ph-spinner"></i>
+            <span>Cargando bitácora...</span>
+        </div>
+        } @else if (entries().length === 0) {
+        <div class="empty-state">
+            <i class="ph ph-scroll"></i>
+            <span>No hay registros para los filtros seleccionados</span>
+        </div>
+        } @else {
+        <table class="audit-table">
+            <thead>
+                <tr>
+                    <th>Fecha / Hora</th>
+                    <th>Usuario</th>
+                    <th>Operación</th>
+                    <th>Estado</th>
+                    <th>Duración</th>
+                    <th>Tamaño</th>
+                    <th>Dimensiones</th>
+                    <th>Hardware</th>
+                    <th>Parámetros</th>
+                    <th>Error</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (entry of entries(); track entry.id) {
+                <tr [class.row-failed]="entry.status === 'FAILED'">
+                    <td class="cell-date">
+                        <span class="date">{{ entry.created_at | date:'dd/MM/yy' }}</span>
+                        <span class="time">{{ entry.created_at | date:'HH:mm:ss' }}</span>
+                    </td>
+                    <td class="cell-user">{{ entry.user?.full_name ?? '—' }}</td>
+                    <td class="cell-operation">
+                        <span class="operation-badge">{{ getOperationLabel(entry.operation) }}</span>
+                    </td>
+                    <td class="cell-status">
+                        <span class="status-badge" [class]="'status-' + entry.status.toLowerCase()">
+                            {{ entry.status === 'SUCCESS' ? 'Exitoso' : entry.status === 'FAILED' ? 'Fallido' : 'Pendiente' }}
+                        </span>
+                    </td>
+                    <td class="cell-duration">{{ formatDuration(entry.duration_ms) }}</td>
+                    <td class="cell-size">
+                        <span title="Input">{{ formatFileSize(entry.input_file_size) }}</span>
+                        @if (entry.output_file_size) {
+                        <span class="size-arrow">→</span>
+                        <span title="Output">{{ formatFileSize(entry.output_file_size) }}</span>
+                        }
+                    </td>
+                    <td class="cell-dims">{{ formatDimensions(entry) }}</td>
+                    <td class="cell-accel">
+                        <span class="accel-badge accel-{{ entry.accelerator ?? 'unknown' }}">
+                            {{ entry.accelerator ?? '—' }}
+                        </span>
+                    </td>
+                    <td class="cell-params">
+                        <span class="params-text" [title]="formatParams(entry.parameters)">
+                            {{ formatParams(entry.parameters) }}
+                        </span>
+                    </td>
+                    <td class="cell-error">
+                        @if (entry.error_message) {
+                        <span class="error-text" [title]="entry.error_message">
+                            {{ entry.error_message | slice:0:60 }}{{ entry.error_message.length > 60 ? '…' : '' }}
+                        </span>
+                        } @else {
+                        <span class="no-error">—</span>
+                        }
+                    </td>
+                </tr>
+                }
+            </tbody>
+        </table>
+        }
+    </div>
+
+    <!-- Paginación -->
+    @if (totalPages() > 1) {
+    <div class="pagination">
+        <button [disabled]="currentPage() === 1" (click)="goToPage(currentPage() - 1)">
+            <i class="ph ph-caret-left"></i>
+        </button>
+        <span class="page-info">Página {{ currentPage() }} de {{ totalPages() }} — {{ total() }} registros</span>
+        <button [disabled]="currentPage() === totalPages()" (click)="goToPage(currentPage() + 1)">
+            <i class="ph ph-caret-right"></i>
+        </button>
+    </div>
+    }
+
+</div>

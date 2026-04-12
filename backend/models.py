@@ -2,7 +2,7 @@ from sqlalchemy import UniqueConstraint
 from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Numeric, func, Table
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSON
-from .core.database import Base
+from backend.core.database import Base
 
 # Association table for User <-> Project
 user_projects = Table(
@@ -45,6 +45,7 @@ class CostType(Base):
     name = Column(String, nullable=False)
     description = Column(String)
     requires_art = Column(Boolean, default=False)
+    profit_margin = Column(Numeric(5, 2), default=0, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
     __table_args__ = (
@@ -287,5 +288,99 @@ class ProcessingTask(Base):
     error = Column(String, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+
+class ProcessingAuditLog(Base):
+    __tablename__ = "processing_audit_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+
+    # Identificación de la operación
+    operation = Column(String(50), nullable=False)    # REMOVE_BACKGROUND, REMOVE_OBJECTS, etc.
+    status = Column(String(20), nullable=False)        # PENDING, SUCCESS, FAILED
+
+    # Tiempos
+    duration_ms = Column(Integer, nullable=True)       # Milisegundos de procesamiento
+
+    # Metadata del input
+    input_file_size = Column(Integer, nullable=True)   # Bytes
+    input_width = Column(Integer, nullable=True)       # Píxeles
+    input_height = Column(Integer, nullable=True)      # Píxeles
+
+    # Metadata del output
+    output_file_size = Column(Integer, nullable=True)  # Bytes
+
+    # Contexto de hardware
+    accelerator = Column(String(20), nullable=True)    # mps, coreml, cpu, cloud_gpu
+
+    # Parámetros de la operación (JSON flexible)
+    parameters = Column(JSON, default={})
+
+    # Manejo de errores
+    error_message = Column(String, nullable=True)
+
+    # Link a ProcessingTask (solo upscale async)
+    task_id = Column(String, nullable=True)
+
+    created_at = Column(DateTime, server_default=func.now())
+
+    user = relationship("User")
+
+
+# --- Catalog Models ---
+
+class ProductCategory(Base):
+    __tablename__ = "product_categories"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    access_token = Column(String, unique=True, index=True, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+
+    project = relationship("Project")
+    products = relationship("Product", back_populates="category")
+
+    __table_args__ = (
+        UniqueConstraint('name', 'project_id', name='uq_product_category_name_project'),
+    )
+
+
+class Product(Base):
+    __tablename__ = "products"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False)
+    category_id = Column(Integer, ForeignKey("product_categories.id", ondelete="SET NULL"), nullable=True)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    image_path = Column(String, nullable=True)
+    sale_price = Column(Numeric(10, 2), default=0.00)
+    is_active = Column(Boolean, default=True)
+    access_token = Column(String, unique=True, index=True, nullable=True)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    project = relationship("Project")
+    category = relationship("ProductCategory", back_populates="products")
+    cost_lines = relationship("ProductCostLine", back_populates="product", cascade="all, delete-orphan")
+
+
+class ProductCostLine(Base):
+    __tablename__ = "product_cost_lines"
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(Integer, ForeignKey("products.id", ondelete="CASCADE"), nullable=False)
+    operative_cost_id = Column(Integer, ForeignKey("operative_costs.id", ondelete="SET NULL"), nullable=True)
+    label = Column(String, nullable=False)
+    quantity = Column(Integer, default=1)
+    unit_cost = Column(Numeric(10, 2), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+
+    product = relationship("Product", back_populates="cost_lines")
+    operative_cost = relationship("OperativeCost")
 
 

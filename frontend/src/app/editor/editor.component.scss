@@ -97,6 +97,41 @@ header {
     }
 }
 
+/* Spinner inside button */
+.btn-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    flex-shrink: 0;
+    /* Hidden by default — no width/animation cost */
+    opacity: 0;
+    width: 0;
+    margin-right: 0;
+    transition: opacity 0.2s, width 0.2s, margin-right 0.2s;
+
+    &.visible {
+        opacity: 1;
+        width: 14px;
+        margin-right: 4px;
+        animation: btn-spin 0.7s linear infinite;
+    }
+}
+
+@keyframes btn-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Keep purple color and min-width while loading */
+.btn-primary.is-loading {
+    background: var(--accent-color) !important;
+    opacity: 0.85;
+    min-width: 155px;
+    justify-content: center;
+}
+
 /* Action buttons and generic overrides if needed */
 .action-buttons {
     display: flex;
@@ -240,4 +275,118 @@ header {
     padding-bottom: 1rem;
     margin-bottom: 1rem;
     // border-bottom: 1px solid var(--border-color); /* Optional separator */
+}
+
+/* Pipeline Mode Toggle */
+.pipeline-toggle {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 1rem;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-weight: 500;
+    color: var(--text-primary);
+
+    input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+        accent-color: var(--accent-color);
+    }
+}
+
+/* Operation Queue */
+.operation-queue {
+    background: var(--bg-color);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+
+    h3 {
+        margin: 0 0 1rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .operation-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .operation-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: var(--card-bg);
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+    }
+
+    .operation-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .operation-index {
+        width: 24px;
+        height: 24px;
+        background: var(--accent-color);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .operation-name {
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .operation-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: var(--bg-color);
+        border-radius: 6px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-secondary);
+        transition: all 0.2s;
+
+        &:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        &.btn-danger {
+            &:hover {
+                background: rgba(239, 68, 68, 0.1);
+                color: #ef4444;
+            }
+        }
+    }
+
+    .btn-full {
+        width: 100%;
+    }
 }

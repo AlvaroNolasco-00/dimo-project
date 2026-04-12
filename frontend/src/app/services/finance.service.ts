@@ -8,6 +8,7 @@ export interface CostType {
     name: string;
     description: string;
     requires_art: boolean;
+    profit_margin: number;
     created_at: string;
 }
 
@@ -33,8 +34,12 @@ export class FinanceService {
         return this.http.get<CostType[]>(`${this.apiUrl}/cost-types`, { params });
     }
 
-    createCostType(costType: { name: string, description: string, project_id: number, requires_art: boolean }): Observable<CostType> {
+    createCostType(costType: { name: string, description: string, project_id: number, requires_art: boolean, profit_margin?: number }): Observable<CostType> {
         return this.http.post<CostType>(`${this.apiUrl}/cost-types`, costType);
+    }
+
+    updateCostType(id: number, data: { name?: string, description?: string, requires_art?: boolean, profit_margin?: number }): Observable<CostType> {
+        return this.http.put<CostType>(`${this.apiUrl}/cost-types/${id}`, data);
     }
 
     getCosts(costTypeId?: number, parentCostId?: number): Observable<OperativeCost[]> {

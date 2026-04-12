@@ -1,6 +1,7 @@
 @use 'app/shared/mixins' as *;
 
 .sidebar {
+    position: relative;
     width: 280px;
     height: 100%;
     background-color: #ffffff;
@@ -36,6 +37,36 @@
 
 .sidebar-header {
     margin-bottom: 3rem;
+}
+
+.collapse-btn {
+    position: absolute;
+    top: 2.5rem;
+    right: -14px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    color: #a0a0a0;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+
+    i {
+        font-size: 0.8rem;
+    }
+
+    &:hover {
+        background: #f0f0f0;
+        color: #1a1a1a;
+        box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
+    }
 }
 
 .logo {

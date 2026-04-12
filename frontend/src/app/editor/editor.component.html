@@ -17,8 +17,9 @@
       <!-- Preview Area -->
       @if (hasFile()) {
       <app-editor-preview [currentImageSource]="currentImageSource()" [processedImageSource]="processedImageSource()"
-        [isLoading]="isLoading()" [mode]="mode()" [removalMethod]="removalMethod()" [bgRemovalMode]="bgRemovalMode()"
-        [brushSize]="brushSize()" [cropAspectRatio]="cropAspectRatio()" (pointSelected)="onPreviewPointSelected($event)"
+        [isLoading]="isLoading()" [processingState]="processingState()" [mode]="mode()" [removalMethod]="removalMethod()" [bgRemovalMode]="bgRemovalMode()"
+        [brushSize]="brushSize()" [cropAspectRatio]="cropAspectRatio()" [contrast]="contrast()" [brightness]="brightness()" [sharpness]="sharpness()"
+        (pointSelected)="onPreviewPointSelected($event)"
         (colorPicked)="onPreviewColorPicked($event)" (canvasHistoryChange)="onHistoryChange($event)">
       </app-editor-preview>
 
@@ -32,6 +33,49 @@
         (undo)="previewComponent.undo()" (clearCanvas)="previewComponent.clearCanvas()">
       </app-editor-controls>
 
+      <!-- Pipeline Mode Toggle -->
+      <div class="pipeline-toggle">
+        <label class="toggle-label">
+          <input type="checkbox" [ngModel]="isPipelineMode()" (ngModelChange)="togglePipelineMode()">
+          <span>Modo Pipeline (No-destructivo)</span>
+        </label>
+      </div>
+
+      <!-- Operation Queue (shown in pipeline mode) -->
+      @if (isPipelineMode() && operationQueue().length > 0) {
+      <div class="operation-queue">
+        <h3>Cola de Operaciones</h3>
+        <div class="operation-list">
+          @for (op of operationQueue(); track op.id; let i = $index) {
+          <div class="operation-item">
+            <div class="operation-info">
+              <span class="operation-index">{{ i + 1 }}</span>
+              <span class="operation-name">{{ getOperationName(op.type) }}</span>
+            </div>
+            <div class="operation-actions">
+              @if (i > 0) {
+              <button class="btn-icon" (click)="moveOperationInQueue(i, i - 1)" title="Mover arriba">
+                <i class="ph ph-arrow-up"></i>
+              </button>
+              }
+              @if (i < operationQueue().length - 1) {
+              <button class="btn-icon" (click)="moveOperationInQueue(i, i + 1)" title="Mover abajo">
+                <i class="ph ph-arrow-down"></i>
+              </button>
+              }
+              <button class="btn-icon btn-danger" (click)="removeFromPipeline(op.id)" title="Eliminar">
+                <i class="ph ph-trash"></i>
+              </button>
+            </div>
+          </div>
+          }
+        </div>
+        <button class="btn-primary btn-full" (click)="executePipeline()" [disabled]="isLoading()">
+          Ejecutar Pipeline
+        </button>
+      </div>
+      }
+
       <div class="action-buttons">
         @if (processedImageSource()) {
         <div class="filename-input">
@@ -39,13 +83,21 @@
           <span>.png</span>
         </div>
         }
-        <button class="btn-secondary btn-pill" (click)="reset()">Subir otra</button>
+        <button class="btn-secondary btn-pill" (click)="reset()" [disabled]="isLoading()">Subir otra</button>
         @if (processedImageSource()) {
-        <button class="btn-secondary btn-pill session" (click)="addToGallery()">
+        <button class="btn-secondary btn-pill session" (click)="addToGallery()" [disabled]="isLoading()">
           <i class="ph ph-arrow-counter-clockwise"></i> Guardar para reusar
         </button>
         }
-        <button class="btn-primary btn-pill" (click)="process()">Procesar Imagen</button>
+        @if (isPipelineMode()) {
+        <button class="btn-secondary btn-pill" (click)="addToPipeline()" [disabled]="isLoading()">
+          <i class="ph ph-plus"></i> Agregar al Pipeline
+        </button>
+        }
+        <button class="btn-primary btn-pill" (click)="process()" [disabled]="isLoading() || isPipelineMode()" [class.is-loading]="isLoading()">
+          <span class="btn-spinner" [class.visible]="isLoading()"></span>
+          {{ isLoading() ? 'Procesando...' : 'Procesar Imagen' }}
+        </button>
         @if (processedImageSource()) {
         <a [href]="processedImageSource()" class="btn-success btn-pill"
           [download]="(customFilename || 'resultado') + '.png'">Descargar</a>

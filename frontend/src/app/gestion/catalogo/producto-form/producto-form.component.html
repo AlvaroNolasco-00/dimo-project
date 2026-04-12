@@ -1,0 +1,328 @@
+<div class="form-container">
+    <div class="form-header">
+        <a routerLink="/gestion/catalogo" class="back-link">
+            <i class="ph ph-arrow-left"></i> Catálogo
+        </a>
+        <h1>{{ isEditMode ? 'Editar Producto' : 'Nuevo Producto' }}</h1>
+        <p>{{ isEditMode ? 'Actualiza la información del producto.' : 'Crea un producto basado en tus costos operativos.' }}</p>
+    </div>
+
+    @if (loading) {
+    <div class="loader-center">
+        <div class="spinner"></div>
+        <p>Cargando...</p>
+    </div>
+    }
+
+    @if (!loading) {
+    <div class="form-layout">
+        <!-- Columna izquierda -->
+        <div class="form-main">
+
+            <!-- Info básica -->
+            <div class="form-section">
+                <h2 class="section-title"><i class="ph ph-info"></i> Información básica</h2>
+
+                <div class="form-group">
+                    <label>Nombre del producto *</label>
+                    <input type="text" [(ngModel)]="name" placeholder="Ej: Camiseta Sublimada Premium..." />
+                </div>
+
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea [(ngModel)]="description" rows="3"
+                        placeholder="Describe el producto, sus características, materiales..."></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Categoría</label>
+                        <select [(ngModel)]="selectedCategoryId">
+                            <option [ngValue]="null">Sin categoría</option>
+                            @for (cat of categories; track cat.id) {
+                            <option [ngValue]="cat.id">{{ cat.name }}</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="form-group form-group-inline">
+                        <label class="toggle-label">
+                            <input type="checkbox" [(ngModel)]="isActive" />
+                            <span>Producto activo</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Constructor de costos -->
+            <div class="form-section">
+                <h2 class="section-title"><i class="ph ph-receipt"></i> Estructura de costos</h2>
+                <p class="section-desc">Selecciona los costos que componen este producto.</p>
+
+                <div class="cost-builder">
+                    <div class="builder-row">
+                        <div class="form-group">
+                            <label>Tipo de costo</label>
+                            <select [(ngModel)]="selectedCostTypeId" (ngModelChange)="onCostTypeChange()">
+                                <option [ngValue]="null">Seleccionar tipo...</option>
+                                @for (type of costTypes; track type.id) {
+                                <option [ngValue]="type.id">{{ type.name }}</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Costo</label>
+                            <select [(ngModel)]="selectedCostId" (ngModelChange)="onCostSelected()" [disabled]="!selectedCostTypeId || availableCosts.length === 0">
+                                <option [ngValue]="null">Seleccionar costo...</option>
+                                @for (cost of availableCosts; track cost.id) {
+                                <option [ngValue]="cost.id">
+                                    {{ cost.attributes.name || cost.attributes.size || ('$' + cost.base_cost) }}
+                                    — ${{ cost.base_cost }}
+                                </option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    @if (selectedCost) {
+                    <div class="cost-config-card">
+                        <!-- Header -->
+                        <div class="cost-config-header">
+                            <div class="cost-config-name-wrap">
+                                <i class="ph ph-package"></i>
+                                <span>{{ newLineLabel || 'Costo seleccionado' }}</span>
+                            </div>
+                            <div class="cost-config-price-wrap">
+                                @if (getEffectiveMargin(selectedCost) > 0) {
+                                <span class="cost-config-base-price">${{ selectedCost.base_cost | number:'1.0-2' }}</span>
+                                <span class="cost-config-margin-badge">+{{ getEffectiveMargin(selectedCost) }}%</span>
+                                }
+                                <span class="cost-config-price">${{ newLineUnitCost | number:'1.0-2' }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Variants -->
+                        @if (selectedCost.attributes.__type === 'variants' && selectedCost.attributes.__config.groups) {
+                        <div class="config-section">
+                            <div class="config-section-header">
+                                <i class="ph ph-sliders"></i>
+                                <span>Opciones</span>
+                            </div>
+                            <div class="variants-grid">
+                                @for (group of selectedCost.attributes.__config.groups; track group.name) {
+                                <div class="form-group">
+                                    <label>{{ group.name }}</label>
+                                    <select [(ngModel)]="variantSelections[group.name]" (ngModelChange)="onVariantChange()">
+                                        <option [ngValue]="null" disabled selected>Selecciona {{ group.name }}</option>
+                                        @for (option of group.options; track option.label) {
+                                        <option [ngValue]="option">
+                                            {{ option.label }}
+                                            @if (option.priceMod > 0) { (+${{ option.priceMod }}) }
+                                        </option>
+                                        }
+                                    </select>
+                                </div>
+                                }
+                            </div>
+                        </div>
+                        }
+
+                        <!-- Derived costs -->
+                        @if (isLoadingDerivedCosts) {
+                        <div class="config-section">
+                            <div class="config-section-header">
+                                <i class="ph ph-circle-notch ph-spin"></i>
+                                <span>Cargando costos adicionales...</span>
+                            </div>
+                        </div>
+                        } @else if (availableDerivedCosts.length > 0) {
+                        <div class="config-section">
+                            <div class="config-section-header">
+                                <i class="ph ph-plus-circle"></i>
+                                <span>Costos adicionales</span>
+                                @if (selectedDerivedCostIds.size > 0) {
+                                <span class="derived-badge">{{ selectedDerivedCostIds.size }} seleccionado(s)</span>
+                                }
+                            </div>
+                            <div class="derived-costs-list">
+                                @for (cost of availableDerivedCosts; track cost.id) {
+                                <label class="derived-cost-option" [class.selected]="isDerivedCostSelected(cost.id)"
+                                    (click)="toggleDerivedCost(cost.id)">
+                                    <span class="derived-checkbox">
+                                        <i class="ph" [class.ph-check-square]="isDerivedCostSelected(cost.id)"
+                                            [class.ph-square]="!isDerivedCostSelected(cost.id)"></i>
+                                    </span>
+                                    <span class="derived-info">
+                                        <span class="derived-name">{{ cost.attributes['Descripción'] || 'Complemento' }}</span>
+                                        <span class="derived-price">${{ cost.base_cost | number:'1.0-2' }}</span>
+                                    </span>
+                                </label>
+                                }
+                            </div>
+                        </div>
+                        }
+
+                        <!-- Footer: label + qty + add -->
+                        <div class="cost-config-footer">
+                            <div class="form-group footer-label-group">
+                                <label>Etiqueta en el producto</label>
+                                <input type="text" [(ngModel)]="newLineLabel" placeholder="Ej: Sublimación talla M..." />
+                            </div>
+                            <div class="qty-wrapper">
+                                <span class="qty-label">Cantidad</span>
+                                <div class="quantity-control">
+                                    <button type="button" class="qty-btn" (click)="newLineQty > 1 ? (newLineQty = newLineQty - 1) : null">
+                                        <i class="ph ph-minus"></i>
+                                    </button>
+                                    <input type="number" [(ngModel)]="newLineQty" min="1">
+                                    <button type="button" class="qty-btn" (click)="newLineQty = newLineQty + 1">
+                                        <i class="ph ph-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <button class="btn-add-line" (click)="addCostLine()">
+                                <i class="ph ph-plus"></i> Agregar
+                            </button>
+                        </div>
+                    </div>
+                    }
+                </div>
+
+                <!-- Cost lines table -->
+                @if (costLines.length > 0) {
+                <div class="cost-lines-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Descripción</th>
+                                <th class="text-right">Cant.</th>
+                                <th class="text-right">Costo unit.</th>
+                                <th class="text-right">Subtotal</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @for (line of costLines; track line._id) {
+                            <tr>
+                                <td>
+                                    <input class="inline-input" type="text" [(ngModel)]="line.label" />
+                                </td>
+                                <td class="text-right">
+                                    <input class="inline-input inline-input-sm" type="number" [(ngModel)]="line.quantity" min="1" />
+                                </td>
+                                <td class="text-right">${{ line.unit_cost | number:'1.0-2' }}</td>
+                                <td class="text-right">${{ (line.unit_cost * line.quantity) | number:'1.0-2' }}</td>
+                                <td>
+                                    <button class="btn-remove-line" (click)="removeCostLine(line._id!)">
+                                        <i class="ph ph-x"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            }
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3"><strong>Costo base total</strong></td>
+                                <td class="text-right"><strong>${{ baseCost | number:'1.0-2' }}</strong></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+                }
+
+                @if (costLines.length === 0) {
+                <div class="no-costs">
+                    <i class="ph ph-receipt"></i>
+                    <p>Sin costos agregados. Usa el selector para agregar los costos de este producto.</p>
+                </div>
+                }
+            </div>
+
+        </div>
+
+        <!-- Columna derecha -->
+        <div class="form-aside">
+
+            <!-- Imagen -->
+            <div class="form-section">
+                <h2 class="section-title"><i class="ph ph-image"></i> Imagen</h2>
+                @if (getImageSrc()) {
+                <div class="image-preview">
+                    <img [src]="getImageSrc()" alt="Imagen del producto" />
+                    <button class="btn-remove-img" (click)="removeImage()" title="Quitar imagen">
+                        <i class="ph ph-x"></i>
+                    </button>
+                </div>
+                } @else {
+                <label class="image-upload-area">
+                    <input type="file" accept="image/*" (change)="onImageSelected($event)" hidden />
+                    <i class="ph ph-camera-plus"></i>
+                    <span>Subir imagen</span>
+                    <small>JPG, PNG, WEBP</small>
+                </label>
+                }
+                @if (getImageSrc()) {
+                <label class="btn-change-img">
+                    <input type="file" accept="image/*" (change)="onImageSelected($event)" hidden />
+                    <i class="ph ph-arrows-clockwise"></i> Cambiar imagen
+                </label>
+                }
+            </div>
+
+            <!-- Precio de venta -->
+            <div class="form-section">
+                <h2 class="section-title"><i class="ph ph-tag"></i> Precio de venta</h2>
+
+                <div class="form-group">
+                    <label>Precio final (COP / tu moneda)</label>
+                    <div class="price-input-wrapper">
+                        <span class="price-prefix">$</span>
+                        <input type="number" [(ngModel)]="salePrice" [min]="baseCost > 0 ? baseCost : 0" step="100"
+                            [class.input-below-cost]="costLines.length > 0 && salePrice < baseCost" />
+                    </div>
+                    @if (costLines.length > 0) {
+                    <span class="price-min-hint" [class.price-min-hint--warn]="salePrice < baseCost">
+                        <i class="ph" [class.ph-warning]="salePrice < baseCost" [class.ph-info]="salePrice >= baseCost"></i>
+                        Mínimo sugerido: <strong>${{ baseCost | number:'1.0-2' }}</strong>
+                        @if (salePrice < baseCost) { — precio por debajo del costo total }
+                    </span>
+                    }
+                </div>
+
+                @if (costLines.length > 0) {
+                <div class="margin-card" [class]="'margin-' + marginClass">
+                    <div class="margin-row">
+                        <span>Costo base</span>
+                        <strong>${{ baseCost | number:'1.0-2' }}</strong>
+                    </div>
+                    <div class="margin-row">
+                        <span>Precio venta</span>
+                        <strong>${{ salePrice | number:'1.0-2' }}</strong>
+                    </div>
+                    <div class="margin-divider"></div>
+                    <div class="margin-row margin-result">
+                        <span>Ganancia</span>
+                        <strong [class]="marginClass">${{ (salePrice - baseCost) | number:'1.0-2' }}</strong>
+                    </div>
+                    <div class="margin-bar">
+                        <div class="margin-fill" [style.width.%]="Math.min(Math.max(margin, 0), 100)"></div>
+                    </div>
+                    <div class="margin-pct" [class]="marginClass">
+                        {{ margin < 0 ? 'Precio por debajo del costo' : margin.toFixed(1) + '% de margen' }}
+                    </div>
+                </div>
+                }
+            </div>
+
+            <!-- Acciones -->
+            <div class="form-actions">
+                <button class="btn-cancel" (click)="cancel()">Cancelar</button>
+                <button class="btn-save" (click)="save()" [disabled]="saving || !name.trim()">
+                    @if (saving) { <span class="btn-spinner"></span> }
+                    {{ saving ? 'Guardando...' : (isEditMode ? 'Guardar Cambios' : 'Crear Producto') }}
+                </button>
+            </div>
+        </div>
+    </div>
+    }
+</div>

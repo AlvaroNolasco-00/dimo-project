@@ -24,7 +24,7 @@
 
 .sidebar-wrapper {
     height: 100%;
-    overflow: hidden;
+    overflow: visible;
     background: var(--sidebar-bg);
     border-right: 1px solid var(--border-color);
     position: relative;

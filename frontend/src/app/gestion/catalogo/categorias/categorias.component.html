@@ -1,0 +1,103 @@
+<div class="categorias-container">
+    <div class="header">
+        <div class="title-section">
+            <a routerLink="/gestion/catalogo" class="back-link">
+                <i class="ph ph-arrow-left"></i> Catálogo
+            </a>
+            <h1>Categorías</h1>
+            <p>Organiza tus productos en categorías para facilitar la navegación.</p>
+        </div>
+        <button class="btn-create" (click)="openNewForm()">
+            <i class="ph ph-folder-plus"></i>
+            Nueva Categoría
+        </button>
+    </div>
+
+    @if (showForm) {
+    <div class="form-card">
+        <h3>{{ editingId ? 'Editar Categoría' : 'Nueva Categoría' }}</h3>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Nombre *</label>
+                <input type="text" [(ngModel)]="formData.name" placeholder="Ej: Camisetas, Tazas, Gorras..." />
+            </div>
+            <div class="form-group">
+                <label>Descripción</label>
+                <input type="text" [(ngModel)]="formData.description" placeholder="Descripción opcional..." />
+            </div>
+            <div class="form-group form-group-inline">
+                <label class="toggle-label">
+                    <input type="checkbox" [(ngModel)]="formData.is_active" />
+                    <span>Activa</span>
+                </label>
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="btn-secondary" (click)="closeForm()">Cancelar</button>
+            <button class="btn-primary" (click)="save()" [disabled]="saving || !formData.name.trim()">
+                @if (saving) { <span class="btn-spinner"></span> }
+                {{ saving ? 'Guardando...' : (editingId ? 'Guardar Cambios' : 'Crear Categoría') }}
+            </button>
+        </div>
+    </div>
+    }
+
+    <div class="section-container">
+        <div class="table-container">
+            @if (loading) {
+            <div class="loader-overlay">
+                <div class="spinner"></div>
+                <p>Cargando categorías...</p>
+            </div>
+            }
+
+            @if (!loading && categories.length > 0) {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Descripción</th>
+                        <th>Estado</th>
+                        <th class="actions-col">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (cat of categories; track cat.id) {
+                    <tr>
+                        <td><strong>{{ cat.name }}</strong></td>
+                        <td>{{ cat.description || '-' }}</td>
+                        <td>
+                            <span class="badge" [class.badge-active]="cat.is_active" [class.badge-inactive]="!cat.is_active">
+                                {{ cat.is_active ? 'Activa' : 'Inactiva' }}
+                            </span>
+                        </td>
+                        <td class="actions-col">
+                            <button class="btn-icon btn-share" (click)="copyLink(cat)" title="Copiar link público de la categoría">
+                                <i class="ph ph-share-network"></i>
+                            </button>
+                            <button class="btn-icon" (click)="openEditForm(cat)" title="Editar">
+                                <i class="ph ph-pencil-simple"></i>
+                            </button>
+                            <button class="btn-icon btn-danger" (click)="deleteCategory(cat)" title="Eliminar">
+                                <i class="ph ph-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    }
+                </tbody>
+            </table>
+            }
+
+            @if (!loading && categories.length === 0) {
+            <div class="empty-state-inline">
+                <i class="ph ph-folders"></i>
+                <h3>Sin categorías</h3>
+                <p>Crea categorías para organizar mejor tus productos.</p>
+                <button class="btn-create" (click)="openNewForm()">
+                    <i class="ph ph-plus"></i> Crear primera categoría
+                </button>
+            </div>
+            }
+        </div>
+    </div>
+</div>

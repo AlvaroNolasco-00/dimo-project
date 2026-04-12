@@ -1,0 +1,75 @@
+@if (loading) {
+<div class="loading-screen">
+    <div class="spinner"></div>
+    <p>Cargando catálogo...</p>
+</div>
+}
+
+@if (notFound) {
+<div class="not-found">
+    <i class="ph ph-folders"></i>
+    <h2>Categoría no disponible</h2>
+    <p>El link que seguiste no corresponde a ninguna categoría activa.</p>
+</div>
+}
+
+@if (!loading && !notFound && category) {
+<div class="category-page">
+    <!-- Header -->
+    <div class="category-header">
+        <div class="header-content">
+            <span class="catalog-label">Catálogo</span>
+            <h1>{{ category.name }}</h1>
+            @if (category.description) {
+            <p class="category-desc">{{ category.description }}</p>
+            }
+            <span class="product-count">{{ category.products.length }} {{ category.products.length === 1 ? 'producto' : 'productos' }}</span>
+        </div>
+    </div>
+
+    <!-- Product Grid -->
+    <div class="catalog-body">
+        @if (category.products.length === 0) {
+        <div class="empty-state">
+            <i class="ph ph-package"></i>
+            <p>Esta categoría aún no tiene productos disponibles.</p>
+        </div>
+        } @else {
+        <div class="products-grid">
+            @for (product of category.products; track product.id) {
+            <div class="product-card">
+                <div class="card-image">
+                    @if (getImageUrl(product.image_path); as imgUrl) {
+                    <img [src]="imgUrl" [alt]="product.name" loading="lazy" />
+                    } @else {
+                    <div class="image-placeholder">
+                        <i class="ph ph-image"></i>
+                    </div>
+                    }
+                </div>
+                <div class="card-body">
+                    <h3 class="card-name">{{ product.name }}</h3>
+                    @if (product.description) {
+                    <p class="card-desc">{{ product.description }}</p>
+                    }
+                    <div class="card-footer">
+                        <span class="card-price">${{ product.sale_price | number:'1.0-2' }}</span>
+                        <div class="card-actions">
+                            @if (product.access_token) {
+                            <a class="btn-detail" [routerLink]="['/shop', product.access_token]">
+                                <i class="ph ph-eye"></i> Ver
+                            </a>
+                            }
+                            <a class="btn-whatsapp" [href]="getWhatsAppLink(product)" target="_blank">
+                                <i class="ph ph-whatsapp-logo"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            }
+        </div>
+        }
+    </div>
+</div>
+}

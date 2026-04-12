@@ -5,7 +5,9 @@
       "Bash(pip show:*)",
       "Bash(pyenv versions:*)",
       "Bash(grep -l User /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/interfaces/*.ts)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "mcp__wompi-api__getPage",
+      "mcp__wompi-api__searchDocumentation"
     ]
   }
 }

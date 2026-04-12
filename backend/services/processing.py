@@ -5,6 +5,7 @@ import io
 import os
 import httpx
 import asyncio
+from typing import Optional
 
 import logging
 
@@ -21,9 +22,23 @@ GPU_SERVICE_URL = os.getenv("GPU_SERVICE_URL")
 # App Environment
 APP_ENV = os.getenv("APP_ENV", "local")
 
-# ─── Local Hardware Accelerator Detection ───────────────────────────────────
+# ─── Module-level singletons ─────────────────────────────────────────────────
 
 _LOCAL_ACCELERATOR_CACHE = None
+_LOCAL_REMBG_SESSION = None
+_HTTP_CLIENT: Optional[httpx.AsyncClient] = None
+
+def _get_http_client() -> httpx.AsyncClient:
+    """Returns a reusable httpx AsyncClient with connection pooling."""
+    global _HTTP_CLIENT
+    if _HTTP_CLIENT is None:
+        _HTTP_CLIENT = httpx.AsyncClient(
+            timeout=httpx.Timeout(120.0, connect=10.0),
+            limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+        )
+    return _HTTP_CLIENT
+
+# ─── Local Hardware Accelerator Detection ───────────────────────────────────
 
 def _get_local_accelerator() -> str:
     """
@@ -119,25 +134,15 @@ async def call_gpu_service(service_type: str, image_bytes: bytes, params: dict =
              raise ValueError(f"No configured URL for GPU service: {service_type}")
 
     headers = {"x-api-key": GPU_SERVICE_SECRET} if GPU_SERVICE_SECRET else {}
-    
-    # 120s timeout for Cold Starts and large images
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        # Prepare multipart/form-data
-        files = {"file": ("image.png", image_bytes, "image/png")}
-        
-        # httpx merges params into query string or form? 
-        # For our GPU service, we defined params as query params in main.py?
-        # main.py: upscale(file=..., scale=...) -> scale is query param (default) or Form.
-        # Let's check main.py... `scale: float = 2.0` in FastAPI is Query by default unless File/Form used.
-        # Since we use File(...), other args usually become Query unless explicitly Form.
-        # Use query params for simplicity.
-        
-        response = await client.post(url, files=files, params=params, data=data, headers=headers)
-        
-        if response.status_code != 200:
-            raise Exception(f"GPU Service Failed: {response.status_code} - {response.text}")
-            
-        return response.content
+    files = {"file": ("image.png", image_bytes, "image/png")}
+
+    client = _get_http_client()
+    response = await client.post(url, files=files, params=params, data=data, headers=headers)
+
+    if response.status_code != 200:
+        raise Exception(f"GPU Service Failed: {response.status_code} - {response.text}")
+
+    return response.content
 
 def read_image_file(file_bytes: bytes) -> Image.Image:
     """Reads image bytes and returns a PIL Image. Preserves Alpha if present."""
@@ -147,9 +152,9 @@ def read_image_file(file_bytes: bytes) -> Image.Image:
     return img
 
 def pil_to_bytes(image: Image.Image) -> bytes:
-    """Converts PIL Image to bytes."""
+    """Converts PIL Image to bytes. Uses compress_level=1 for ~3x faster encoding."""
     img_byte_arr = io.BytesIO()
-    image.save(img_byte_arr, format='PNG')
+    image.save(img_byte_arr, format='PNG', compress_level=1)
     return img_byte_arr.getvalue()
 
 def pil_to_cv2(image: Image.Image) -> np.ndarray:
@@ -164,7 +169,138 @@ def cv2_to_pil(image: np.ndarray) -> Image.Image:
         return Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA))
     return Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
-# 1. Remover Objetos (Inpainting Avanzado)
+# 0. Mejorar Calidad
+
+def _enhance_quality_mps(image_bytes: bytes, contrast: float, brightness: float, sharpness: float) -> bytes:
+    """Enhance quality via PyTorch MPS (Metal Performance Shaders) on Apple Silicon."""
+    import torch
+    import torch.nn.functional as F
+
+    img_pil = read_image_file(image_bytes)
+    has_alpha = img_pil.mode == 'RGBA'
+    if has_alpha:
+        alpha_np = np.array(img_pil.split()[3])
+
+    device = torch.device('mps')
+    img_np = np.array(img_pil.convert('RGB')).astype(np.float32) / 255.0
+    t = torch.from_numpy(img_np.transpose(2, 0, 1)).unsqueeze(0).to(device)
+
+    # Brightness: scale all channels
+    t = t * brightness
+
+    # Contrast: stretch around the image mean
+    mean = t.mean()
+    t = mean + (t - mean) * contrast
+
+    # Sharpness: unsharp mask using 3x3 Gaussian kernel (softer than box blur, fewer halos)
+    gaussian_1d = torch.tensor([1.0, 2.0, 1.0], device=device)
+    gaussian_2d = (gaussian_1d[:, None] * gaussian_1d[None, :]) / 16.0
+    kernel = gaussian_2d.unsqueeze(0).unsqueeze(0).expand(3, 1, 3, 3).contiguous()
+    blurred = F.conv2d(t, kernel, padding=1, groups=3)
+    t = blurred + (t - blurred) * sharpness
+
+    t = t.clamp(0, 1)
+    result_np = (t.squeeze(0).permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+    result_pil = Image.fromarray(result_np, 'RGB')
+
+    if has_alpha:
+        result_pil = result_pil.convert('RGBA')
+        result_pil.putalpha(Image.fromarray(alpha_np))
+
+    return pil_to_bytes(result_pil)
+
+
+def _enhance_quality_cpu(image_bytes: bytes, contrast: float, brightness: float, sharpness: float) -> bytes:
+    """Enhance quality via PIL ImageEnhance — universal CPU fallback."""
+    img = read_image_file(image_bytes)
+    img = ImageEnhance.Contrast(img).enhance(contrast)
+    img = ImageEnhance.Brightness(img).enhance(brightness)
+    img = ImageEnhance.Sharpness(img).enhance(sharpness)
+    return pil_to_bytes(img)
+
+
+async def enhance_quality(image_bytes: bytes, contrast: float, brightness: float, sharpness: float) -> bytes:
+    """
+    Enhances image quality (contrast, brightness, sharpness).
+    - Local M-chip: MPS (Metal Performance Shaders via PyTorch)
+    - Production / CPU: PIL ImageEnhance
+    """
+    accelerator = _get_local_accelerator()
+    logger.info(f"✨ Enhancing image quality (accelerator: {accelerator.upper()})...")
+
+    if accelerator == 'mps':
+        return await asyncio.to_thread(_enhance_quality_mps, image_bytes, contrast, brightness, sharpness)
+
+    return await asyncio.to_thread(_enhance_quality_cpu, image_bytes, contrast, brightness, sharpness)
+
+
+# 1. Remover Fondo con Máscara Manual
+
+def _remove_background_with_mask_mps(image_bytes: bytes, mask_bytes: bytes, refine: bool) -> bytes:
+    """Remove background with mask via PyTorch MPS on Apple Silicon."""
+    import torch
+    import torch.nn.functional as F
+
+    device = torch.device('mps')
+
+    img_pil = read_image_file(image_bytes).convert("RGBA")
+    mask_pil = read_image_file(mask_bytes).convert("L")
+    if mask_pil.size != img_pil.size:
+        mask_pil = mask_pil.resize(img_pil.size, Image.NEAREST)
+
+    img_t = torch.from_numpy(np.array(img_pil)).to(device).float()   # HxWx4
+    mask_t = torch.from_numpy(np.array(mask_pil)).to(device).float()  # HxW
+
+    # White areas (>127) → background → alpha = 0
+    mask_binary = (mask_t > 127).float()
+    img_t[:, :, 3] = img_t[:, :, 3] * (1.0 - mask_binary)
+
+    if refine:
+        alpha_t = img_t[:, :, 3].unsqueeze(0).unsqueeze(0)  # 1x1xHxW
+        alpha_blurred = F.gaussian_blur(alpha_t, kernel_size=[3, 3], sigma=[1.0, 1.0])
+        img_t[:, :, 3] = alpha_blurred.squeeze()
+
+    result_np = img_t.clamp(0, 255).cpu().numpy().astype(np.uint8)
+    return pil_to_bytes(Image.fromarray(result_np, 'RGBA'))
+
+
+def _remove_background_with_mask_cpu(image_bytes: bytes, mask_bytes: bytes, refine: bool) -> bytes:
+    """Remove background with mask via OpenCV — universal CPU fallback."""
+    img_pil = read_image_file(image_bytes)
+    img_cv = cv2.cvtColor(np.array(img_pil.convert("RGBA")), cv2.COLOR_RGBA2BGRA)
+    h, w = img_cv.shape[:2]
+
+    mask_pil = read_image_file(mask_bytes).convert("L")
+    mask_cv = np.array(mask_pil)
+
+    if mask_cv.shape[:2] != (h, w):
+        mask_cv = cv2.resize(mask_cv, (w, h), interpolation=cv2.INTER_NEAREST)
+
+    _, mask_binary = cv2.threshold(mask_cv, 127, 255, cv2.THRESH_BINARY)
+    img_cv[mask_binary > 0, 3] = 0
+
+    if refine:
+        alpha = img_cv[:, :, 3]
+        img_cv[:, :, 3] = cv2.GaussianBlur(alpha, (3, 3), 0)
+
+    return pil_to_bytes(Image.fromarray(cv2.cvtColor(img_cv, cv2.COLOR_BGRA2RGBA)))
+
+
+async def remove_background_with_mask(image_bytes: bytes, mask_bytes: bytes, refine: bool = False) -> bytes:
+    """
+    Removes background using a manually drawn mask. White mask areas → transparent.
+    - Local M-chip: MPS (Metal Performance Shaders via PyTorch)
+    - Production / CPU: OpenCV
+    """
+    accelerator = _get_local_accelerator()
+    logger.info(f"🎭 Removing background with mask (accelerator: {accelerator.upper()})...")
+
+    if accelerator == 'mps':
+        return await asyncio.to_thread(_remove_background_with_mask_mps, image_bytes, mask_bytes, refine)
+
+    return await asyncio.to_thread(_remove_background_with_mask_cpu, image_bytes, mask_bytes, refine)
+
+# 2. Remover Objetos (Inpainting Avanzado)
 def remove_objects(image_bytes: bytes, mask_bytes: bytes) -> bytes:
     """
     Removes objects using a high-precision approach:
@@ -173,12 +309,13 @@ def remove_objects(image_bytes: bytes, mask_bytes: bytes) -> bytes:
     3. Multi-stage inpainting for better texture.
     4. Texture/Grain restoration.
     """
-    # Read image and mask
-    img_pil = read_image_file(image_bytes)
-    mask_pil = read_image_file(mask_bytes).convert('L')
-
-    img_cv = pil_to_cv2(img_pil)
-    mask_cv = np.array(mask_pil)
+    # Read image and mask directly to OpenCV (avoids PIL round-trip)
+    img_cv = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    mask_cv = cv2.imdecode(np.frombuffer(mask_bytes, np.uint8), cv2.IMREAD_GRAYSCALE)
+    if img_cv is None:
+        raise ValueError("Could not decode image")
+    if mask_cv is None:
+        raise ValueError("Could not decode mask")
     h, w = img_cv.shape[:2]
 
     # 1. Adaptive Dilation: Adjust based on image resolution
@@ -213,10 +350,12 @@ def remove_objects(image_bytes: bytes, mask_bytes: bytes) -> bytes:
     inpaint_radius = int(5 * scale_factor)
     res_cv = cv2.inpaint(clean_base, mask_dilated, inpaint_radius, cv2.INPAINT_NS)
 
-    # 4. Texture Restoration (Add subtle grain)
+    # 4. Texture Restoration (Add subtle grain only in inpainted area)
     # This prevents the area from looking like a flat plastic spot
     noise = np.random.normal(0, 1.5, (h, w, 3)).astype(np.float32)
-    res_float = res_cv.astype(np.float32) + noise
+    res_float = res_cv.astype(np.float32)
+    noise_mask = (mask_dilated > 0)[:, :, np.newaxis]  # broadcast to 3 channels
+    res_float = np.where(noise_mask, res_float + noise, res_float)
     res_cv = np.clip(res_float, 0, 255).astype(np.uint8)
 
     # 5. Smooth Blending with original edges
@@ -227,7 +366,8 @@ def remove_objects(image_bytes: bytes, mask_bytes: bytes) -> bytes:
     final_cv = (res_cv.astype(float) * alpha + img_cv.astype(float) * (1.0 - alpha))
     final_cv = np.clip(final_cv, 0, 255).astype(np.uint8)
 
-    return pil_to_bytes(cv2_to_pil(final_cv))
+    _, buf = cv2.imencode('.png', final_cv, [cv2.IMWRITE_PNG_COMPRESSION, 1])
+    return buf.tobytes()
 
 def create_mask_from_point(image_bytes: bytes, x: int, y: int, tolerance: int = 30) -> bytes:
     """
@@ -236,10 +376,11 @@ def create_mask_from_point(image_bytes: bytes, x: int, y: int, tolerance: int = 
     tolerance: Color similarity threshold (0-255)
     Returns: Mask image as bytes
     """
-    img_pil = read_image_file(image_bytes)
-    img_cv = pil_to_cv2(img_pil)
+    img_cv = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
+    if img_cv is None:
+        raise ValueError("Could not decode image")
     h, w = img_cv.shape[:2]
-    
+
     # Validate coordinates
     if x < 0 or x >= w or y < 0 or y >= h:
         raise ValueError(f"Coordinates ({x}, {y}) are out of bounds for image size ({w}x{h})")
@@ -267,10 +408,9 @@ def create_mask_from_point(image_bytes: bytes, x: int, y: int, tolerance: int = 
     # but are part of the object.
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     mask = cv2.dilate(mask, kernel, iterations=1)
-    
-    # Convert to PIL Image
-    mask_pil = Image.fromarray(mask)
-    return pil_to_bytes(mask_pil)
+
+    _, buf = cv2.imencode('.png', mask, [cv2.IMWRITE_PNG_COMPRESSION, 1])
+    return buf.tobytes()
 
 
 def remove_specific_colors(image_bytes: bytes, colors: list, tolerance: int = 30) -> bytes:
@@ -319,7 +459,7 @@ async def remove_background(image_bytes: bytes) -> bytes:
     logger.info(f"🍎 Removing background via local engine (accelerator: {accelerator.upper()})...")
 
     global _LOCAL_REMBG_SESSION
-    if '_LOCAL_REMBG_SESSION' not in globals() or _LOCAL_REMBG_SESSION is None:
+    if _LOCAL_REMBG_SESSION is None:
         from rembg import new_session
 
         # Order providers by what's actually available on this machine.
@@ -348,39 +488,40 @@ async def remove_background(image_bytes: bytes) -> bytes:
 
 # ... (omitted unrelated code)
 
-from ..core.database import SessionLocal
-from .. import models
+from backend.core.database import SessionLocal
+from backend import models
+from backend.services import storage
 
-# Define static directory for processed results
-STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
-os.makedirs(STATIC_DIR, exist_ok=True)
-
-async def run_upscale_task(task_id: str, image_bytes: bytes, factor: float, detail_boost: float):
+async def run_upscale_task(task_id: str, audit_log_id: Optional[int], image_bytes: bytes, factor: float, detail_boost: float):
     """
     Background worker for upscaling task.
     Handles GPU -> CPU Fallback transition explicitly to update DB status.
+    Also updates the ProcessingAuditLog entry (audit_log_id) when complete or failed.
     """
+    import time as _time
+    start_time = _time.monotonic()
+
     db = SessionLocal()
     try:
         result_bytes = None
-        
+
         # 1. Try GPU if enabled
         if _should_use_gpu("upscale"):
             try:
                 result_bytes = await upscale_image(image_bytes, factor, detail_boost)
             except Exception as e:
                 logger.error(f"⚠️ GPU Upscale Task {task_id} failed: {e}")
-                
+
                 # Update DB to warn about fallback
                 task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
                 if task:
                     task.status = "FALLBACK_CPU"
                     # We commit here so if the CPU process crashes (OOM), we at least know it reached this state
                     db.commit()
-                
+
                 # We will fall through to Legacy CPU logic below
                 result_bytes = None
-        
+
         # 2. Local processing (MPS on Apple Silicon, or CPU fallback)
         if result_bytes is None:
             accelerator = _get_local_accelerator()
@@ -409,17 +550,23 @@ async def run_upscale_task(task_id: str, image_bytes: bytes, factor: float, deta
         # 3. Save Success
         if result_bytes:
             filename = f"upscale_{task_id}.png"
-            file_path = os.path.join(STATIC_DIR, filename)
-            with open(file_path, "wb") as f:
-                f.write(result_bytes)
-                
-            # Update DB
+            result_url = await storage.upload_file(result_bytes, "", filename)
+
+            # Update ProcessingTask
             task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
             if task:
                 task.status = "COMPLETED"
-                task.result_url = f"/api/static/{filename}"
+                task.result_url = result_url
                 db.commit()
-            
+
+            # Update audit log
+            if audit_log_id:
+                from backend.services.audit import update_audit_log_async
+                elapsed_ms = int((_time.monotonic() - start_time) * 1000)
+                update_audit_log_async(db, audit_log_id, "SUCCESS",
+                                       duration_ms=elapsed_ms,
+                                       output_file_size=len(result_bytes))
+
     except Exception as e:
         logger.error(f"❌ Error in run_upscale_task for task {task_id}: {str(e)}")
         # Check if session is still valid
@@ -429,9 +576,19 @@ async def run_upscale_task(task_id: str, image_bytes: bytes, factor: float, deta
                 task.status = "FAILED"
                 task.error = str(e)
                 db.commit()
-        except:
-            # If DB session is broken
-            pass
+        except Exception as db_err:
+            logger.error(f"DB session broken for task {task_id}: {db_err}")
+
+        # Update audit log with failure
+        if audit_log_id:
+            try:
+                from backend.services.audit import update_audit_log_async
+                elapsed_ms = int((_time.monotonic() - start_time) * 1000)
+                update_audit_log_async(db, audit_log_id, "FAILED",
+                                       duration_ms=elapsed_ms,
+                                       error_message=str(e))
+            except Exception:
+                pass
     finally:
         db.close()
 
@@ -533,85 +690,85 @@ def upscale_image_mps(image_bytes: bytes, factor: float, detail_boost: float) ->
 
 def generate_halftone(image_bytes: bytes, dot_size: int = 10, scale: float = 1.0, remove_colors: list = None, tolerance: int = 30, spacing: int = 0) -> bytes:
     """
-    Advanced halftone for professional screen printing (Iteration 3).
+    Advanced halftone for professional screen printing.
     - spacing: pixels to subtract from dot radius to enforce separation.
+    Vectorized implementation: replaces Python loop with NumPy batch operations.
     """
     img_pil = read_image_file(image_bytes).convert("RGBA")
     img_np = np.array(img_pil).astype(np.float32)
     h, w = img_np.shape[:2]
-    
-    # 1. Base/Shirt Color
-    # Default to Black if no color provided
-    shirt_color = np.array(remove_colors[0], dtype=np.float32) if remove_colors and len(remove_colors) > 0 else np.array([0, 0, 0], dtype=np.float32)
-    
+
+    # 1. Base/Shirt Color — default Black
+    shirt_color = np.array(remove_colors[0], dtype=np.float32) if remove_colors and len(remove_colors) > 0 else np.array([0.0, 0.0, 0.0], dtype=np.float32)
+
     # 2. Output Image (Transparent BG)
     output = np.zeros((h, w, 4), dtype=np.uint8)
-    
-    # Pre-calculated constants
-    max_dist = np.sqrt(3 * (255**2))
-    
-    # 3. Process image in a grid
-    for y in range(0, h, dot_size):
-        for x in range(0, w, dot_size):
-            y_end = min(y + dot_size, h)
-            x_end = min(x + dot_size, w)
-            
-            cell = img_np[y:y_end, x:x_end]
-            if cell.size == 0: continue
-            
-            # Average color of the cell (ignoring transparency if already present)
-            mask_active = cell[:, :, 3] > 10
-            if np.any(mask_active):
-                avg_rgba = np.mean(cell[mask_active], axis=0)
-            else:
-                avg_rgba = np.mean(cell, axis=0)
-            
-            avg_rgb = avg_rgba[:3]
-            
-            # 4. Color Knockout Logic
-            # Calculate how 'different' the color is from the shirt color
-            # We use a more aggressive distance for 'solid' colors
-            dist = np.linalg.norm(avg_rgb - shirt_color)
-            
-            # Normalize Alpha based on tolerance and distance
-            # If distance < tolerance, alpha is 0
-            # Otherwise, it scales up to 1.0
-            t_low = tolerance * 1.5 
-            if dist <= t_low:
-                alpha = 0
-            else:
-                # Scale from t_low to max possible distance
-                alpha = (dist - t_low) / (max_dist - t_low)
-                
-            # Gamma adjustment/Midtone boost
-            # This ensures that subtle differences from the shirt color still produce dots
-            alpha = np.power(alpha, 0.6) # Professional boost for visibility
-            
-            # Calculate dot radius
-            # Dots should overlap slightly at 100% to create solid color
-            # BUT we subtract 'spacing' (half from radius) if provided
-            max_r = (dot_size / 2) * 1.4 * scale
-            
-            # Apply separation
-            # We subtract spacing/2 from radius because spacing is total gap between two dots
-            radius = int((alpha * max_r) - (spacing / 2))
-            
-            if radius > 0:
-                center_x = x + (x_end - x) // 2
-                center_y = y + (y_end - y) // 2
-                
-                # 5. Ink Color Reconstruction (Un-blending)
-                # If C_pixel = Alpha * C_ink + (1 - Alpha) * C_shirt
-                # then C_ink = (C_pixel - (1 - Alpha) * C_shirt) / Alpha
-                # We cap it to [0, 255]
-                if alpha > 0.1:
-                    reconstructed_rgb = (avg_rgb - (1 - alpha) * shirt_color) / alpha
-                    reconstructed_rgb = np.clip(reconstructed_rgb, 0, 255).astype(np.uint8)
-                else:
-                    reconstructed_rgb = avg_rgb.astype(np.uint8)
-                
-                color_bgr = (int(reconstructed_rgb[2]), int(reconstructed_rgb[1]), int(reconstructed_rgb[0]), 255)
-                cv2.circle(output, (center_x, center_y), radius, color_bgr, -1, cv2.LINE_AA)
+
+    max_dist = np.sqrt(3.0 * (255.0 ** 2))
+
+    # ── Stage A: Batch cell averages ─────────────────────────────────────────
+    # Pad to exact multiple of dot_size so reshape works cleanly
+    pad_h = (dot_size - h % dot_size) % dot_size
+    pad_w = (dot_size - w % dot_size) % dot_size
+    if pad_h > 0 or pad_w > 0:
+        padded = np.pad(img_np, ((0, pad_h), (0, pad_w), (0, 0)), mode='edge')
+    else:
+        padded = img_np
+    ph, pw = padded.shape[:2]
+    rows, cols = ph // dot_size, pw // dot_size
+
+    # Reshape to (rows, dot_size, cols, dot_size, 4)
+    cells = padded.reshape(rows, dot_size, cols, dot_size, 4)
+
+    # Active pixels: alpha channel > 10  →  (rows, dot_size, cols, dot_size)
+    active_mask = cells[:, :, :, :, 3] > 10
+    active_count = active_mask.sum(axis=(1, 3))  # (rows, cols)
+
+    # Weighted sum for active pixels only
+    cells_masked = cells * active_mask[:, :, :, :, np.newaxis]
+    cell_sums = cells_masked.sum(axis=(1, 3))  # (rows, cols, 4)
+
+    # Where active cells exist: use active average; else use full-cell mean
+    has_active = active_count > 0
+    safe_count = np.where(has_active, active_count, 1)[:, :, np.newaxis]
+    avg_active = cell_sums / safe_count
+    avg_all = cells.mean(axis=(1, 3))  # (rows, cols, 4)
+    avg_rgba = np.where(has_active[:, :, np.newaxis], avg_active, avg_all)
+    avg_rgb = avg_rgba[:, :, :3]  # (rows, cols, 3)
+
+    # ── Stage B: Batch distances, alphas, radii ───────────────────────────────
+    diff = avg_rgb - shirt_color[np.newaxis, np.newaxis, :]
+    dist = np.linalg.norm(diff, axis=2)  # (rows, cols)
+
+    t_low = float(tolerance) * 1.5
+    alpha_arr = np.where(dist <= t_low, 0.0, (dist - t_low) / (max_dist - t_low))
+    alpha_arr = np.power(alpha_arr, 0.6)  # midtone boost
+
+    max_r = (dot_size / 2.0) * 1.4 * scale
+    radius_arr = (alpha_arr * max_r - spacing / 2.0).astype(np.int32)
+
+    # Ink color reconstruction (vectorized un-blending)
+    # C_ink = (C_pixel - (1 - alpha) * C_shirt) / alpha  for alpha > 0.1
+    safe_alpha = np.where(alpha_arr > 0.1, alpha_arr, 1.0)[:, :, np.newaxis]
+    reconstructed = (avg_rgb - (1.0 - alpha_arr[:, :, np.newaxis]) * shirt_color) / safe_alpha
+    reconstructed = np.where(alpha_arr[:, :, np.newaxis] > 0.1, reconstructed, avg_rgb)
+    reconstructed = np.clip(reconstructed, 0, 255).astype(np.uint8)  # (rows, cols, 3) RGB
+
+    # Cell center coordinates
+    cy = np.arange(rows) * dot_size + dot_size // 2  # (rows,)
+    cx = np.arange(cols) * dot_size + dot_size // 2  # (cols,)
+    center_y, center_x = np.meshgrid(cy, cx, indexing='ij')  # (rows, cols)
+
+    # ── Stage C: Draw only valid dots ─────────────────────────────────────────
+    valid = radius_arr > 0
+    v_cx = center_x[valid].tolist()
+    v_cy = center_y[valid].tolist()
+    v_r = radius_arr[valid].tolist()
+    v_colors = reconstructed[valid]  # (N, 3) RGB
+
+    for i in range(len(v_cx)):
+        r, g, b = int(v_colors[i, 0]), int(v_colors[i, 1]), int(v_colors[i, 2])
+        cv2.circle(output, (v_cx[i], v_cy[i]), v_r[i], (b, g, r, 255), -1, cv2.LINE_AA)
 
     return pil_to_bytes(cv2_to_pil(output))
 async def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str = 'manual', refine: bool = False, colors: list = None, tolerance: int = 30) -> bytes:

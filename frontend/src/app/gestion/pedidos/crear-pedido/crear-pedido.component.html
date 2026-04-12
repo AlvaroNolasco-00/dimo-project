@@ -182,7 +182,13 @@
                     <i class="ph ph-package"></i>
                     <span>{{ tempSubItem.description }}</span>
                   </div>
-                  <span class="cost-config-price">{{ tempSubItem.unit_price | currency }}</span>
+                  <div class="cost-config-price-wrap">
+                    @if (getEffectiveMargin(selectedCost) > 0) {
+                    <span class="cost-config-base-price">{{ selectedCost.base_cost | currency }}</span>
+                    <span class="cost-config-margin-badge">+{{ getEffectiveMargin(selectedCost) }}%</span>
+                    }
+                    <span class="cost-config-price">{{ tempSubItem.unit_price | currency }}</span>
+                  </div>
                 </div>
 
                 <!-- Sección: Opciones / Variantes -->

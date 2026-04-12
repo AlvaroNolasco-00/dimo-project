@@ -1,0 +1,120 @@
+<div class="catalogo-container">
+    <div class="header">
+        <div class="title-section">
+            <h1><i class="ph ph-storefront"></i> Catálogo</h1>
+            <p>Gestiona tus productos, precios y links para compartir con clientes.</p>
+        </div>
+        <div class="header-actions">
+            <a routerLink="/gestion/catalogo/categorias" class="btn-secondary">
+                <i class="ph ph-folders"></i>
+                Categorías
+            </a>
+            <a routerLink="/gestion/catalogo/nuevo" class="btn-create">
+                <i class="ph ph-plus"></i>
+                Nuevo Producto
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filters-bar">
+        <div class="category-chips">
+            <button class="chip" [class.active]="selectedCategoryId() === null" (click)="filterByCategory(null)">
+                Todos
+            </button>
+            @for (cat of categories(); track cat.id) {
+            <button class="chip" [class.active]="selectedCategoryId() === cat.id" (click)="filterByCategory(cat.id)">
+                {{ cat.name }}
+            </button>
+            }
+        </div>
+        <div class="input-wrapper has-icon search-box">
+            <i class="ph ph-magnifying-glass"></i>
+            <input type="text" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)" placeholder="Buscar productos...">
+        </div>
+    </div>
+
+    <!-- Grid de productos -->
+    @if (loading()) {
+    <div class="loader-center">
+        <div class="spinner"></div>
+        <p>Cargando productos...</p>
+    </div>
+    }
+
+    @if (!loading() && filteredProducts().length > 0) {
+    <div class="products-grid">
+        @for (product of filteredProducts(); track product.id) {
+        <div class="product-card" [class.inactive]="!product.is_active">
+            <div class="product-image" [style.backgroundImage]="product.image_path ? 'url(' + getImageUrl(product.image_path) + ')' : ''">
+                @if (!product.image_path) {
+                <div class="no-image">
+                    <i class="ph ph-image"></i>
+                </div>
+                }
+                <div class="card-badges">
+                    @if (!product.is_active) {
+                    <span class="badge badge-inactive">Inactivo</span>
+                    }
+                    @if (product.category) {
+                    <span class="badge badge-cat">{{ product.category.name }}</span>
+                    }
+                </div>
+            </div>
+
+            <div class="product-body">
+                <h3 class="product-name">{{ product.name }}</h3>
+                @if (product.description) {
+                <p class="product-desc">{{ product.description }}</p>
+                }
+
+                <div class="price-info">
+                    <div class="price-row">
+                        <span class="label">Costo base</span>
+                        <span class="value">{{ getBaseCost(product) | currency:'$':'symbol':'1.0-2' }}</span>
+                    </div>
+                    <div class="price-row sale">
+                        <span class="label">Precio venta</span>
+                        <span class="value">{{ product.sale_price | currency:'$':'symbol':'1.0-2' }}</span>
+                    </div>
+                    @if (getMargin(product) > 0) {
+                    <div class="margin-bar">
+                        <div class="margin-fill" [style.width.%]="Math.min(getMargin(product), 100)"></div>
+                    </div>
+                    <span class="margin-label">{{ getMargin(product) | number:'1.0-1' }}% margen</span>
+                    }
+                </div>
+
+                <div class="card-actions">
+                    <button class="btn-icon" title="Copiar link público" (click)="copyLink(product)">
+                        <i class="ph ph-link"></i>
+                    </button>
+                    <button class="btn-icon" [title]="product.is_active ? 'Desactivar' : 'Activar'" (click)="toggleActive(product)">
+                        <i class="ph" [class.ph-eye]="product.is_active" [class.ph-eye-slash]="!product.is_active"></i>
+                    </button>
+                    <a [routerLink]="['/gestion/catalogo', product.id, 'editar']" class="btn-icon" title="Editar">
+                        <i class="ph ph-pencil-simple"></i>
+                    </a>
+                    <button class="btn-icon btn-danger" title="Eliminar" (click)="deleteProduct(product)">
+                        <i class="ph ph-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        }
+    </div>
+    }
+
+    @if (!loading() && filteredProducts().length === 0) {
+    <div class="empty-state-inline">
+        <i class="ph ph-storefront"></i>
+        <h3>{{ searchQuery() || selectedCategoryId() ? 'Sin resultados' : 'Sin productos' }}</h3>
+        <p>{{ searchQuery() || selectedCategoryId() ? 'Prueba cambiando los filtros.' : 'Crea tu primer producto para empezar a compartir con clientes.' }}</p>
+        @if (!searchQuery() && !selectedCategoryId()) {
+        <a routerLink="/gestion/catalogo/nuevo" class="btn-create">
+            <i class="ph ph-plus"></i> Crear primer producto
+        </a>
+        }
+    </div>
+    }
+</div>

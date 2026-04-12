@@ -1,22 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Form, UploadFile, File
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
-import shutil
 import os
 from datetime import datetime
 
-from .. import models
-from ..core import auth, database
-from ..core.deps import get_db, get_current_user
+from backend import models
+from backend.core import auth, database
+from backend.core.deps import get_db, get_current_user
+from backend.services import storage
 
 router = APIRouter(
     prefix="/api/auth",
     tags=["auth"]
 )
-
-# Determine static directory relative to this file
-STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
-os.makedirs(STATIC_DIR, exist_ok=True)
 
 @router.post("/register")
 async def register(email: str = Form(...), full_name: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
@@ -92,37 +88,20 @@ async def update_avatar(
     db: Session = Depends(get_db)
 ):
     try:
-        # Create a unique filename
         file_extension = os.path.splitext(file.filename)[1]
         filename = f"avatar_{current_user.id}_{int(datetime.utcnow().timestamp())}{file_extension}"
-        file_path = os.path.join(STATIC_DIR, filename)
-        
-        # Save file
-        with open(file_path, "wb") as buffer:
-             shutil.copyfileobj(file.file, buffer)
-            
-        # Store old avatar to delete later
-        old_avatar_url = current_user.avatar_url
 
-        # Update user record
-        # In a real app with cloud storage, this would be a URL like S3 or Cloudinary
-        # For local, we'll serve it as a static file or just return the path for now
-        # Assuming we will mount static dir to serve these
-        avatar_url = f"/static/{filename}"
+        content = await file.read()
+        avatar_url = await storage.upload_file(content, "", filename)
+
+        old_avatar_url = current_user.avatar_url
         current_user.avatar_url = avatar_url
         db.commit()
 
-        # Cleanup old avatar if it exists
-        if old_avatar_url and old_avatar_url.startswith("/static/"):
-             try:
-                 old_filename = old_avatar_url.replace("/static/", "")
-                 old_file_path = os.path.join(STATIC_DIR, old_filename)
-                 if os.path.exists(old_file_path):
-                     os.remove(old_file_path)
-             except Exception as e:
-                 print(f"Error deleting old avatar: {e}")
-                 # Log error but don't fail request
-        
+        # Eliminar avatar anterior (no falla si no existe)
+        if old_avatar_url:
+            await storage.delete_file(old_avatar_url)
+
         return {"avatar_url": avatar_url}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

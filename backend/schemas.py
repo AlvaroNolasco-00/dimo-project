@@ -7,9 +7,16 @@ class CostTypeBase(BaseModel):
     name: str
     description: Optional[str] = None
     requires_art: bool = False
+    profit_margin: Optional[float] = 0
 
 class CostTypeCreate(CostTypeBase):
     project_id: int
+
+class CostTypeUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    requires_art: Optional[bool] = None
+    profit_margin: Optional[float] = None
 
 class CostType(CostTypeBase):
     id: int
@@ -367,6 +374,101 @@ class OrderUpdate(BaseModel):
     class Config:
         from_attributes = True
 
+# --- Catalog ---
+
+class ProductCostLineBase(BaseModel):
+    label: str
+    quantity: int = 1
+    unit_cost: float
+    operative_cost_id: Optional[int] = None
+
+class ProductCostLineCreate(ProductCostLineBase):
+    pass
+
+class ProductCostLine(ProductCostLineBase):
+    id: int
+    product_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ProductCategoryBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    is_active: bool = True
+
+class ProductCategoryCreate(ProductCategoryBase):
+    project_id: int
+
+class ProductCategoryUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class ProductCategory(ProductCategoryBase):
+    id: int
+    project_id: int
+    access_token: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ProductPublicBasic(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    image_path: Optional[str] = None
+    sale_price: float
+    access_token: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class ProductCategoryPublic(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    products: List[ProductPublicBasic] = []
+
+    class Config:
+        from_attributes = True
+
+class ProductBase(BaseModel):
+    name: str
+    description: Optional[str] = None
+    sale_price: float = 0.0
+    is_active: bool = True
+    category_id: Optional[int] = None
+
+class ProductCreate(ProductBase):
+    project_id: int
+    cost_lines: List[ProductCostLineCreate] = []
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    sale_price: Optional[float] = None
+    is_active: Optional[bool] = None
+    category_id: Optional[int] = None
+    cost_lines: Optional[List[ProductCostLineCreate]] = None
+
+class Product(ProductBase):
+    id: int
+    project_id: int
+    image_path: Optional[str] = None
+    access_token: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    category: Optional[ProductCategory] = None
+    cost_lines: List[ProductCostLine] = []
+
+    class Config:
+        from_attributes = True
+
 # --- Processing Tasks ---
 class TaskResponse(BaseModel):
     task_id: str
@@ -379,3 +481,40 @@ class TaskStatus(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# --- Processing Audit Log ---
+class ProcessingAuditLogEntry(BaseModel):
+    id: int
+    user_id: Optional[int] = None
+    user: Optional[Any] = None
+    operation: str
+    status: str
+    duration_ms: Optional[int] = None
+    input_file_size: Optional[int] = None
+    input_width: Optional[int] = None
+    input_height: Optional[int] = None
+    output_file_size: Optional[int] = None
+    accelerator: Optional[str] = None
+    parameters: Dict[str, Any] = {}
+    error_message: Optional[str] = None
+    task_id: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class ProcessingAuditLogList(BaseModel):
+    items: List[ProcessingAuditLogEntry]
+    total: int
+    page: int
+    page_size: int
+
+class ProcessingAuditStats(BaseModel):
+    total_operations: int
+    success_count: int
+    failure_count: int
+    avg_duration_ms: Optional[float] = None
+    operations_by_type: Dict[str, int] = {}
+    operations_by_user: List[Dict[str, Any]] = []
+    operations_by_accelerator: Dict[str, int] = {}

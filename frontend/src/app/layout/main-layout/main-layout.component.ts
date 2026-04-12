@@ -34,8 +34,10 @@ export class MainLayoutComponent implements OnInit {
   private gestionItems: SidebarItem[] = [
     { label: 'Pedidos', icon: 'ph-shopping-cart', route: '/gestion/pedidos' },
     { label: 'Clientes', icon: 'ph-users', route: '/gestion/clientes' },
+    { label: 'Catálogo', icon: 'ph-storefront', route: '/gestion/catalogo' },
     { label: 'Finanzas', icon: 'ph-currency-dollar', route: '/gestion/finanzas' },
-    { label: 'Proyectos', icon: 'ph-briefcase', route: '/gestion/proyectos', isAdminOnly: true }
+    { label: 'Proyectos', icon: 'ph-briefcase', route: '/gestion/proyectos', isAdminOnly: true },
+    { label: 'Bitácora', icon: 'ph-scroll', route: '/gestion/bitacora', isAdminOnly: true }
   ];
 
   private usuariosItems: SidebarItem[] = [

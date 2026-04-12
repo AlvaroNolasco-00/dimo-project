@@ -55,10 +55,8 @@
             @if (baseImageSrc() && watermarkImageSrc()) {
             <div class="action-buttons">
                 <button class="btn-primary full-width" (click)="process()"
-                    [disabled]="isLoading() || !!resultImageSrc()">
-                    @if (isLoading()) {
-                    <i class="ph ph-spinner spinner"></i>
-                    }
+                    [disabled]="isLoading() || !!resultImageSrc()" [class.is-loading]="isLoading()">
+                    <span class="btn-spinner" [class.visible]="isLoading()"></span>
                     {{ isLoading() ? 'Procesando...' : 'Aplicar Marca' }}
                 </button>
 

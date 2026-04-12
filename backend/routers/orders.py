@@ -3,14 +3,14 @@ from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile,
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
-import shutil
-import os
 import uuid
 from datetime import datetime, timedelta
-from .. import models, schemas
-from ..core import database
-from ..core.deps import get_db, get_current_user
-from ..services import orders as order_service
+from backend import models
+from backend import schemas
+from backend.core import database
+from backend.core.deps import get_db, get_current_user
+from backend.services import orders as order_service
+from backend.services import storage
 
 router = APIRouter(
     prefix="/api",
@@ -143,30 +143,22 @@ async def upload_public_order_file(token: str, item_id: Optional[int] = None, fi
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    upload_dir = f"backend/static/uploads/orders/{order.id}/client"
-    os.makedirs(upload_dir, exist_ok=True)
-    
     filename = f"{uuid.uuid4()}_{file.filename.replace(' ', '_')}"
-    file_path = os.path.join(upload_dir, filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    url = f"/api/static/uploads/orders/{order.id}/client/{filename}"
+    folder = f"uploads/orders/{order.id}/client"
+    content = await file.read()
+    url = await storage.upload_file(content, folder, filename)
 
     if item_id:
-        # Create detail record to link the file to the item
-        # Verify item belongs to order
         item = db.query(models.OrderItem).filter(models.OrderItem.id == item_id, models.OrderItem.order_id == order.id).first()
         if item:
-             new_detail = models.OrderItemDetail(
-                 order_item_id=item.id,
-                 description="Arte subido por cliente",
-                 quantity=1,
-                 image_path=url
-             )
-             db.add(new_detail)
-             db.commit()
+            new_detail = models.OrderItemDetail(
+                order_item_id=item.id,
+                description="Arte subido por cliente",
+                quantity=1,
+                image_path=url
+            )
+            db.add(new_detail)
+            db.commit()
 
     return {"url": url, "filename": filename}
 
@@ -360,50 +352,10 @@ def update_order(project_id: int, order_id: int, order_update: schemas.OrderUpda
 
 @router.post("/orders/{order_id}/upload")
 async def upload_order_file(order_id: int, file: UploadFile = File(...)):
-    # Define upload directory for this order
-    # Note: Logic also could be moved to service, but leaving simple file handling here is often acceptable for now
-    upload_dir = f"backend/static/uploads/orders/{order_id}"
-    os.makedirs(upload_dir, exist_ok=True)
-    
-    # Secure filename (basic)
     filename = file.filename.replace(" ", "_")
-    file_path = os.path.join(upload_dir, filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    # Construct URL (relative to API base or static mount)
-    # Mounted at /api/static
-    url = f"/api/static/uploads/orders/{order_id}/{filename}"
-    
-    return {"url": url, "filename": filename}
-
-@router.get("/orders/{order_id}/history", response_model=List[schemas.OrderHistory])
-def get_order_history(order_id: int, db: Session = Depends(get_db)):
-    history = db.query(models.OrderHistory)\
-        .options(joinedload(models.OrderHistory.user))\
-        .filter(models.OrderHistory.order_id == order_id)\
-        .order_by(models.OrderHistory.created_at.asc())\
-        .all()
-    return history
-
-@router.post("/orders/{order_id}/upload")
-async def upload_order_file(order_id: int, file: UploadFile = File(...)):
-    # Define upload directory for this order
-    upload_dir = f"backend/static/uploads/orders/{order_id}"
-    os.makedirs(upload_dir, exist_ok=True)
-    
-    # Secure filename (basic)
-    filename = file.filename.replace(" ", "_")
-    file_path = os.path.join(upload_dir, filename)
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
-    # Construct URL (relative to API base or static mount)
-    # Mounted at /api/static
-    url = f"/api/static/uploads/orders/{order_id}/{filename}"
-    
+    folder = f"uploads/orders/{order_id}"
+    content = await file.read()
+    url = await storage.upload_file(content, folder, filename)
     return {"url": url, "filename": filename}
 
 @router.get("/orders/{order_id}/history", response_model=List[schemas.OrderHistory])

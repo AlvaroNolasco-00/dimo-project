@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from typing import Optional
 
-from .. import models
-from ..core import auth, database
-from ..core.deps import get_db, get_admin_user
+from backend import models
+from backend.core import auth, database
+from backend.core.deps import get_db, get_admin_user
 
 router = APIRouter(
     prefix="/api/admin",

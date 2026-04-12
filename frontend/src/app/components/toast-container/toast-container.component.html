@@ -1,0 +1,31 @@
+<div class="toast-container">
+  @for (toast of toasts(); track toast.id) {
+  <div class="toast" [class]="toast.type">
+    <div class="toast-icon">
+      @switch (toast.type) {
+        @case ('success') {
+        <i class="ph ph-check-circle"></i>
+        }
+        @case ('error') {
+        <i class="ph ph-x-circle"></i>
+        }
+        @case ('warning') {
+        <i class="ph ph-warning"></i>
+        }
+        @case ('info') {
+        <i class="ph ph-info"></i>
+        }
+      }
+    </div>
+    <div class="toast-content">
+      <p class="toast-message">{{ toast.message }}</p>
+      @if (toast.retryable) {
+      <button class="toast-action" (click)="retry(toast)">Reintentar</button>
+      }
+    </div>
+    <button class="toast-close" (click)="dismiss(toast.id)">
+      <i class="ph ph-x"></i>
+    </button>
+  </div>
+  }
+</div>

@@ -22,13 +22,21 @@
               @if (type.requires_art) {
               <span class="badge badge-info">Requiere Arte</span>
               }
+              @if (type.profit_margin > 0) {
+              <span class="badge badge-success">{{ type.profit_margin }}% ganancia general</span>
+              }
             </div>
             <p class="text-secondary small m-0">{{ type.description }}</p>
           </div>
-          <button class="btn-secondary btn-sm" (click)="openCostModal(type.id)">
-            <i class="ph ph-plus"></i>
-            Agregar costo
-          </button>
+          <div class="d-flex gap-2 align-items-center">
+            <button class="btn-icon" (click)="openEditTypeModal(type)" title="Editar tipo">
+              <i class="ph ph-gear"></i>
+            </button>
+            <button class="btn-secondary btn-sm" (click)="openCostModal(type.id)">
+              <i class="ph ph-plus"></i>
+              Agregar costo
+            </button>
+          </div>
         </div>
       </div>
 
@@ -40,6 +48,8 @@
               <th>{{ col | titlecase }}</th>
               }
               <th>Costo Base</th>
+              <th>% Ganancia</th>
+              <th>Precio Final</th>
               <th class="text-right">Acciones</th>
             </tr>
           </thead>
@@ -52,6 +62,18 @@
               </td>
               }
               <td>{{ cost.base_cost | currency }}</td>
+              <td>
+                @if (cost.attributes?.['__profit_margin'] !== undefined && cost.attributes?.['__profit_margin'] !== null) {
+                  <span class="badge badge-success">{{ cost.attributes['__profit_margin'] }}%</span>
+                } @else if (type.profit_margin > 0) {
+                  <span class="badge badge-outline" title="Usa el % general del tipo">{{ type.profit_margin }}% (general)</span>
+                } @else {
+                  <span class="text-muted">—</span>
+                }
+              </td>
+              <td>
+                <strong>{{ getFinalPrice(cost) | currency }}</strong>
+              </td>
               <td class="text-right">
                 <div class="actions-cell">
                   <button class="btn-icon" (click)="editCost(cost)" title="Editar">
@@ -67,7 +89,7 @@
             </tr>
             } @empty {
             <tr>
-              <td [attr.colspan]="(typeColumns[type.id]?.length || 0) + 2" class="empty-state">
+              <td [attr.colspan]="(typeColumns[type.id]?.length || 0) + 4" class="empty-state">
                 No hay costos registrados para este tipo.
               </td>
             </tr>
@@ -80,12 +102,12 @@
   </div>
 </div>
 
-<!-- Modal: New Cost Type -->
+<!-- Modal: New/Edit Cost Type -->
 @if (showTypeModal) {
 <div class="modal-backdrop">
   <div class="modal-content">
     <div class="modal-header">
-      <h2>Nuevo Tipo de Gasto</h2>
+      <h2>{{ editingTypeId ? 'Editar' : 'Nuevo' }} Tipo de Gasto</h2>
       <button class="btn-close-modal" (click)="closeTypeModal()">
         <i class="ph ph-x"></i>
       </button>
@@ -98,6 +120,11 @@
       <div class="form-group">
         <label>Descripción</label>
         <input type="text" [(ngModel)]="newTypeDesc" class="form-control">
+      </div>
+      <div class="form-group">
+        <label>% Ganancia General</label>
+        <input type="number" [(ngModel)]="newTypeProfitMargin" class="form-control" min="0" step="1" placeholder="0">
+        <small class="form-hint">Se aplica a todos los ítems de este tipo que no tengan un % individual configurado.</small>
       </div>
       <div class="form-group" style="display: flex; align-items: center; gap: 8px;">
         <input type="checkbox" [(ngModel)]="newTypeRequiresArt" id="requiresArt">
@@ -124,11 +151,23 @@
     </div>
     <div class="modal-body">
       <div class="row">
-      <div class="col-md-6 form-group">
+      <div class="col-md-4 form-group">
         <label>Costo Base</label>
-        <input type="number" [(ngModel)]="newCostBase" class="form-control">
+        <input type="number" [(ngModel)]="newCostBase" class="form-control" min="0" step="0.01">
       </div>
-      <div class="col-md-6 form-group">
+      <div class="col-md-4 form-group">
+        <label>% Ganancia</label>
+        <input type="number" [(ngModel)]="newCostProfitMargin" class="form-control" min="0" step="1" placeholder="0">
+      </div>
+      <div class="col-md-4 form-group">
+        <label>Precio Final</label>
+        <div class="final-price-display">
+          {{ computedFinalPrice | currency }}
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12 form-group">
         <label>Tipo de Costo</label>
         <select [(ngModel)]="costMode" class="form-control">
           <option value="simple">Simple</option>

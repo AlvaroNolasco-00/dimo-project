@@ -5,7 +5,7 @@ opencv-python-headless
 pillow
 rembg
 numpy
-# onnxruntime is usually installed by rembg, but good to be explicit if needed, 
+# onnxruntime is usually installed by rembg, but good to be explicit if needed,
 # though for mac m1/m2 sometimes onnxruntime-silicon is better, sticking to standard for now.
 onnxruntime
 sqlalchemy
@@ -15,3 +15,5 @@ psycopg2-binary
 python-dotenv
 gunicorn
 httpx
+requests
+email-validator

@@ -2,7 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { Observable, timer, throwError, of } from 'rxjs';
-import { switchMap, filter, take, tap, map } from 'rxjs/operators';
+import { switchMap, filter, take, tap, map, expand, delay } from 'rxjs/operators';
 
 @Injectable({
     providedIn: 'root'
@@ -53,16 +53,16 @@ export class ApiService {
         return this.http.post(`${environment.apiUrl}/enhance-quality`, formData, { responseType: 'blob' });
     }
 
-    upscale(image: Blob, factor: number = 2.0, detailBoost: number = 1.5): Observable<Blob> {
+    upscale(image: Blob, factor: number = 2.0, detailBoost: number = 1.5, progressCallback?: (progress: number, step: string) => void): Observable<Blob> {
         const formData = new FormData();
         formData.append('image', image);
         formData.append('factor', factor.toString());
         formData.append('detail_boost', detailBoost.toString());
 
         return this.http.post<{ task_id: string }>(`${environment.apiUrl}/upscale`, formData).pipe(
-            switchMap(res => this.pollTask(res.task_id)),
+            switchMap(res => this.pollTaskWithProgress(res.task_id, progressCallback)),
             switchMap(task => {
-                // Determine absolute URL for the result. 
+                // Determine absolute URL for the result.
                 // task.result_url is like "/api/static/..."
                 // Since our API is at e.g. https://.../api, and static is at https://.../api/static
                 // If apiUrl already includes /api, we might need to handle it.
@@ -77,14 +77,68 @@ export class ApiService {
     }
 
     private pollTask(taskId: string): Observable<any> {
-        // Ejecuta la consulta recurrente cada 10 segundos
-        return timer(1000, 10000).pipe(
-            switchMap(() => this.http.get<any>(`${environment.apiUrl}/processing/tasks/${taskId}`)),
-            filter(task => task.status === 'COMPLETED' || task.status === 'FAILED'),
+        // Polling con exponential backoff: 5s → 10s → 15s → 20s → 25s (max 30s)
+        return of({ attempt: 0, delay: 5000 }).pipe(
+            expand(({ attempt, delay }) => {
+                return timer(delay).pipe(
+                    switchMap(() => this.http.get<any>(`${environment.apiUrl}/processing/tasks/${taskId}`)),
+                    switchMap(task => {
+                        if (task.status === 'COMPLETED' || task.status === 'FAILED') {
+                            return of({ task, done: true } as const);
+                        }
+                        const nextDelay = Math.min(30000, 5000 + (attempt + 1) * 5000);
+                        return of({ attempt: attempt + 1, delay: nextDelay } as const);
+                    })
+                );
+            }),
+            filter((result): result is { task: any; done: true } => 'done' in result && result.done),
             take(1),
-            switchMap(task => {
+            switchMap(({ task }) => {
                 if (task.status === 'FAILED') {
                     return throwError(() => new Error(task.error || 'Upscale task failed'));
+                }
+                return of(task);
+            })
+        );
+    }
+
+    private pollTaskWithProgress(taskId: string, progressCallback?: (progress: number, step: string) => void): Observable<any> {
+        let pollCount = 0;
+        const maxPolls = 10; // ~100 seconds max
+
+        if (progressCallback) {
+            progressCallback(20, 'Iniciando tarea de upscale...');
+        }
+
+        // Polling con exponential backoff: 5s → 10s → 15s → 20s → 25s (max 30s)
+        return of({ attempt: 0, delay: 5000 }).pipe(
+            expand(({ attempt, delay }) => {
+                return timer(delay).pipe(
+                    switchMap(() => {
+                        pollCount++;
+                        const progress = Math.min(80, 20 + (pollCount / maxPolls) * 60);
+                        if (progressCallback) {
+                            progressCallback(progress, 'Procesando en GPU...');
+                        }
+                        return this.http.get<any>(`${environment.apiUrl}/processing/tasks/${taskId}`);
+                    }),
+                    switchMap(task => {
+                        if (task.status === 'COMPLETED' || task.status === 'FAILED') {
+                            return of({ task, done: true } as const);
+                        }
+                        const nextDelay = Math.min(30000, 5000 + (attempt + 1) * 5000);
+                        return of({ attempt: attempt + 1, delay: nextDelay } as const);
+                    })
+                );
+            }),
+            filter((result): result is { task: any; done: true } => 'done' in result && result.done),
+            take(1),
+            switchMap(({ task }) => {
+                if (task.status === 'FAILED') {
+                    return throwError(() => new Error(task.error || 'Upscale task failed'));
+                }
+                if (progressCallback) {
+                    progressCallback(90, 'Descargando resultado...');
                 }
                 return of(task);
             })
@@ -278,6 +332,27 @@ export class ApiService {
     getReverseGeocoding(lat: number, lng: number): Observable<any> {
         const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
         return this.http.get<any>(url);
+    }
+
+    // --- Bitácora de Auditoría ---
+    getProcessingAuditLog(params: {
+        page?: number;
+        page_size?: number;
+        user_id?: number;
+        operation?: string;
+        status?: string;
+        date_from?: string;
+        date_to?: string;
+    }): Observable<any> {
+        const query = Object.entries(params)
+            .filter(([, v]) => v !== undefined && v !== null && v !== '')
+            .map(([k, v]) => `${k}=${encodeURIComponent(v as string)}`)
+            .join('&');
+        return this.http.get<any>(`${environment.apiUrl}/audit/processing${query ? '?' + query : ''}`);
+    }
+
+    getProcessingAuditStats(days: number = 30): Observable<any> {
+        return this.http.get<any>(`${environment.apiUrl}/audit/processing/stats?days=${days}`);
     }
 }
 

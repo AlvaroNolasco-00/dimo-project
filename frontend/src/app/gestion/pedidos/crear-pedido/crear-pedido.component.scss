@@ -620,6 +620,29 @@
           }
         }
 
+        .cost-config-price-wrap {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .cost-config-base-price {
+          font-size: 0.85rem;
+          color: var(--text-secondary);
+          text-decoration: line-through;
+          white-space: nowrap;
+        }
+
+        .cost-config-margin-badge {
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: #16a34a;
+          background: #dcfce7;
+          padding: 2px 6px;
+          border-radius: 99px;
+          white-space: nowrap;
+        }
+
         .cost-config-price {
           font-size: 1.1rem;
           font-weight: 800;

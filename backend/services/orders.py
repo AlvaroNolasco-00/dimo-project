@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from typing import List, Set
-from .. import models, schemas
+from backend import models
+from backend import schemas
 from fastapi import HTTPException
 import os
 import shutil

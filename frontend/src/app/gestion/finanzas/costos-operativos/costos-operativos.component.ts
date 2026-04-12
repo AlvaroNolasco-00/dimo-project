@@ -39,11 +39,14 @@ export class CostosOperativosComponent {
   newTypeName = '';
   newTypeDesc = '';
   newTypeRequiresArt = false;
+  newTypeProfitMargin = 0;
+  editingTypeId: number | null = null;
 
   selectedTypeId: number | null = null;
   editingCostId: number | null = null;
   costMode: 'simple' | 'variants' | 'material' = 'simple';
   newCostBase: number = 0;
+  newCostProfitMargin: number = 0;
   newCostAttributes: { key: string, value: string }[] = [];
 
   // Variant Mode Data
@@ -110,11 +113,23 @@ export class CostosOperativosComponent {
     this.newTypeName = '';
     this.newTypeDesc = '';
     this.newTypeRequiresArt = false;
+    this.newTypeProfitMargin = 0;
+    this.editingTypeId = null;
+    this.showTypeModal = true;
+  }
+
+  openEditTypeModal(type: CostType) {
+    this.newTypeName = type.name;
+    this.newTypeDesc = type.description;
+    this.newTypeRequiresArt = type.requires_art;
+    this.newTypeProfitMargin = type.profit_margin || 0;
+    this.editingTypeId = type.id;
     this.showTypeModal = true;
   }
 
   closeTypeModal() {
     this.showTypeModal = false;
+    this.editingTypeId = null;
   }
 
   saveType() {
@@ -122,16 +137,28 @@ export class CostosOperativosComponent {
     const project = this.authService.currentProject();
     if (!project) return;
 
-    this.financeService.createCostType({
-      name: this.newTypeName,
-      description: this.newTypeDesc,
-      project_id: project.id,
-      requires_art: this.newTypeRequiresArt
-    })
-      .subscribe(() => {
+    if (this.editingTypeId) {
+      this.financeService.updateCostType(this.editingTypeId, {
+        name: this.newTypeName,
+        description: this.newTypeDesc,
+        requires_art: this.newTypeRequiresArt,
+        profit_margin: this.newTypeProfitMargin
+      }).subscribe(() => {
         this.loadData(project.id);
         this.closeTypeModal();
       });
+    } else {
+      this.financeService.createCostType({
+        name: this.newTypeName,
+        description: this.newTypeDesc,
+        project_id: project.id,
+        requires_art: this.newTypeRequiresArt,
+        profit_margin: this.newTypeProfitMargin
+      }).subscribe(() => {
+        this.loadData(project.id);
+        this.closeTypeModal();
+      });
+    }
   }
 
   // --- Cost Logic ---
@@ -139,6 +166,7 @@ export class CostosOperativosComponent {
     this.selectedTypeId = typeId;
     this.editingCostId = null;
     this.newCostBase = 0;
+    this.newCostProfitMargin = 0;
     this.costMode = 'simple';
     this.variantGroups = [];
     this.materialDims = { width: 0, height: 0, unit: 'cm' };
@@ -200,6 +228,12 @@ export class CostosOperativosComponent {
       attributes['__config'] = { dims: this.materialDims };
     }
 
+    if (this.newCostProfitMargin > 0) {
+      attributes['__profit_margin'] = this.newCostProfitMargin;
+    } else {
+      delete attributes['__profit_margin'];
+    }
+
     const payload = {
       cost_type_id: this.selectedTypeId,
       base_cost: this.newCostBase,
@@ -255,6 +289,7 @@ export class CostosOperativosComponent {
     this.selectedTypeId = cost.cost_type_id;
     this.editingCostId = cost.id;
     this.newCostBase = cost.base_cost;
+    this.newCostProfitMargin = cost.attributes?.['__profit_margin'] || 0;
 
     // Detect Mode
     const attrs = cost.attributes || {};
@@ -351,6 +386,21 @@ export class CostosOperativosComponent {
 
   isVariantSelected(variant: string): boolean {
     return this.selectedDerivedVariants.includes(variant);
+  }
+
+  getEffectiveMargin(cost: OperativeCost): number {
+    const itemMargin = cost.attributes?.['__profit_margin'];
+    if (itemMargin !== undefined && itemMargin !== null) return Number(itemMargin);
+    const type = this.costTypes.find(t => t.id === cost.cost_type_id);
+    return Number(type?.profit_margin || 0);
+  }
+
+  getFinalPrice(cost: OperativeCost): number {
+    return Number(cost.base_cost) * (1 + this.getEffectiveMargin(cost) / 100);
+  }
+
+  get computedFinalPrice(): number {
+    return this.newCostBase * (1 + this.newCostProfitMargin / 100);
   }
 }
 

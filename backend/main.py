@@ -1,17 +1,28 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 import os
 
-from . import models
-from .core import database
-from .routers import projects, auth, users, processing, finance, orders, payments, clients
-from .core.database import engine
+APP_ENV = os.getenv("APP_ENV", "local")
+
+from backend import models
+from backend.core import database
+from backend.routers import projects, auth, users, processing, finance, orders, payments, clients, catalog, audit
+from backend.core.database import engine
 
 # Create DB tables
-models.Base.metadata.create_all(bind=engine)
+# models.Base.metadata.create_all(bind=engine)  # Commented out due to permission error
 
-app = FastAPI(title="PhotoEdit Suite API")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    yield
+    # Graceful shutdown: close shared httpx client
+    from backend.services.processing import _HTTP_CLIENT
+    if _HTTP_CLIENT:
+        await _HTTP_CLIENT.aclose()
+
+app = FastAPI(title="PhotoEdit Suite API", lifespan=lifespan)
 
 # Include Routers
 app.include_router(auth.router)
@@ -22,6 +33,8 @@ app.include_router(projects.router)
 app.include_router(orders.router)
 app.include_router(payments.router)
 app.include_router(clients.router)
+app.include_router(catalog.router)
+app.include_router(audit.router)
 
 # CORS config
 app.add_middleware(
@@ -42,7 +55,9 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 STATIC_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 os.makedirs(STATIC_DIR, exist_ok=True)
 
-app.mount("/api/static", StaticFiles(directory=STATIC_DIR), name="static")
+# Servir archivos estáticos solo en local — en producción los assets van a Cloudinary
+if APP_ENV == "local":
+    app.mount("/api/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 import uvicorn
 if __name__ == "__main__":

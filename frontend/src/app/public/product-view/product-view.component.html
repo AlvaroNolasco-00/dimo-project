@@ -1,0 +1,93 @@
+@if (loading) {
+<div class="loading-screen">
+    <div class="spinner"></div>
+    <p>Cargando producto...</p>
+</div>
+}
+
+@if (notFound) {
+<div class="not-found">
+    <i class="ph ph-package"></i>
+    <h2>Producto no disponible</h2>
+    <p>El link que seguiste no corresponde a ningún producto activo.</p>
+</div>
+}
+
+@if (!loading && !notFound && product) {
+<div class="product-page">
+    <!-- Hero con imagen -->
+    <div class="product-hero" [style.backgroundImage]="getImageUrl(product.image_path) ? 'url(' + getImageUrl(product.image_path) + ')' : ''">
+        @if (!getImageUrl(product.image_path)) {
+        <div class="hero-placeholder">
+            <i class="ph ph-image"></i>
+        </div>
+        }
+        <div class="hero-overlay"></div>
+        @if (getImageUrl(product.image_path)) {
+        <button class="hero-zoom-btn" (click)="openImageModal()" title="Ver imagen completa">
+            <i class="ph ph-magnifying-glass-plus"></i>
+        </button>
+        }
+        <div class="hero-content">
+            @if (product.category) {
+            <span class="cat-badge">{{ product.category.name }}</span>
+            }
+            <h1>{{ product.name }}</h1>
+            <div class="price-hero">${{ product.sale_price | number:'1.0-2' }}</div>
+        </div>
+    </div>
+
+    <!-- Cuerpo -->
+    <div class="product-body">
+        <div class="product-main">
+
+            @if (product.description) {
+            <section class="info-section">
+                <h2>Descripción</h2>
+                <p>{{ product.description }}</p>
+            </section>
+            }
+
+            @if (product.cost_lines.length > 0) {
+            <section class="info-section">
+                <h2>Composición del producto</h2>
+                <div class="cost-breakdown">
+                    @for (line of product.cost_lines; track line.id) {
+                    <div class="cost-item">
+                        <span class="cost-label">{{ line.label }}</span>
+                        <span class="cost-qty">x{{ line.quantity }}</span>
+                        <span class="cost-dot"></span>
+                    </div>
+                    }
+                </div>
+            </section>
+            }
+        </div>
+
+        <aside class="product-aside">
+            <div class="buy-card">
+                <div class="buy-price">${{ product.sale_price | number:'1.0-2' }}</div>
+                @if (product.category) {
+                <div class="buy-cat">{{ product.category.name }}</div>
+                }
+                <p class="buy-desc">¿Te interesa este producto? Contáctanos para hacer tu pedido.</p>
+                <a class="btn-contact" [href]="getWhatsAppLink()" target="_blank">
+                    <i class="ph ph-whatsapp-logo"></i>
+                    Consultar por WhatsApp
+                </a>
+            </div>
+        </aside>
+    </div>
+</div>
+
+@if (imageModalOpen) {
+<div class="image-modal-backdrop" (click)="closeImageModal()">
+    <div class="image-modal-container" (click)="$event.stopPropagation()">
+        <button class="image-modal-close" (click)="closeImageModal()">
+            <i class="ph ph-x"></i>
+        </button>
+        <img class="image-modal-img" [src]="getImageUrl(product!.image_path)!" [alt]="product!.name" />
+    </div>
+</div>
+}
+}
