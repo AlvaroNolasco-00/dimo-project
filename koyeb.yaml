@@ -1,10 +1,10 @@
 type: web
-name: dimo-backend
+name: dimo-project
 runtime: python
 build:
   command: pip install -r requirements.txt
 run:
-  command: gunicorn -w 1 -k uvicorn.workers.UvicornWorker backend.main:app
+  command: python -m backend.scripts.run_migrations && gunicorn -w 1 -k uvicorn.workers.UvicornWorker backend.main:app
 ports:
   - port: 8000
     path: /
