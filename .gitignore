@@ -100,3 +100,5 @@ test_output_upscale.png
 .agents/skills/python-performance-optimization/SKILL.md
 .agents/skills/sql-optimization-patterns/SKILL.md
 .agents/skills/typescript-advanced-types/SKILL.md
+.vercel
+.env*.local
