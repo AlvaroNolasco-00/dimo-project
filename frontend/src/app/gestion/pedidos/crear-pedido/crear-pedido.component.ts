@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, OnInit, ChangeDetectorRef, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, AfterViewInit, OnInit, ChangeDetectorRef, ChangeDetectionStrategy, ViewEncapsulation, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { trigger, transition, style, animate, query, stagger, group } from '@angular/animations';
@@ -12,6 +12,7 @@ import { ApiService } from '../../../services/api.service';
   imports: [CommonModule, FormsModule],
   templateUrl: './crear-pedido.component.html',
   styleUrl: './crear-pedido.component.scss',
+  encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush,
   animations: [
     trigger('stepAnimation', [
