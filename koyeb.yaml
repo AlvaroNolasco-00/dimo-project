@@ -1,5 +1,9 @@
 type: web
 name: dimo-project
+git:
+  branch: main
+  paths:
+    - backend/**
 runtime: python
 build:
   command: pip install -r requirements.txt
