@@ -1,0 +1,144 @@
+// Common Mixins for SCSS optimization
+
+// Form group with label and input
+@mixin form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+
+    &:last-child { margin-bottom: 0; }
+
+    label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+    }
+}
+
+// Base button styles
+@mixin btn-base {
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+// Primary button
+@mixin btn-primary {
+    @include btn-base;
+    background: var(--accent-color);
+    color: white;
+
+    &:hover:not(:disabled) {
+        background: var(--accent-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(67, 24, 255, 0.3);
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+}
+
+// Card/Container base
+@mixin card-base {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+}
+
+// Input wrapper with icon
+@mixin input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    input, select, textarea {
+        width: 100%;
+        padding: 0.875rem 1rem;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-sm);
+        background: white;
+        font-size: 0.9rem;
+        color: var(--text-primary);
+        transition: var(--transition);
+
+        &:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.1);
+        }
+    }
+}
+
+// Quantity control
+@mixin quantity-control {
+    display: flex;
+    align-items: center;
+    background: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+
+    input {
+        width: 50px;
+        text-align: center;
+        border: none !important;
+        background: transparent !important;
+        padding: 0.5rem 0 !important;
+
+        &:focus { outline: none; }
+    }
+
+    button {
+        background: transparent;
+        border: none;
+        padding: 0.5rem;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: var(--transition);
+
+        &:hover { background: rgba(163, 174, 208, 0.15); }
+    }
+}
+
+// Spinner animation
+@mixin spinner($size: 40px, $color: var(--accent-color)) {
+    width: $size;
+    height: $size;
+    border: 3px solid rgba(67, 24, 255, 0.1);
+    border-left-color: $color;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+// Modal overlay
+@mixin modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+// Section title with icon
+@mixin section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 1.25rem 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    i { color: var(--accent-color); }
+}
