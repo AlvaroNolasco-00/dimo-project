@@ -26,11 +26,11 @@
     <div class="control-group">
         <label>Factor de Escala: {{ upscaleFactor() }}x</label>
         <select [ngModel]="upscaleFactor()" (ngModelChange)="upscaleFactor.set($event)">
-            <option [value]="2">2x</option>
-            <option [value]="3">3x</option>
-            <option [value]="4">4x</option>
-            <option [value]="5">5x</option>
-            <option [value]="10">10x</option>
+            <option [ngValue]="2">2x</option>
+            <option [ngValue]="3">3x</option>
+            <option [ngValue]="4">4x</option>
+            <option [ngValue]="5">5x</option>
+            <option [ngValue]="10">10x</option>
         </select>
     </div>
     <div class="control-group">

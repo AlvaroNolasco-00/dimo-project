@@ -8,8 +8,8 @@
     </div>
     }
 
-    <!-- Zoom controls -->
-    @if (currentImageSource()) {
+    <!-- Zoom controls (hidden in comparison mode) -->
+    @if (currentImageSource() && viewMode() !== 'comparison') {
     <div class="zoom-controls">
         <button class="zoom-btn" (click)="zoomOut()" title="Alejar">
             <i class="ph ph-minus"></i>
@@ -24,105 +24,120 @@
     </div>
     }
 
-    <div class="image-container"
-         [style.transform]="'scale(' + zoomLevel() + ') translate(' + panOffset().x + 'px, ' + panOffset().y + 'px)'"
-         [style.transform-origin]="'center center'"
-         (wheel)="onWheel($event)"
-         (mousedown)="startPan($event)"
-         (mousemove)="onPan($event)"
-         (mouseup)="stopPan()"
-         (mouseleave)="stopPan()">
-        @if (!processedImageSource() || viewMode() === 'original' || viewMode() === 'comparison') {
-        <div class="img-wrapper" [class.comparison-mode]="viewMode() === 'comparison'">
-            <span class="label">Original</span>
-            <div class="canvas-container">
-                <img #originalImage [src]="currentImageSource()" alt="Original" (load)="onImageLoad($event)"
-                    (click)="onImageClick($event)"
-                    [style.cursor]="(mode() === 'remove-objects' && removalMethod() === 'magic-wand') ? 'crosshair' : 'default'"
-                    [style.filter]="previewFilters()">
+    <div class="image-container" [style.--slider-pos]="sliderPosition() + '%'">
 
-                <!-- Canvas overlay -->
-                @if (mode() === 'remove-objects' || (mode() === 'remove-bg' && bgRemovalMode() === 'draw')
-                || (mode() === 'contour-clip' && bgRemovalMode() === 'manual')) {
-                <canvas #maskCanvas class="mask-canvas"
-                    [class.hidden-draw]="mode() === 'remove-objects' && removalMethod() === 'magic-wand'"
-                    [class.brush-mode]="isInBrushMode()"
-                    [class.show-mask-preview]="showMaskPreview()"
-                    (mousedown)="startDrawing($event)" (mousemove)="draw($event)" (mouseup)="stopDrawing()"
-                    (mouseleave)="stopDrawing()" (click)="onImageClick($event)"
-                    (mouseenter)="onCanvasMouseMove($event)" (mousemove)="onCanvasMouseMove($event)" (mouseleave)="onCanvasMouseLeave()">
-                </canvas>
+        <!-- ── COMPARISON MODE ── -->
+        @if (viewMode() === 'comparison' && processedImageSource()) {
+        <div class="comparison-view"
+             (mousedown)="startSliderDrag($event)"
+             (mousemove)="onSliderDrag($event)"
+             (mouseup)="stopSliderDrag()"
+             (mouseleave)="stopSliderDrag()"
+             (touchstart)="startSliderDrag($event)"
+             (touchmove)="onSliderDrag($event)"
+             (touchend)="stopSliderDrag()">
 
-                <!-- Brush cursor indicator -->
-                @if (brushCursorVisible() && isInBrushMode()) {
-                <div class="brush-cursor"
-                    [style.left.px]="brushCursorPosition().x"
-                    [style.top.px]="brushCursorPosition().y"
-                    [style.width.px]="brushSize()"
-                    [style.height.px]="brushSize()">
+            <!-- After (right side) – full, behind -->
+            <img class="comp-img comp-after" [src]="processedImageSource()" alt="Resultado">
+            <span class="label label-right">Resultado</span>
+
+            <!-- Before (left side) – clipped to slider position -->
+            <img class="comp-img comp-before" [src]="currentImageSource()" alt="Original">
+            <span class="label label-left">Original</span>
+
+            <!-- Slider line + handle -->
+            <div class="comp-slider" [style.left.%]="sliderPosition()">
+                <div class="comp-slider-handle">
+                    <i class="ph ph-arrows-left-right"></i>
                 </div>
-                }
-
-                <!-- Mask preview toggle -->
-                @if (mode() === 'remove-objects' || (mode() === 'remove-bg' && bgRemovalMode() === 'draw')
-                || (mode() === 'contour-clip' && bgRemovalMode() === 'manual')) {
-                <button class="mask-preview-toggle" (click)="toggleMaskPreview()" [title]="showMaskPreview() ? 'Ocultar máscara' : 'Ver máscara'">
-                    <i class="ph ph-eye"></i>
-                </button>
-                }
-                }
             </div>
         </div>
-        }
+        } @else {
+        <!-- ── NORMAL VIEW (original / resultado) with zoom & pan ── -->
+        <div class="zoom-wrapper"
+             [style.transform]="'scale(' + zoomLevel() + ') translate(' + panOffset().x + 'px, ' + panOffset().y + 'px)'"
+             [style.transform-origin]="'center center'"
+             (wheel)="onWheel($event)"
+             (mousedown)="startPan($event)"
+             (mousemove)="onPan($event)"
+             (mouseup)="stopPan()"
+             (mouseleave)="stopPan()">
 
-        @if (!processedImageSource() || viewMode() === 'resultado' || viewMode() === 'comparison') {
-        <div class="img-wrapper" [class.comparison-mode]="viewMode() === 'comparison'" [class.hidden]="!processedImageSource()">
-            <span class="label">Resultado</span>
-            @if (viewMode() === 'comparison' && processedImageSource()) {
-            <img [src]="processedImageSource()" alt="Procesada" class="comparison-after">
-            } @else {
-            <img [src]="processedImageSource() || currentImageSource()" alt="Procesada">
-            }
+            <!-- Original view -->
+            @if (!processedImageSource() || viewMode() === 'original') {
+            <div class="img-wrapper" [class.single-mode]="!processedImageSource()">
+                <span class="label">Original</span>
+                <div class="canvas-container">
+                    <img #originalImage [src]="currentImageSource()" alt="Original"
+                        (load)="onImageLoad($event)"
+                        (click)="onImageClick($event)"
+                        [style.cursor]="(mode() === 'remove-objects' && removalMethod() === 'magic-wand') ? 'crosshair' : 'default'"
+                        [style.filter]="previewFilters()">
 
-            <!-- Progress overlay (when processing) -->
-            @if (isLoading()) {
-            <div class="processing-overlay">
-                <div class="processing-card">
-                    <div class="processing-icon">
-                        <div class="spinner primary"></div>
+                    <!-- Canvas overlay -->
+                    @if (mode() === 'remove-objects' || (mode() === 'remove-bg' && bgRemovalMode() === 'draw')
+                    || (mode() === 'contour-clip' && bgRemovalMode() === 'manual')) {
+                    <canvas #maskCanvas class="mask-canvas"
+                        [class.hidden-draw]="mode() === 'remove-objects' && removalMethod() === 'magic-wand'"
+                        [class.brush-mode]="isInBrushMode()"
+                        [class.show-mask-preview]="showMaskPreview()"
+                        (mousedown)="startDrawing($event)" (mousemove)="draw($event)" (mouseup)="stopDrawing()"
+                        (mouseleave)="stopDrawing()" (click)="onImageClick($event)"
+                        (mouseenter)="onCanvasMouseMove($event)" (mousemove)="onCanvasMouseMove($event)" (mouseleave)="onCanvasMouseLeave()">
+                    </canvas>
+
+                    <!-- Brush cursor indicator -->
+                    @if (brushCursorVisible() && isInBrushMode()) {
+                    <div class="brush-cursor"
+                        [style.left.px]="brushCursorPosition().x"
+                        [style.top.px]="brushCursorPosition().y"
+                        [style.width.px]="brushSize()"
+                        [style.height.px]="brushSize()">
                     </div>
-                    <p class="processing-message">{{ processingState()?.step || 'Procesando...' }}</p>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar" [style.width.%]="processingState()?.progress || 0"></div>
-                    </div>
-                    @if (processingState()?.estimatedSecondsRemaining) {
-                    <p class="time-estimate">
-                        Tiempo restante: ~{{ processingState()?.estimatedSecondsRemaining }}s
-                    </p>
+                    }
+
+                    <!-- Mask preview toggle -->
+                    @if (mode() === 'remove-objects' || (mode() === 'remove-bg' && bgRemovalMode() === 'draw')
+                    || (mode() === 'contour-clip' && bgRemovalMode() === 'manual')) {
+                    <button class="mask-preview-toggle" (click)="toggleMaskPreview()" [title]="showMaskPreview() ? 'Ocultar máscara' : 'Ver máscara'">
+                        <i class="ph ph-eye"></i>
+                    </button>
+                    }
                     }
                 </div>
             </div>
             }
+
+            <!-- Resultado view -->
+            @if (viewMode() === 'resultado' && processedImageSource()) {
+            <div class="img-wrapper single-mode">
+                <span class="label">Resultado</span>
+                <img [src]="processedImageSource()" alt="Resultado">
+
+                <!-- Progress overlay (when processing) -->
+                @if (isLoading()) {
+                <div class="processing-overlay">
+                    <div class="processing-card">
+                        <div class="processing-icon">
+                            <div class="spinner primary"></div>
+                        </div>
+                        <p class="processing-message">{{ processingState()?.step || 'Procesando...' }}</p>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar" [style.width.%]="processingState()?.progress || 0"></div>
+                        </div>
+                        @if (processingState()?.estimatedSecondsRemaining) {
+                        <p class="time-estimate">
+                            Tiempo restante: ~{{ processingState()?.estimatedSecondsRemaining }}s
+                        </p>
+                        }
+                    </div>
+                </div>
+                }
+            </div>
+            }
+
         </div>
         }
 
-        <!-- Comparison slider (only in comparison mode) -->
-        @if (viewMode() === 'comparison' && processedImageSource()) {
-        <div class="comparison-slider-container"
-            [style.--slider-pos]="sliderPosition() + '%'"
-            (mousedown)="startSliderDrag($event)"
-            (mousemove)="onSliderDrag($event)"
-            (mouseup)="stopSliderDrag()"
-            (mouseleave)="stopSliderDrag()"
-            (touchstart)="startSliderDrag($event)"
-            (touchmove)="onSliderDrag($event)"
-            (touchend)="stopSliderDrag()">
-            <div class="slider-handle"
-                [style.left.%]="sliderPosition()">
-                <div class="slider-handle-line"></div>
-                <div class="slider-handle-grip"></div>
-            </div>
-        </div>
-        }
     </div>
 </div>

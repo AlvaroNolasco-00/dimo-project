@@ -2,7 +2,8 @@
 
 .preview-area {
     width: 100%;
-    height: 100%;
+    height: 60vh;
+    min-height: 400px;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
@@ -57,6 +58,25 @@
     min-height: 0;
     overflow: hidden;
     position: relative;
+
+    @media (max-width: 1440px) {
+        gap: 1rem;
+    }
+
+    @include mobile {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+
+.zoom-wrapper {
+    display: flex;
+    gap: 2rem;
+    flex: 1;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
     transition: transform 0.1s ease-out;
     cursor: grab;
 
@@ -89,26 +109,89 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
     aspect-ratio: 1 / 1;
 
-    &.comparison-mode {
-        position: absolute;
+    &.single-mode {
         max-width: 100%;
-        inset: 0;
     }
+}
 
-    &.hidden {
-        display: none;
-    }
+/* ── Comparison view ── */
+.comparison-view {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+    overflow: hidden;
+    cursor: col-resize;
+    user-select: none;
+    background: url('data:image/svg+xml;utf8,<svg width="20" height="20" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="10" height="10" fill="%23222" /><rect x="10" y="10" width="10" height="10" fill="%23222" /><rect x="0" y="10" width="10" height="10" fill="%23333" /><rect x="10" y="0" width="10" height="10" fill="%23333" /></svg>');
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
 
-    // @media (max-width: 1440px),
-    // (max-height: 900px) {
-    //     max-height: 45vh;
-    // }
+.comp-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    pointer-events: none;
+}
 
-    // @include mobile {
-    //     max-width: 100%;
-    //     width: 100%;
-    //     max-height: 40vh;
-    // }
+/* Before (original) — clipped to left of slider */
+.comp-before {
+    clip-path: inset(0 calc(100% - var(--slider-pos, 50%)) 0 0);
+    z-index: 2;
+}
+
+/* After (processed) — always fully visible behind before */
+.comp-after {
+    z-index: 1;
+}
+
+/* Labels sit above both images */
+.comparison-view .label {
+    z-index: 5;
+}
+
+/* Vertical slider line */
+.comp-slider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: white;
+    transform: translateX(-50%);
+    z-index: 10;
+    pointer-events: none;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Circular drag handle */
+.comp-slider-handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+    color: #333;
+    font-size: 20px;
+}
+
+/* Labels positioned inside comparison view */
+.label-left {
+    left: 10px;
+    right: auto;
+}
+
+.label-right {
+    left: auto;
+    right: 10px;
 }
 
 .img-wrapper img {
@@ -235,6 +318,11 @@
     &.show-mask-preview {
         opacity: 0.8;
     }
+
+    &.hidden-draw {
+        display: none;
+        pointer-events: none;
+    }
 }
 
 .brush-cursor {
@@ -269,71 +357,6 @@
     }
 }
 
-.comparison-slider-container {
-    position: absolute;
-    inset: 0;
-    cursor: col-resize;
-    z-index: 20;
-}
-
-.slider-handle {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 4px;
-    background: white;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-    transform: translateX(-50%);
-}
-
-.slider-handle-line {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 40px;
-    height: 40px;
-    background: white;
-    border-radius: 50%;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-.slider-handle-grip {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 12px;
-    height: 12px;
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 2px;
-    &::before,
-    &::after {
-        content: '';
-        position: absolute;
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 2px;
-    }
-    &::before {
-        width: 12px;
-        height: 2px;
-        top: -6px;
-    }
-    &::after {
-        width: 12px;
-        height: 2px;
-        bottom: -6px;
-    }
-}
-
-.comparison-after {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    clip-path: inset(0 calc(100% - var(--slider-pos, 50%)) 0 0);
-}
 
 .spinner {
     border: 3px solid rgba(255, 255, 255, 0.3);

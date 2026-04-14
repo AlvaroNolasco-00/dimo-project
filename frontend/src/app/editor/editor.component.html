@@ -15,7 +15,7 @@
       }
       <!-- Preview Area -->
       @if (hasFile()) {
-      <app-editor-preview [currentImageSource]="currentImageSource()" [processedImageSource]="processedImageSource()"
+      <app-editor-preview [currentImageSource]="currentImageSource()" [processedImageSource]="displayImageSource()"
         [isLoading]="isLoading()" [processingState]="processingState()" [mode]="mode()" [removalMethod]="removalMethod()" [bgRemovalMode]="bgRemovalMode()"
         [brushSize]="brushSize()" [cropAspectRatio]="cropAspectRatio()" [contrast]="contrast()" [brightness]="brightness()" [sharpness]="sharpness()"
         (pointSelected)="onPreviewPointSelected($event)"
@@ -40,7 +40,7 @@
         </label>
       </div>
 
-      <!-- Operation Queue (shown in pipeline mode) -->
+      <!-- Operation Queue (shown in pipeline mode while building) -->
       @if (isPipelineMode() && operationQueue().length > 0) {
       <div class="operation-queue">
         <h3>Cola de Operaciones</h3>
@@ -75,15 +75,32 @@
       </div>
       }
 
+      <!-- Pipeline Results — step selector (shown after execution) -->
+      @if (pipelineResults().length > 0) {
+      <div class="pipeline-results">
+        <h3>Resultados del Pipeline</h3>
+        <div class="step-tabs">
+          @for (result of pipelineResults(); track result.stepIndex; let i = $index) {
+          <button class="step-tab"
+            [class.active]="selectedResultIndex() === i || (selectedResultIndex() === -1 && i === pipelineResults().length - 1)"
+            (click)="selectPipelineStep(i)">
+            <span class="step-number">{{ i + 1 }}</span>
+            <span class="step-label">{{ result.label }}</span>
+          </button>
+          }
+        </div>
+      </div>
+      }
+
       <div class="action-buttons">
-        @if (processedImageSource()) {
+        @if (displayImageSource()) {
         <div class="filename-input">
           <input type="text" [(ngModel)]="customFilename" placeholder="nombre-archivo">
           <span>.png</span>
         </div>
         }
         <button class="btn-secondary btn-pill" (click)="reset()" [disabled]="isLoading()">Subir otra</button>
-        @if (processedImageSource()) {
+        @if (displayImageSource()) {
         <button class="btn-secondary btn-pill session" (click)="addToGallery()" [disabled]="isLoading()">
           <i class="ph ph-arrow-counter-clockwise"></i> Guardar para reusar
         </button>
@@ -97,8 +114,8 @@
           <span class="btn-spinner" [class.visible]="isLoading()"></span>
           {{ isLoading() ? 'Procesando...' : 'Procesar Imagen' }}
         </button>
-        @if (processedImageSource()) {
-        <a [href]="processedImageSource()" class="btn-success btn-pill"
+        @if (displayImageSource()) {
+        <a [href]="displayImageSource()" class="btn-success btn-pill"
           [download]="(customFilename || 'resultado') + '.png'">Descargar</a>
         }
       </div>

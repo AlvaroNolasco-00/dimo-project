@@ -53,6 +53,8 @@ export class EditorPreviewComponent implements OnDestroy {
     private cropperInstance: Cropper | null = null;
     private _naturalWidth = 0;
     private _naturalHeight = 0;
+    private resizeObserver: ResizeObserver | null = null;
+    private panMoved = false;
 
     // Zoom and Pan state
     zoomLevel = signal(1);
@@ -85,11 +87,15 @@ export class EditorPreviewComponent implements OnDestroy {
     });
 
     constructor() {
-        // Re-init cropper when crop params change, but only if mode is crop
+        // Update cropper aspect ratio when param changes, only create if needed
         effect(() => {
             const ratio = this.cropAspectRatio();
             if (this.mode() === 'crop' && this.originalImage?.nativeElement) {
-                this.initCropper(this.originalImage.nativeElement);
+                if (this.cropperInstance) {
+                    this.cropperInstance.setAspectRatio(ratio);
+                } else {
+                    this.initCropper(this.originalImage.nativeElement);
+                }
             }
         });
 
@@ -122,6 +128,7 @@ export class EditorPreviewComponent implements OnDestroy {
 
     ngOnDestroy() {
         this.destroyCropper();
+        this.resizeObserver?.disconnect();
     }
 
     onImageLoad(event: Event) {
@@ -139,6 +146,7 @@ export class EditorPreviewComponent implements OnDestroy {
     }
 
     onImageClick(event: MouseEvent) {
+        if (this.panMoved) return; // drag, not a click
         const img = this.originalImage?.nativeElement;
         if (!img) return;
 
@@ -186,7 +194,16 @@ export class EditorPreviewComponent implements OnDestroy {
 
         // CSS dimensions: match the image's rendered position/size exactly
         this.syncCanvasToImage();
+        this.setupResizeObserver();
         this.canvasInitialized.set(true);
+    }
+
+    private setupResizeObserver() {
+        this.resizeObserver?.disconnect();
+        const img = this.originalImage?.nativeElement;
+        if (!img) return;
+        this.resizeObserver = new ResizeObserver(() => this.syncCanvasToImage());
+        this.resizeObserver.observe(img);
     }
 
     // Brush cursor tracking
@@ -428,7 +445,7 @@ export class EditorPreviewComponent implements OnDestroy {
     }
 
     startPan(event: MouseEvent) {
-        if (event.button !== 1 && event.button !== 2) return; // Middle or right click
+        this.panMoved = false;
         event.preventDefault();
         this.isPanning.set(true);
         this.panStartPos.set({ x: event.clientX, y: event.clientY });
@@ -439,7 +456,12 @@ export class EditorPreviewComponent implements OnDestroy {
         event.preventDefault();
         const dx = event.clientX - this.panStartPos().x;
         const dy = event.clientY - this.panStartPos().y;
-        this.panOffset.update(pos => ({ x: pos.x + dx, y: pos.y + dy }));
+        if (!this.panMoved && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+            this.panMoved = true;
+        }
+        if (this.panMoved) {
+            this.panOffset.update(pos => ({ x: pos.x + dx, y: pos.y + dy }));
+        }
         this.panStartPos.set({ x: event.clientX, y: event.clientY });
     }
 

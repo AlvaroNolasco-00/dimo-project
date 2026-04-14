@@ -1,4 +1,4 @@
-import { Component, computed, signal, inject, effect, ViewChild, AfterViewInit, OnDestroy, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
+import { Component, computed, signal, inject, effect, ViewChild, OnDestroy, ViewEncapsulation, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -8,16 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { ImagePersistenceService, SessionImage } from '../services/image-persistence.service';
 import { AuthService } from '../services/auth.service';
 import { ToastService } from '../services/toast.service';
-
-// Operation types for non-destructive editing pipeline
-export type OperationType = 'enhance' | 'upscale' | 'remove-bg' | 'remove-objects' | 'halftone' | 'contour-clip' | 'crop';
-
-export interface Operation {
-  id: string;
-  type: OperationType;
-  params: Record<string, any>;
-  timestamp: number;
-}
+import { PipelineService, Operation, OperationType, ExecutionResult } from '../services/pipeline.service';
 
 // Sub-components
 import { EditorUploadComponent } from './components/editor-upload/editor-upload.component';
@@ -41,13 +32,14 @@ import { EditorSidebarComponent } from './components/editor-sidebar/editor-sideb
   // encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class EditorComponent implements AfterViewInit, OnDestroy {
+export class EditorComponent implements OnDestroy {
   private route = inject(ActivatedRoute);
   private api = inject(ApiService);
   private imageService = inject(ImagePersistenceService);
   private sanitizer = inject(DomSanitizer);
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
+  private pipelineService = inject(PipelineService);
 
   @ViewChild(EditorPreviewComponent) previewComponent!: EditorPreviewComponent;
 
@@ -58,9 +50,23 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
   hasFile = signal(false);
   sessionGallery = signal<SessionImage[]>([]);
 
-  // Operation Pipeline State (Non-destructive editing)
-  operationQueue = signal<Operation[]>([]);
-  isPipelineMode = signal(false);
+  // Operation Pipeline State — persisted in PipelineService (survives route changes)
+  operationQueue = this.pipelineService.operationQueue;
+  isPipelineMode = this.pipelineService.isPipelineMode;
+
+  // Pipeline Execution Results
+  pipelineResults = signal<ExecutionResult[]>([]);
+  selectedResultIndex = signal<number>(-1); // -1 = last step
+
+  // Unified display source: selected pipeline step, or single-step result
+  displayImageSource = computed(() => {
+    const results = this.pipelineResults();
+    if (results.length === 0) return this.processedImageSource();
+    const idx = this.selectedResultIndex();
+    return (idx >= 0 && idx < results.length)
+      ? results[idx].outputUrl
+      : results[results.length - 1].outputUrl;
+  });
 
   // UI State
   isLoading = signal(false);
@@ -157,10 +163,6 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  ngAfterViewInit() {
-    this.loadGallery();
-  }
-
   async loadGallery() {
     try {
       const projectId = this.authService.currentProject()?.id;
@@ -185,11 +187,14 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
     this.objectUrls.add(url);
     this.currentImageSource.set(url);
     this.processedImageSource.set(null);
+    this.pipelineResults.set([]);
+    this.selectedResultIndex.set(-1);
     this.hasFile.set(true);
 
     // Reset state
     this.lastClickCoords.set(null);
     this.selectedColors.set([]);
+    this.previewComponent?.setViewMode('comparison');
   }
 
   reset() {
@@ -198,10 +203,13 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
     this.currentImageBlob.set(null);
     this.currentImageSource.set(null);
     this.processedImageSource.set(null);
+    this.pipelineResults.set([]);
+    this.selectedResultIndex.set(-1);
     this.hasFile.set(false);
     this.lastClickCoords.set(null);
     this.selectedColors.set([]);
     this.isLoading.set(false);
+    this.previewComponent?.setViewMode('comparison');
   }
 
   // Actions from Sub-components
@@ -338,7 +346,7 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
   // Gallery Actions
 
   async addToGallery() {
-    const src = this.processedImageSource();
+    const src = this.displayImageSource();
     let blob: Blob | null = null;
 
     if (src) {
@@ -397,10 +405,7 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
   // Pipeline Management Methods
 
   togglePipelineMode() {
-    this.isPipelineMode.update(v => !v);
-    if (!this.isPipelineMode()) {
-      this.operationQueue.set([]);
-    }
+    this.pipelineService.togglePipelineMode();
   }
 
   addToPipeline() {
@@ -411,21 +416,16 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
       timestamp: Date.now()
     };
 
-    this.operationQueue.update(queue => [...queue, operation]);
+    this.pipelineService.addOperation(operation);
     this.toastService.success('Operación agregada al pipeline');
   }
 
   removeFromPipeline(operationId: string) {
-    this.operationQueue.update(queue => queue.filter(op => op.id !== operationId));
+    this.pipelineService.removeOperation(operationId);
   }
 
   moveOperationInQueue(fromIndex: number, toIndex: number) {
-    this.operationQueue.update(queue => {
-      const newQueue = [...queue];
-      const [moved] = newQueue.splice(fromIndex, 1);
-      newQueue.splice(toIndex, 0, moved);
-      return newQueue;
-    });
+    this.pipelineService.moveOperation(fromIndex, toIndex);
   }
 
   async executePipeline() {
@@ -438,32 +438,43 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
     let currentBlob = this.currentImageBlob();
     if (!currentBlob) return;
 
+    // Revoke previous pipeline result URLs before new execution
+    this.pipelineResults().forEach(r => {
+      URL.revokeObjectURL(r.outputUrl);
+      this.objectUrls.delete(r.outputUrl);
+    });
+    this.pipelineResults.set([]);
+    this.selectedResultIndex.set(-1);
+
     this.isLoading.set(true);
+    const newResults: ExecutionResult[] = [];
 
     try {
       for (let i = 0; i < queue.length; i++) {
         const operation = queue[i];
         this.processingState.set({
           step: `Procesando ${i + 1}/${queue.length}: ${this.getOperationName(operation.type)}`,
-          progress: Math.round(((i + 1) / queue.length) * 100),
+          progress: Math.round(((i) / queue.length) * 100),
           estimatedSecondsRemaining: null
         });
 
         currentBlob = await this.executeOperation(currentBlob, operation);
+
+        const url = URL.createObjectURL(currentBlob);
+        this.objectUrls.add(url);
+        newResults.push({
+          stepIndex: i,
+          operationId: operation.id,
+          label: this.getOperationName(operation.type),
+          outputUrl: url,
+        });
       }
 
-      // Set final result
-      if (this.processedImageSource()) {
-        const oldUrl = this.processedImageSource()!;
-        URL.revokeObjectURL(oldUrl);
-        this.objectUrls.delete(oldUrl);
-      }
-      const url = URL.createObjectURL(currentBlob);
-      this.objectUrls.add(url);
-      this.processedImageSource.set(url);
+      this.pipelineResults.set(newResults);
+      this.selectedResultIndex.set(-1); // default to last step
 
       this.toastService.success('Pipeline completado exitosamente');
-      this.operationQueue.set([]);
+      this.pipelineService.clearQueue();
     } catch (err: any) {
       console.error(err);
       this.toastService.error(err.message || 'Error al ejecutar pipeline', true, () => this.executePipeline());
@@ -471,6 +482,10 @@ export class EditorComponent implements AfterViewInit, OnDestroy {
       this.isLoading.set(false);
       this.processingState.set(null);
     }
+  }
+
+  selectPipelineStep(index: number) {
+    this.selectedResultIndex.set(index);
   }
 
   private getCurrentParams(): Record<string, any> {

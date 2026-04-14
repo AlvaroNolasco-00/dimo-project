@@ -14,7 +14,7 @@
             @for (item of galleryItems(); track item.id) {
             <div class="gallery-item" (click)="imageSelected.emit(item)">
                 <div class="thumb-wrapper">
-                    <img [src]="getSafeUrl(item.blob)" [alt]="item.name">
+                    <img [src]="getUrl(item.id)" [alt]="item.name">
                     <button class="delete-btn" (click)="onDelete(item.id, $event)">×</button>
                 </div>
                 <div class="meta">
