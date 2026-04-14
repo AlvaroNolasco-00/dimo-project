@@ -68,6 +68,17 @@ export class EditorComponent implements OnDestroy {
       : results[results.length - 1].outputUrl;
   });
 
+  // "Before" image for comparison: uses the per-step original when viewing pipeline results
+  pipelineCurrentSource = computed(() => {
+    const results = this.pipelineResults();
+    if (results.length === 0) return this.currentImageSource();
+    const idx = this.selectedResultIndex();
+    const result = (idx >= 0 && idx < results.length)
+      ? results[idx]
+      : results[results.length - 1];
+    return result.inputUrl ?? this.currentImageSource();
+  });
+
   // UI State
   isLoading = signal(false);
   processingState = signal<{
@@ -413,7 +424,9 @@ export class EditorComponent implements OnDestroy {
       id: Date.now().toString(),
       type: this.mode() as OperationType,
       params: this.getCurrentParams(),
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      inputBlob: this.currentImageBlob() ?? undefined,
+      inputUrl: this.currentImageSource() ?? undefined,
     };
 
     this.pipelineService.addOperation(operation);
@@ -435,8 +448,8 @@ export class EditorComponent implements OnDestroy {
       return;
     }
 
-    let currentBlob = this.currentImageBlob();
-    if (!currentBlob) return;
+    const fallbackBlob = this.currentImageBlob();
+    if (!fallbackBlob) return;
 
     // Revoke previous pipeline result URLs before new execution
     this.pipelineResults().forEach(r => {
@@ -458,16 +471,20 @@ export class EditorComponent implements OnDestroy {
           estimatedSecondsRemaining: null
         });
 
-        currentBlob = await this.executeOperation(currentBlob, operation);
+        // Each operation runs on its own stored input blob (captured at add-time).
+        // Falls back to fallbackBlob only if the operation predates this fix.
+        const inputBlob = operation.inputBlob ?? fallbackBlob;
+        const resultBlob = await this.executeOperation(inputBlob, operation);
 
-        const url = URL.createObjectURL(currentBlob);
+        const url = URL.createObjectURL(resultBlob);
         this.objectUrls.add(url);
         newResults.push({
           stepIndex: i,
           operationId: operation.id,
           label: this.getOperationName(operation.type),
           outputUrl: url,
-          outputBlob: currentBlob,
+          outputBlob: resultBlob,
+          inputUrl: operation.inputUrl,
         });
       }
 

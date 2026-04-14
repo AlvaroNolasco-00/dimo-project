@@ -15,7 +15,7 @@
       }
       <!-- Preview Area -->
       @if (hasFile()) {
-      <app-editor-preview [currentImageSource]="currentImageSource()" [processedImageSource]="displayImageSource()"
+      <app-editor-preview [currentImageSource]="pipelineCurrentSource()" [processedImageSource]="displayImageSource()"
         [isLoading]="isLoading()" [processingState]="processingState()" [mode]="mode()" [removalMethod]="removalMethod()" [bgRemovalMode]="bgRemovalMode()"
         [brushSize]="brushSize()" [cropAspectRatio]="cropAspectRatio()" [contrast]="contrast()" [brightness]="brightness()" [sharpness]="sharpness()"
         (pointSelected)="onPreviewPointSelected($event)"

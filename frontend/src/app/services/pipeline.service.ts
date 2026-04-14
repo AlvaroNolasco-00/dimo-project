@@ -7,6 +7,8 @@ export interface Operation {
   type: OperationType;
   params: Record<string, any>;
   timestamp: number;
+  inputBlob?: Blob;
+  inputUrl?: string;
 }
 
 export interface ExecutionResult {
@@ -15,6 +17,7 @@ export interface ExecutionResult {
   label: string;
   outputUrl: string;
   outputBlob: Blob;
+  inputUrl?: string;
 }
 
 @Injectable({ providedIn: 'root' })
