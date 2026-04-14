@@ -1,0 +1,330 @@
+// Cost Config Card
+.cost-config-card {
+    margin-top: 0.75rem;
+    border: 1px solid rgba(163, 174, 208, 0.25);
+    border-radius: 16px;
+    overflow: hidden;
+    background: var(--card-bg);
+}
+
+.cost-config-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid rgba(163, 174, 208, 0.15);
+    background: hsla(260, 100%, 65%, 0.04);
+}
+
+.cost-config-name-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+
+    i { color: var(--accent-color); }
+}
+
+.cost-config-price-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.cost-config-base-price {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-decoration: line-through;
+}
+
+.cost-config-margin-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #16a34a;
+    background: #dcfce7;
+    padding: 2px 5px;
+    border-radius: 99px;
+}
+
+.cost-config-price {
+    font-weight: 700;
+    color: var(--accent-color);
+    font-size: 0.95rem;
+}
+
+.config-section {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid rgba(163, 174, 208, 0.1);
+    &:last-child { border-bottom: none; }
+}
+
+.config-section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.75rem;
+    i { font-size: 0.9rem; }
+}
+
+.variants-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+    .form-group { margin-bottom: 0; }
+}
+
+.derived-costs-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.derived-cost-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.875rem;
+    border-radius: 12px;
+    border: 1px solid rgba(163, 174, 208, 0.2);
+    background: var(--bg-color);
+    cursor: pointer;
+    transition: var(--transition);
+
+    &.selected {
+        border-color: var(--accent-color);
+        background: rgba(67, 24, 255, 0.06);
+
+        .derived-checkbox i { color: var(--accent-color); }
+    }
+
+    &:hover:not(.selected) {
+        border-color: rgba(163, 174, 208, 0.4);
+        background: var(--card-bg);
+    }
+}
+
+.derived-checkbox i { font-size: 1.1rem; color: var(--text-secondary); }
+
+.derived-info {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 1;
+    gap: 0.5rem;
+}
+
+.derived-name { font-size: 0.875rem; color: var(--text-primary); font-weight: 500; }
+.derived-price { font-size: 0.8rem; font-weight: 700; color: var(--text-secondary); white-space: nowrap; }
+
+.derived-badge {
+    margin-left: auto;
+    background: var(--accent-color);
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 50px;
+}
+
+.cost-config-footer {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    background: hsla(260, 100%, 65%, 0.02);
+    border-top: 1px solid rgba(163, 174, 208, 0.1);
+
+    .footer-label-group { flex: 1; margin-bottom: 0; }
+}
+
+.qty-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+
+    .qty-label { font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); }
+}
+
+.quantity-control {
+    display: flex;
+    align-items: center;
+    border: 1px solid rgba(163, 174, 208, 0.3);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--bg-color);
+
+    input {
+        width: 50px;
+        text-align: center;
+        border: none !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        padding: 0.5rem 0 !important;
+        font-size: 0.9rem;
+        &:focus { outline: none; }
+    }
+}
+
+.qty-btn {
+    background: transparent;
+    border: none;
+    padding: 0.5rem 0.65rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+
+    &:hover { background: rgba(163, 174, 208, 0.15); color: var(--accent-color); }
+}
+
+// Cost Lines Table
+.cost-lines-table {
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(163, 174, 208, 0.2);
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    th {
+        background: hsla(260, 100%, 65%, 0.05);
+        padding: 0.75rem 1rem;
+        color: var(--text-secondary);
+        font-weight: 700;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid rgba(163, 174, 208, 0.2);
+    }
+
+    td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid rgba(163, 174, 208, 0.1);
+        color: var(--text-primary);
+        vertical-align: middle;
+    }
+
+    td:last-child, tr:last-child td { border-bottom: none; }
+
+    tfoot td {
+        background: hsla(260, 100%, 65%, 0.03);
+        font-size: 0.9rem;
+        border-top: 1px solid rgba(163, 174, 208, 0.2);
+        font-weight: 700;
+    }
+}
+
+.inline-input {
+    padding: 0.35rem 0.6rem;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    width: 100%;
+
+    &:hover { border-color: rgba(163, 174, 208, 0.4); background: var(--bg-color); }
+    &:focus { outline: none; border-color: var(--accent-color); background: var(--card-bg); box-shadow: 0 0 0 3px rgba(67, 24, 255, 0.08); }
+}
+
+.inline-input-sm { width: 60px; text-align: center; }
+.text-right { text-align: right; }
+
+.btn-remove-line {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.3rem;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    transition: var(--transition);
+
+    &:hover { color: var(--danger); background: rgba(238, 93, 80, 0.1); }
+}
+
+.no-costs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2.5rem 2rem;
+    text-align: center;
+    color: var(--text-secondary);
+    background: var(--bg-color);
+    border-radius: 16px;
+
+    i { font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.5; }
+    p { font-size: 0.875rem; margin: 0; }
+}
+
+// Margin Card
+.margin-card {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 16px;
+    border: 1px solid rgba(163, 174, 208, 0.2);
+    background: var(--bg-color);
+    transition: var(--transition);
+
+    &.margin-negative { border-color: rgba(238, 93, 80, 0.3); background: rgba(238, 93, 80, 0.04); }
+    &.margin-low { border-color: rgba(255, 181, 71, 0.3); background: rgba(255, 181, 71, 0.04); }
+    &.margin-medium, &.margin-good { border-color: rgba(1, 181, 116, 0.25); background: rgba(1, 181, 116, 0.04); }
+}
+
+.margin-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+    margin-bottom: 0.35rem;
+    color: var(--text-secondary);
+}
+
+.margin-result { margin-bottom: 0; }
+
+.margin-divider {
+    border-top: 1px solid rgba(163, 174, 208, 0.2);
+    margin: 0.5rem 0;
+}
+
+.margin-bar {
+    height: 5px;
+    background: rgba(163, 174, 208, 0.25);
+    border-radius: 50px;
+    margin: 0.75rem 0 0.35rem;
+    overflow: hidden;
+
+    .margin-fill {
+        height: 100%;
+        border-radius: 50px;
+        background: linear-gradient(90deg, var(--accent-color), var(--success));
+        transition: width 0.3s ease;
+    }
+}
+
+.margin-pct {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-align: right;
+
+    &.negative { color: var(--danger); }
+    &.low { color: var(--warning); }
+    &.medium, &.good { color: var(--success); }
+}
+
+strong.negative { color: var(--danger); }
+strong.low { color: var(--warning); }
+strong.medium, strong.good { color: var(--success); }

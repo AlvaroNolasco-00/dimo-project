@@ -1,0 +1,153 @@
+@use '../app/shared/_common-mixins' as *;
+
+// Styles for crear-pedido (ViewEncapsulation.None — class names are unique)
+
+.inline-search-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+  padding: 0;
+
+  i { position: static !important; left: auto !important; font-size: 1.1rem; color: white !important; }
+  &:hover:not(:disabled) { background: var(--accent-hover); }
+  &:disabled { background: var(--text-secondary); opacity: 0.5; }
+}
+
+.error-alert {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background: rgba(255, 71, 87, 0.1);
+  color: #FF4757;
+  padding: 1rem 1.5rem;
+  border-radius: 14px;
+  margin: 1.5rem 0;
+  border: 1px solid rgba(255, 71, 87, 0.2);
+  font-weight: 600;
+
+  .btn-close-error {
+    background: transparent;
+    border: none;
+    color: #FF4757;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+
+    &:hover { background: rgba(255, 71, 87, 0.1); }
+    i { font-size: 1.2rem; color: #FF4757 !important; position: static !important; margin: 0 !important; }
+  }
+}
+
+.items-section {
+  background: var(--card-bg);
+  border-radius: 12px;
+  margin-top: 1rem;
+
+  h3 {
+    margin: 0 0 1.5rem 0;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+
+    &::before { content: ''; width: 5px; height: 32px; background: var(--accent-color); border-radius: 4px; }
+  }
+}
+
+.add-item-container {
+  background: white;
+  border-radius: 20px;
+  padding: 2rem;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 16px rgba(112, 144, 176, 0.08);
+  margin-bottom: 2.5rem;
+
+  h4 { color: var(--text-primary); font-size: 1.2rem; font-weight: 800; margin-bottom: 0.5rem; }
+  .helper-text-sm { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.5rem; }
+}
+
+.cost-selector-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 1.5rem;
+  align-items: end;
+
+  @media (max-width: 600px) { grid-template-columns: 1fr; }
+}
+
+.success-card {
+  text-align: center;
+  padding: 3rem 1rem;
+
+  .success-icon {
+    width: 100px;
+    height: 100px;
+    background: var(--success);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    margin: 0 auto 2.5rem;
+    box-shadow: 0 8px 20px rgba(1, 181, 116, 0.3);
+  }
+
+  h2 { font-size: 2.2rem; margin-bottom: 1rem; font-weight: 800; }
+  p { font-size: 1.1rem; margin-bottom: 2.5rem; }
+}
+
+.magic-link-box {
+  background: #F4F7FE;
+  border-radius: 24px;
+  padding: 2.5rem;
+  margin-top: 2rem;
+  border: 1px solid var(--border-color);
+
+  .link-input-group {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+
+    input {
+      flex: 1;
+      padding: 1rem 1.5rem;
+      border: 1.5px solid var(--border-color);
+      border-radius: 16px;
+      background: white;
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    .btn-copy {
+      @include btn-primary;
+      padding: 0 2rem;
+      border-radius: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+
+      &:hover { transform: translateY(-2px); }
+      &.copied { background: var(--success); pointer-events: none; box-shadow: 0 4px 12px rgba(1, 181, 116, 0.3); }
+    }
+  }
+}
