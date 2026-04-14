@@ -411,45 +411,102 @@ header {
     gap: 0.5rem;
 }
 
-.step-tab {
+.step-hint {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
+    gap: 0.4rem;
+    margin: 0.75rem 0 0;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+/* Step tab = container div with two child buttons */
+.step-tab {
+    display: inline-flex;
+    align-items: stretch;
     border-radius: 50px;
     border: 1px solid var(--border-color);
     background: var(--card-bg);
-    cursor: pointer;
-    transition: all 0.15s;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--text-secondary);
+    overflow: hidden;
+    transition: border-color 0.15s;
 
     &:hover {
         border-color: var(--accent-color);
-        color: var(--accent-color);
     }
 
     &.active {
         background: var(--accent-color);
         border-color: var(--accent-color);
-        color: #fff;
+
+        .step-select {
+            color: #fff;
+            &:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+        }
 
         .step-number {
             background: rgba(255, 255, 255, 0.25);
         }
-    }
 
-    .step-number {
-        width: 20px;
-        height: 20px;
-        background: var(--bg-color);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        font-weight: 700;
-        flex-shrink: 0;
+        .step-branch {
+            color: rgba(255, 255, 255, 0.7);
+            border-left-color: rgba(255, 255, 255, 0.2);
+
+            &:hover {
+                color: #fff;
+                background: rgba(255, 255, 255, 0.12);
+            }
+        }
+    }
+}
+
+.step-select {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.85rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.15s;
+
+    &:hover {
+        color: var(--accent-color);
+        background: rgba(0, 0, 0, 0.03);
+    }
+}
+
+.step-number {
+    width: 20px;
+    height: 20px;
+    background: var(--bg-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.step-branch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.65rem;
+    background: none;
+    border: none;
+    border-left: 1px solid var(--border-color);
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    transition: all 0.15s;
+
+    &:hover {
+        color: var(--accent-color);
+        background: rgba(0, 0, 0, 0.04);
     }
 }

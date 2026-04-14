@@ -81,14 +81,22 @@
         <h3>Resultados del Pipeline</h3>
         <div class="step-tabs">
           @for (result of pipelineResults(); track result.stepIndex; let i = $index) {
-          <button class="step-tab"
-            [class.active]="selectedResultIndex() === i || (selectedResultIndex() === -1 && i === pipelineResults().length - 1)"
-            (click)="selectPipelineStep(i)">
-            <span class="step-number">{{ i + 1 }}</span>
-            <span class="step-label">{{ result.label }}</span>
-          </button>
+          <div class="step-tab"
+            [class.active]="selectedResultIndex() === i || (selectedResultIndex() === -1 && i === pipelineResults().length - 1)">
+            <button class="step-select" (click)="selectPipelineStep(i)">
+              <span class="step-number">{{ i + 1 }}</span>
+              <span class="step-label">{{ result.label }}</span>
+            </button>
+            <button class="step-branch" (click)="useStepAsSource(result)"
+              title="Ramificar desde este paso — carga este resultado como nueva imagen base">
+              <i class="ph ph-git-fork"></i>
+            </button>
+          </div>
           }
         </div>
+        <p class="step-hint">
+          <i class="ph ph-git-fork"></i> Ramifica desde cualquier paso para crear variantes con la misma imagen base
+        </p>
       </div>
       }
 

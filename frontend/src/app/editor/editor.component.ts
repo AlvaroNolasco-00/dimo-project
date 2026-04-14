@@ -467,6 +467,7 @@ export class EditorComponent implements OnDestroy {
           operationId: operation.id,
           label: this.getOperationName(operation.type),
           outputUrl: url,
+          outputBlob: currentBlob,
         });
       }
 
@@ -486,6 +487,46 @@ export class EditorComponent implements OnDestroy {
 
   selectPipelineStep(index: number) {
     this.selectedResultIndex.set(index);
+  }
+
+  useStepAsSource(result: ExecutionResult) {
+    // Revoke all pipeline result URLs except the one becoming the new base
+    this.pipelineResults().forEach(r => {
+      if (r.outputUrl !== result.outputUrl) {
+        URL.revokeObjectURL(r.outputUrl);
+        this.objectUrls.delete(r.outputUrl);
+      }
+    });
+
+    // Revoke the old source image URL (the original file)
+    const oldSource = this.currentImageSource();
+    if (oldSource && oldSource !== result.outputUrl) {
+      URL.revokeObjectURL(oldSource);
+      this.objectUrls.delete(oldSource);
+    }
+
+    // Revoke single-step processed result if any
+    const oldProcessed = this.processedImageSource();
+    if (oldProcessed && oldProcessed !== result.outputUrl) {
+      URL.revokeObjectURL(oldProcessed);
+      this.objectUrls.delete(oldProcessed);
+    }
+
+    this.pipelineResults.set([]);
+    this.selectedResultIndex.set(-1);
+    this.processedImageSource.set(null);
+    this.pipelineService.clearQueue();
+
+    // Load step result as new base image
+    this.currentImageBlob.set(result.outputBlob);
+    this.currentImageSource.set(result.outputUrl); // reuse existing blob URL
+
+    // Reset canvas/selection state
+    this.lastClickCoords.set(null);
+    this.selectedColors.set([]);
+    this.previewComponent?.setViewMode('comparison');
+
+    this.toastService.success(`Paso ${result.stepIndex + 1} cargado como imagen base`);
   }
 
   private getCurrentParams(): Record<string, any> {

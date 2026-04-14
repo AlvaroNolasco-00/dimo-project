@@ -14,6 +14,7 @@ export interface ExecutionResult {
   operationId: string;
   label: string;
   outputUrl: string;
+  outputBlob: Blob;
 }
 
 @Injectable({ providedIn: 'root' })
