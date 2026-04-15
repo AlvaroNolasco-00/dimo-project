@@ -1,6 +1,7 @@
-import { Component, input, output, signal, effect, OnDestroy } from '@angular/core';
+import { Component, input, output, signal, inject, effect, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { SessionImage } from '../../../services/image-persistence.service';
+import { PipelineService } from '../../../services/pipeline.service';
 
 @Component({
     selector: 'app-editor-sidebar',
@@ -10,11 +11,13 @@ import { SessionImage } from '../../../services/image-persistence.service';
     styleUrl: './editor-sidebar.component.scss'
 })
 export class EditorSidebarComponent implements OnDestroy {
+    private pipelineService = inject(PipelineService);
+
     galleryItems = input<SessionImage[]>([]);
     imageSelected = output<SessionImage>();
     imageDeleted = output<string>(); // emits ID
 
-    isCollapsed = signal(false);
+    isCollapsed = this.pipelineService.sidebarCollapsed;
 
     private urlCache = new Map<string, string>();
 

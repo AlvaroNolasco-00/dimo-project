@@ -25,6 +25,32 @@ export class PipelineService {
   operationQueue = signal<Operation[]>([]);
   isPipelineMode = signal(false);
 
+  // Image state — persists across mode/route changes
+  hasFile = signal(false);
+  currentImageBlob = signal<Blob | null>(null);
+  currentImageSource = signal<string | null>(null);
+  processedImageSource = signal<string | null>(null);
+  pipelineResults = signal<ExecutionResult[]>([]);
+  selectedResultIndex = signal<number>(-1);
+
+  private managedUrls = new Set<string>();
+
+  trackUrl(url: string) {
+    this.managedUrls.add(url);
+  }
+
+  revokeUrl(url: string | null) {
+    if (url && this.managedUrls.has(url)) {
+      URL.revokeObjectURL(url);
+      this.managedUrls.delete(url);
+    }
+  }
+
+  revokeAllUrls() {
+    this.managedUrls.forEach(url => URL.revokeObjectURL(url));
+    this.managedUrls.clear();
+  }
+
   togglePipelineMode() {
     this.isPipelineMode.update(v => !v);
     if (!this.isPipelineMode()) {
@@ -52,4 +78,7 @@ export class PipelineService {
   clearQueue() {
     this.operationQueue.set([]);
   }
+
+  // Sidebar UI state
+  sidebarCollapsed = signal(false);
 }

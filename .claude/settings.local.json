@@ -7,7 +7,10 @@
       "Bash(grep -l User /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/interfaces/*.ts)",
       "Bash(grep:*)",
       "mcp__wompi-api__getPage",
-      "mcp__wompi-api__searchDocumentation"
+      "mcp__wompi-api__searchDocumentation",
+      "Bash(npx tsc *)",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(echo \"EXIT:$?\")"
     ]
   }
 }

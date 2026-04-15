@@ -43,20 +43,20 @@ export class EditorComponent implements OnDestroy {
 
   @ViewChild(EditorPreviewComponent) previewComponent!: EditorPreviewComponent;
 
-  // Image State
-  currentImageBlob = signal<Blob | null>(null);
-  currentImageSource = signal<string | null>(null);
-  processedImageSource = signal<string | null>(null);
-  hasFile = signal(false);
+  // Image State — all persisted in PipelineService so they survive mode/route changes
+  currentImageBlob = this.pipelineService.currentImageBlob;
+  currentImageSource = this.pipelineService.currentImageSource;
+  processedImageSource = this.pipelineService.processedImageSource;
+  hasFile = this.pipelineService.hasFile;
   sessionGallery = signal<SessionImage[]>([]);
 
   // Operation Pipeline State — persisted in PipelineService (survives route changes)
   operationQueue = this.pipelineService.operationQueue;
   isPipelineMode = this.pipelineService.isPipelineMode;
 
-  // Pipeline Execution Results
-  pipelineResults = signal<ExecutionResult[]>([]);
-  selectedResultIndex = signal<number>(-1); // -1 = last step
+  // Pipeline Execution Results — persisted in PipelineService
+  pipelineResults = this.pipelineService.pipelineResults;
+  selectedResultIndex = this.pipelineService.selectedResultIndex;
 
   // Unified display source: selected pipeline step, or single-step result
   displayImageSource = computed(() => {
@@ -121,8 +121,7 @@ export class EditorComponent implements OnDestroy {
   // Canvas State (Managed by Preview, but we track history length for controls)
   canvasHistoryLength = signal(0);
 
-  // Object URL tracking for memory leak prevention
-  private objectUrls = new Set<string>();
+  // URL tracking delegated to PipelineService so URLs survive route changes
 
   mode = signal('remove-bg');
 
@@ -191,11 +190,11 @@ export class EditorComponent implements OnDestroy {
   handleFile(file: File) {
     if (!file.type.startsWith('image/')) return;
 
-    this.cleanupObjectURLs();
+    this.pipelineService.revokeAllUrls();
 
     this.currentImageBlob.set(file);
     const url = URL.createObjectURL(file);
-    this.objectUrls.add(url);
+    this.pipelineService.trackUrl(url);
     this.currentImageSource.set(url);
     this.processedImageSource.set(null);
     this.pipelineResults.set([]);
@@ -209,7 +208,7 @@ export class EditorComponent implements OnDestroy {
   }
 
   reset() {
-    this.cleanupObjectURLs();
+    this.pipelineService.revokeAllUrls();
 
     this.currentImageBlob.set(null);
     this.currentImageSource.set(null);
@@ -330,13 +329,9 @@ export class EditorComponent implements OnDestroy {
 
       this.processingState.set({ step: 'Finalizando...', progress: 95, estimatedSecondsRemaining: 1 });
 
-      if (this.processedImageSource()) {
-        const oldUrl = this.processedImageSource()!;
-        URL.revokeObjectURL(oldUrl);
-        this.objectUrls.delete(oldUrl);
-      }
+      this.pipelineService.revokeUrl(this.processedImageSource());
       const url = URL.createObjectURL(resultBlob);
-      this.objectUrls.add(url);
+      this.pipelineService.trackUrl(url);
       this.processedImageSource.set(url);
 
     } catch (err: any) {
@@ -403,14 +398,7 @@ export class EditorComponent implements OnDestroy {
   }
 
   ngOnDestroy() {
-    this.cleanupObjectURLs();
-  }
-
-  private cleanupObjectURLs() {
-    this.objectUrls.forEach(url => {
-      URL.revokeObjectURL(url);
-    });
-    this.objectUrls.clear();
+    // URLs are managed by PipelineService — not revoked here so they survive route changes
   }
 
   // Pipeline Management Methods
@@ -452,10 +440,7 @@ export class EditorComponent implements OnDestroy {
     if (!fallbackBlob) return;
 
     // Revoke previous pipeline result URLs before new execution
-    this.pipelineResults().forEach(r => {
-      URL.revokeObjectURL(r.outputUrl);
-      this.objectUrls.delete(r.outputUrl);
-    });
+    this.pipelineResults().forEach(r => this.pipelineService.revokeUrl(r.outputUrl));
     this.pipelineResults.set([]);
     this.selectedResultIndex.set(-1);
 
@@ -477,7 +462,7 @@ export class EditorComponent implements OnDestroy {
         const resultBlob = await this.executeOperation(inputBlob, operation);
 
         const url = URL.createObjectURL(resultBlob);
-        this.objectUrls.add(url);
+        this.pipelineService.trackUrl(url);
         newResults.push({
           stepIndex: i,
           operationId: operation.id,
@@ -507,27 +492,16 @@ export class EditorComponent implements OnDestroy {
   }
 
   useStepAsSource(result: ExecutionResult) {
-    // Revoke all pipeline result URLs except the one becoming the new base
+    // Revoke all URLs except the one becoming the new base
     this.pipelineResults().forEach(r => {
-      if (r.outputUrl !== result.outputUrl) {
-        URL.revokeObjectURL(r.outputUrl);
-        this.objectUrls.delete(r.outputUrl);
-      }
+      if (r.outputUrl !== result.outputUrl) this.pipelineService.revokeUrl(r.outputUrl);
     });
 
-    // Revoke the old source image URL (the original file)
     const oldSource = this.currentImageSource();
-    if (oldSource && oldSource !== result.outputUrl) {
-      URL.revokeObjectURL(oldSource);
-      this.objectUrls.delete(oldSource);
-    }
+    if (oldSource && oldSource !== result.outputUrl) this.pipelineService.revokeUrl(oldSource);
 
-    // Revoke single-step processed result if any
     const oldProcessed = this.processedImageSource();
-    if (oldProcessed && oldProcessed !== result.outputUrl) {
-      URL.revokeObjectURL(oldProcessed);
-      this.objectUrls.delete(oldProcessed);
-    }
+    if (oldProcessed && oldProcessed !== result.outputUrl) this.pipelineService.revokeUrl(oldProcessed);
 
     this.pipelineResults.set([]);
     this.selectedResultIndex.set(-1);
