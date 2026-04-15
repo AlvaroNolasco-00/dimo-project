@@ -14,6 +14,7 @@
 | [0005](./0005-esquemas-y-modelos-en-archivos-unicos.md) | Esquemas y modelos en archivos únicos | accepted | backend | 2024-12-18 |
 | [0006](./0006-sistema-adr-para-bitacora-de-decisiones.md) | Sistema ADR para bitácora de decisiones | accepted | fullstack | 2026-04-14 |
 | [0007](./0007-pipeline-no-destructivo-con-encadenamiento-de-pasos.md) | Pipeline no-destructivo con encadenamiento de pasos | accepted | frontend | 2026-04-14 |
+| [0008](./0008-posicionamiento-del-drawer-sidebar-debajo-de-la-navbar-superior.md) | Posicionamiento del drawer sidebar debajo de la navbar superior | accepted | frontend | 2026-04-14 |
 
 ## Cómo usar
 
