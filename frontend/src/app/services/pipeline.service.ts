@@ -72,7 +72,10 @@ export class PipelineService {
       const newQueue = [...queue];
       const [moved] = newQueue.splice(fromIndex, 1);
       newQueue.splice(toIndex, 0, moved);
-      return newQueue;
+      // Recalculate inputMode: first op is always 'original', rest inherit their existing mode
+      return newQueue.map((op, i) =>
+        i === 0 ? { ...op, inputMode: 'original' as const } : op
+      );
     });
   }
 

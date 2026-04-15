@@ -15,6 +15,7 @@
 | [0006](./0006-sistema-adr-para-bitacora-de-decisiones.md) | Sistema ADR para bitácora de decisiones | accepted | fullstack | 2026-04-14 |
 | [0007](./0007-pipeline-no-destructivo-con-encadenamiento-de-pasos.md) | Pipeline no-destructivo con encadenamiento de pasos | accepted | frontend | 2026-04-14 |
 | [0008](./0008-posicionamiento-del-drawer-sidebar-debajo-de-la-navbar-superior.md) | Posicionamiento del drawer sidebar debajo de la navbar superior | accepted | frontend | 2026-04-14 |
+| [0009](./0009-fix-visualización-acumulada-de-resultados-en-pipeline-y-recálculo-de-inputmode-en-reordenamiento.md) | Fix: visualización acumulada y recálculo de inputMode en pipeline | accepted | frontend | 2026-04-15 |
 
 ## Cómo usar
 

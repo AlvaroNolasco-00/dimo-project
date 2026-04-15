@@ -71,15 +71,12 @@ export class EditorComponent implements OnDestroy {
       : results[results.length - 1].outputUrl;
   });
 
-  // "Before" image for comparison: uses the per-step original when viewing pipeline results
+  // "Before" image for comparison: always the original uploaded image so each step shows
+  // "original vs cumulative result" rather than "previous step vs current step"
   pipelineCurrentSource = computed(() => {
     const results = this.pipelineResults();
     if (results.length === 0) return this.currentImageSource();
-    const idx = this.selectedResultIndex();
-    const result = (idx >= 0 && idx < results.length)
-      ? results[idx]
-      : results[results.length - 1];
-    return result.inputUrl ?? this.currentImageSource();
+    return this.currentImageSource();
   });
 
   // UI State
