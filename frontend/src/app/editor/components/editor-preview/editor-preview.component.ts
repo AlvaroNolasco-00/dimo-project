@@ -36,6 +36,7 @@ export class EditorPreviewComponent implements OnDestroy {
 
     @ViewChild('maskCanvas') maskCanvas?: ElementRef<HTMLCanvasElement>;
     @ViewChild('originalImage') originalImage?: ElementRef<HTMLImageElement>;
+    @ViewChild('compZoomWrapper') compZoomWrapperEl?: ElementRef<HTMLDivElement>;
 
     // Utility properties for template
     protected readonly Math = Math;
@@ -56,11 +57,18 @@ export class EditorPreviewComponent implements OnDestroy {
     private resizeObserver: ResizeObserver | null = null;
     private panMoved = false;
 
-    // Zoom and Pan state
+    // Zoom and Pan state (original / resultado views)
     zoomLevel = signal(1);
     panOffset = signal({ x: 0, y: 0 });
     isPanning = signal(false);
     panStartPos = signal({ x: 0, y: 0 });
+
+    // Zoom and Pan state (comparison view)
+    compZoomLevel = signal(1);
+    compPanOffset = signal({ x: 0, y: 0 });
+    isCompPanning = signal(false);
+    private compPanStartPos = { x: 0, y: 0 };
+    private isSliderDragging = false;
 
     // Optimized stroke-based history
     private strokeHistory: Array<Array<{ x: number; y: number; size: number }>> = [];
@@ -108,6 +116,14 @@ export class EditorPreviewComponent implements OnDestroy {
 
         // Notify parent of history change (now uses stroke history)
         // Handled in stopDrawing and undo methods
+
+        // Reset comparison zoom when switching away from comparison mode
+        effect(() => {
+            if (this.viewMode() !== 'comparison') {
+                this.compZoomLevel.set(1);
+                this.compPanOffset.set({ x: 0, y: 0 });
+            }
+        });
 
         // When the user switches to a draw mode, the @if block renders the canvas
         // into the DOM. We wait one tick for Angular to finish, then init the canvas.
@@ -425,6 +441,72 @@ export class EditorPreviewComponent implements OnDestroy {
         if (!this.cropperInstance) return Promise.resolve(null);
         return new Promise<Blob | null>((resolve) => this.cropperInstance!.getCroppedCanvas().toBlob(resolve, 'image/png'));
     }
+
+    // Comparison View Zoom and Pan Methods
+    startCompInteraction(event: MouseEvent) {
+        event.preventDefault();
+        const wrapperEl = this.compZoomWrapperEl?.nativeElement;
+        if (!wrapperEl) return;
+
+        const rect = wrapperEl.getBoundingClientRect();
+        const sliderVisualX = rect.left + (this.sliderPosition() / 100) * rect.width;
+        const distToSlider = Math.abs(event.clientX - sliderVisualX);
+
+        if (distToSlider < 40) {
+            this.isSliderDragging = true;
+            this.updateCompSliderPosition(event);
+        } else {
+            this.isCompPanning.set(true);
+            this.compPanStartPos = { x: event.clientX, y: event.clientY };
+        }
+    }
+
+    onCompMove(event: MouseEvent) {
+        if (this.isSliderDragging) {
+            this.updateCompSliderPosition(event);
+        } else if (this.isCompPanning()) {
+            event.preventDefault();
+            const dx = event.clientX - this.compPanStartPos.x;
+            const dy = event.clientY - this.compPanStartPos.y;
+            this.compPanOffset.update(p => ({ x: p.x + dx, y: p.y + dy }));
+            this.compPanStartPos = { x: event.clientX, y: event.clientY };
+        }
+    }
+
+    stopCompInteraction() {
+        this.isSliderDragging = false;
+        this.isCompPanning.set(false);
+    }
+
+    updateCompSliderPosition(event: MouseEvent | TouchEvent) {
+        const wrapperEl = this.compZoomWrapperEl?.nativeElement;
+        if (!wrapperEl) return;
+        const rect = wrapperEl.getBoundingClientRect();
+        const clientX = 'touches' in event ? event.touches[0].clientX : event.clientX;
+        const x = clientX - rect.left;
+        const percentage = Math.max(0, Math.min(100, (x / rect.width) * 100));
+        this.sliderPosition.set(percentage);
+    }
+
+    onCompWheel(event: WheelEvent) {
+        event.preventDefault();
+        const delta = event.deltaY > 0 ? -0.15 : 0.15;
+        this.compZoomLevel.update(z => Math.max(0.5, Math.min(5, z + delta)));
+    }
+
+    resetCompZoom() {
+        this.compZoomLevel.set(1);
+        this.compPanOffset.set({ x: 0, y: 0 });
+    }
+
+    compZoomIn() { this.compZoomLevel.update(z => Math.min(5, z + 0.25)); }
+    compZoomOut() { this.compZoomLevel.update(z => Math.max(0.5, z - 0.25)); }
+
+    // Unified zoom controls (called from template, work for both modes)
+    activeZoomLevel = computed(() => this.viewMode() === 'comparison' ? this.compZoomLevel() : this.zoomLevel());
+    activeZoomIn() { this.viewMode() === 'comparison' ? this.compZoomIn() : this.zoomIn(); }
+    activeZoomOut() { this.viewMode() === 'comparison' ? this.compZoomOut() : this.zoomOut(); }
+    activeResetZoom() { this.viewMode() === 'comparison' ? this.resetCompZoom() : this.resetZoom(); }
 
     // Zoom and Pan Methods
     setZoom(level: number) {

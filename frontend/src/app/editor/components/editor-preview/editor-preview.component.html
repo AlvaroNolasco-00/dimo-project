@@ -8,17 +8,17 @@
     </div>
     }
 
-    <!-- Zoom controls (hidden in comparison mode) -->
-    @if (currentImageSource() && viewMode() !== 'comparison') {
+    <!-- Zoom controls (always visible when image loaded) -->
+    @if (currentImageSource()) {
     <div class="zoom-controls">
-        <button class="zoom-btn" (click)="zoomOut()" title="Alejar">
+        <button class="zoom-btn" (click)="activeZoomOut()" title="Alejar">
             <i class="ph ph-minus"></i>
         </button>
-        <span class="zoom-level">{{ Math.round(zoomLevel() * 100) }}%</span>
-        <button class="zoom-btn" (click)="zoomIn()" title="Acercar">
+        <span class="zoom-level">{{ Math.round(activeZoomLevel() * 100) }}%</span>
+        <button class="zoom-btn" (click)="activeZoomIn()" title="Acercar">
             <i class="ph ph-plus"></i>
         </button>
-        <button class="zoom-btn" (click)="resetZoom()" title="Restablecer">
+        <button class="zoom-btn" (click)="activeResetZoom()" title="Restablecer">
             <i class="ph ph-arrows-out"></i>
         </button>
     </div>
@@ -29,28 +29,36 @@
         <!-- ── COMPARISON MODE ── -->
         @if (viewMode() === 'comparison' && processedImageSource()) {
         <div class="comparison-view"
-             (mousedown)="startSliderDrag($event)"
-             (mousemove)="onSliderDrag($event)"
-             (mouseup)="stopSliderDrag()"
-             (mouseleave)="stopSliderDrag()"
-             (touchstart)="startSliderDrag($event)"
-             (touchmove)="onSliderDrag($event)"
-             (touchend)="stopSliderDrag()">
+             [class.is-panning]="isCompPanning()"
+             (mousedown)="startCompInteraction($event)"
+             (mousemove)="onCompMove($event)"
+             (mouseup)="stopCompInteraction()"
+             (mouseleave)="stopCompInteraction()"
+             (touchstart)="updateCompSliderPosition($event)"
+             (touchmove)="updateCompSliderPosition($event)"
+             (touchend)="stopCompInteraction()"
+             (wheel)="onCompWheel($event)">
 
-            <!-- After (right side) – full, behind -->
-            <img class="comp-img comp-after" [src]="processedImageSource()" alt="Resultado">
-            <span class="label label-right">Resultado</span>
+            <!-- Inner zoom/pan wrapper — slider & images move together -->
+            <div #compZoomWrapper class="comp-zoom-wrapper"
+                 [style.transform]="'scale(' + compZoomLevel() + ') translate(' + (compPanOffset().x / compZoomLevel()) + 'px, ' + (compPanOffset().y / compZoomLevel()) + 'px)'">
 
-            <!-- Before (left side) – clipped to slider position -->
-            <img class="comp-img comp-before" [src]="currentImageSource()" alt="Original">
-            <span class="label label-left">Original</span>
+                <!-- After (right side) – full, behind -->
+                <img class="comp-img comp-after" [src]="processedImageSource()" alt="Resultado">
 
-            <!-- Slider line + handle -->
-            <div class="comp-slider" [style.left.%]="sliderPosition()">
-                <div class="comp-slider-handle">
-                    <i class="ph ph-arrows-left-right"></i>
+                <!-- Before (left side) – clipped to slider position -->
+                <img class="comp-img comp-before" [src]="currentImageSource()" alt="Original">
+
+                <!-- Slider line + handle -->
+                <div class="comp-slider" [style.left.%]="sliderPosition()">
+                    <div class="comp-slider-handle">
+                        <i class="ph ph-arrows-left-right"></i>
+                    </div>
                 </div>
             </div>
+
+            <span class="label label-right">Resultado</span>
+            <span class="label label-left">Original</span>
         </div>
         } @else {
         <!-- ── NORMAL VIEW (original / resultado) with zoom & pan ── -->

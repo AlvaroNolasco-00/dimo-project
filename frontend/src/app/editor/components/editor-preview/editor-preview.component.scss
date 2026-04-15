@@ -124,6 +124,16 @@
     user-select: none;
     background: url('data:image/svg+xml;utf8,<svg width="20" height="20" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="10" height="10" fill="%23222" /><rect x="10" y="10" width="10" height="10" fill="%23222" /><rect x="0" y="10" width="10" height="10" fill="%23333" /><rect x="10" y="0" width="10" height="10" fill="%23333" /></svg>');
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+
+    &.is-panning {
+        cursor: grabbing;
+    }
+}
+
+.comp-zoom-wrapper {
+    position: absolute;
+    inset: 0;
+    transform-origin: center center;
 }
 
 .comp-img {
