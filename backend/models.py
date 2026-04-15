@@ -1,16 +1,22 @@
 from sqlalchemy import UniqueConstraint
-from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Numeric, func, Table
+from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, DateTime, Numeric, func
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import JSON
 from backend.core.database import Base
 
-# Association table for User <-> Project
-user_projects = Table(
-    "user_projects",
-    Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
-    Column("project_id", Integer, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
-)
+
+class UserProject(Base):
+    """Association model for User <-> Project with role."""
+    __tablename__ = "user_projects"
+
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    project_id = Column(Integer, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True)
+    # Roles: viewer, editor, manager, owner
+    role = Column(String, nullable=False, default="editor")
+
+    user = relationship("User", back_populates="memberships")
+    project = relationship("Project", back_populates="memberships")
+
 
 class User(Base):
     __tablename__ = "users"
@@ -23,7 +29,9 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     avatar_url = Column(String, nullable=True)
 
-    projects = relationship("Project", secondary=user_projects, back_populates="users")
+    memberships = relationship("UserProject", back_populates="user", cascade="all, delete-orphan")
+    projects = relationship("Project", secondary="user_projects", back_populates="users", viewonly=True)
+
 
 class Project(Base):
     __tablename__ = "projects"
@@ -33,7 +41,8 @@ class Project(Base):
     description = Column(String)
     created_at = Column(DateTime, server_default=func.now())
 
-    users = relationship("User", secondary=user_projects, back_populates="projects")
+    memberships = relationship("UserProject", back_populates="project", cascade="all, delete-orphan")
+    users = relationship("User", secondary="user_projects", back_populates="projects", viewonly=True)
     orders = relationship("Order", back_populates="project", cascade="all, delete-orphan")
     order_states_config = relationship("ProjectOrderState", back_populates="project", cascade="all, delete-orphan")
 

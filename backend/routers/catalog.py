@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from backend import models
 from backend import schemas
 from backend.core.database import get_db
-from backend.core.deps import get_current_user
+from backend.core.deps import get_current_user, check_project_role
+from backend.schemas import ProjectRole
 from backend.services import catalog as catalog_service
 
 router = APIRouter(
@@ -22,6 +23,7 @@ def list_categories(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    check_project_role(project_id, current_user, db, ProjectRole.viewer)
     return catalog_service.get_categories(db, project_id)
 
 
@@ -31,6 +33,7 @@ def create_category(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    check_project_role(data.project_id, current_user, db, ProjectRole.manager)
     return catalog_service.create_category(db, data, current_user)
 
 
@@ -41,6 +44,10 @@ def update_category(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    category = db.query(models.ProductCategory).filter(models.ProductCategory.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    check_project_role(category.project_id, current_user, db, ProjectRole.manager)
     return catalog_service.update_category(db, category_id, data, current_user)
 
 
@@ -50,6 +57,10 @@ def delete_category(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    category = db.query(models.ProductCategory).filter(models.ProductCategory.id == category_id).first()
+    if not category:
+        raise HTTPException(status_code=404, detail="Category not found")
+    check_project_role(category.project_id, current_user, db, ProjectRole.manager)
     return catalog_service.delete_category(db, category_id, current_user)
 
 
@@ -62,6 +73,7 @@ def list_products(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    check_project_role(project_id, current_user, db, ProjectRole.viewer)
     return catalog_service.get_products(db, project_id, category_id)
 
 
@@ -71,6 +83,10 @@ def get_product(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    check_project_role(product.project_id, current_user, db, ProjectRole.viewer)
     return catalog_service.get_product(db, product_id)
 
 
@@ -80,6 +96,7 @@ def create_product(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    check_project_role(data.project_id, current_user, db, ProjectRole.manager)
     return catalog_service.create_product(db, data, current_user)
 
 
@@ -90,6 +107,10 @@ def update_product(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    check_project_role(product.project_id, current_user, db, ProjectRole.manager)
     return catalog_service.update_product(db, product_id, data, current_user)
 
 
@@ -99,6 +120,10 @@ def delete_product(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    check_project_role(product.project_id, current_user, db, ProjectRole.manager)
     return catalog_service.delete_product(db, product_id, current_user)
 
 
@@ -109,6 +134,10 @@ async def upload_product_image(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    check_project_role(product.project_id, current_user, db, ProjectRole.manager)
     return await catalog_service.upload_product_image(db, product_id, file, current_user)
 
 

@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { tap, catchError, switchMap, map } from 'rxjs/operators';
 import { of, Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { Project } from '../interfaces/project.interface';
+import { Project, ProjectRole, roleLevel } from '../interfaces/project.interface';
 import { User } from '../interfaces/user.interface';
 
 @Injectable({
@@ -24,6 +24,25 @@ export class AuthService {
     isAuthenticated = computed(() => !!this._user());
     isApproved = computed(() => this._user()?.is_approved ?? false);
     isAdmin = computed(() => this._user()?.is_admin ?? false);
+
+    /** Role of the current user in the currently selected project. */
+    currentProjectRole = computed<ProjectRole | null>(() => {
+        if (this._user()?.is_admin) return 'owner';
+        const project = this._currentProject();
+        if (!project) return null;
+        return project.role ?? null;
+    });
+
+    /** Returns true if the current user has at least `minRole` in the selected project. */
+    hasProjectRole(minRole: ProjectRole): boolean {
+        if (this._user()?.is_admin) return true;
+        return roleLevel(this.currentProjectRole()) >= roleLevel(minRole);
+    }
+
+    isViewer = computed(() => this.hasProjectRole('viewer'));
+    isEditor = computed(() => this.hasProjectRole('editor'));
+    isManager = computed(() => this.hasProjectRole('manager'));
+    isOwner = computed(() => this.hasProjectRole('owner'));
 
     constructor(private http: HttpClient, private router: Router) {
         // AppInitializer will call checkInitialAuth

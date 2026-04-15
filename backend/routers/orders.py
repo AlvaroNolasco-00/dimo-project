@@ -1,14 +1,13 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
+from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
 import uuid
 from datetime import datetime, timedelta
 from backend import models
 from backend import schemas
-from backend.core import database
-from backend.core.deps import get_db, get_current_user
+from backend.core.deps import get_db, get_current_user, require_project_role
+from backend.schemas import ProjectRole
 from backend.services import orders as order_service
 from backend.services import storage
 
@@ -18,7 +17,11 @@ router = APIRouter(
 )
 
 @router.get("/projects/{project_id}/coupons/stats", response_model=schemas.CouponStatisticsResponse)
-def get_coupon_statistics(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def get_coupon_statistics(
+    project_id: int,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.manager))
+):
     # Get all coupons for the project
     coupons = db.query(models.Coupon).filter(models.Coupon.project_id == project_id).all()
     
@@ -165,7 +168,12 @@ async def upload_public_order_file(token: str, item_id: Optional[int] = None, fi
 # --- Configuration Endpoints ---
 
 @router.post("/projects/{project_id}/delivery-zones", response_model=schemas.DeliveryZone)
-def create_delivery_zone(project_id: int, zone: schemas.DeliveryZoneCreate, db: Session = Depends(get_db)):
+def create_delivery_zone(
+    project_id: int,
+    zone: schemas.DeliveryZoneCreate,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.manager))
+):
     new_zone = models.DeliveryZone(**zone.dict())
     db.add(new_zone)
     db.commit()
@@ -173,11 +181,21 @@ def create_delivery_zone(project_id: int, zone: schemas.DeliveryZoneCreate, db: 
     return new_zone
 
 @router.get("/projects/{project_id}/delivery-zones", response_model=List[schemas.DeliveryZone])
-def get_delivery_zones(project_id: int, db: Session = Depends(get_db)):
+def get_delivery_zones(
+    project_id: int,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.viewer))
+):
     return db.query(models.DeliveryZone).filter(models.DeliveryZone.project_id == project_id).all()
 
 @router.put("/projects/{project_id}/delivery-zones/{zone_id}", response_model=schemas.DeliveryZone)
-def update_delivery_zone(project_id: int, zone_id: int, zone_update: schemas.DeliveryZoneUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def update_delivery_zone(
+    project_id: int,
+    zone_id: int,
+    zone_update: schemas.DeliveryZoneUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_project_role(ProjectRole.manager))
+):
     zone = db.query(models.DeliveryZone).filter(models.DeliveryZone.id == zone_id, models.DeliveryZone.project_id == project_id).first()
     if not zone:
          raise HTTPException(status_code=404, detail="Zone not found")
@@ -205,7 +223,12 @@ def update_delivery_zone(project_id: int, zone_id: int, zone_update: schemas.Del
     return zone
 
 @router.get("/projects/{project_id}/delivery-zones/{zone_id}/history", response_model=List[schemas.DeliveryZoneHistory])
-def get_delivery_zone_history(project_id: int, zone_id: int, db: Session = Depends(get_db)):
+def get_delivery_zone_history(
+    project_id: int,
+    zone_id: int,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.manager))
+):
     return db.query(models.DeliveryZoneHistory)\
         .options(joinedload(models.DeliveryZoneHistory.modified_by))\
         .filter(models.DeliveryZoneHistory.zone_id == zone_id)\
@@ -213,7 +236,12 @@ def get_delivery_zone_history(project_id: int, zone_id: int, db: Session = Depen
         .all()
 
 @router.post("/projects/{project_id}/coupons", response_model=schemas.Coupon)
-def create_coupon(project_id: int, coupon: schemas.CouponCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def create_coupon(
+    project_id: int,
+    coupon: schemas.CouponCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_project_role(ProjectRole.manager))
+):
     new_coupon = models.Coupon(**coupon.dict())
     new_coupon.created_by_id = current_user.id
     db.add(new_coupon)
@@ -222,13 +250,23 @@ def create_coupon(project_id: int, coupon: schemas.CouponCreate, db: Session = D
     return new_coupon
 
 @router.get("/projects/{project_id}/coupons", response_model=List[schemas.Coupon])
-def get_coupons(project_id: int, db: Session = Depends(get_db)):
+def get_coupons(
+    project_id: int,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.manager))
+):
     return db.query(models.Coupon)\
         .options(joinedload(models.Coupon.created_by))\
         .filter(models.Coupon.project_id == project_id).all()
 
 @router.put("/projects/{project_id}/coupons/{coupon_id}", response_model=schemas.Coupon)
-def update_coupon(project_id: int, coupon_id: int, coupon_update: schemas.CouponUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def update_coupon(
+    project_id: int,
+    coupon_id: int,
+    coupon_update: schemas.CouponUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_project_role(ProjectRole.manager))
+):
     coupon = db.query(models.Coupon).filter(models.Coupon.id == coupon_id, models.Coupon.project_id == project_id).first()
     if not coupon:
         raise HTTPException(status_code=404, detail="Coupon not found")
@@ -258,7 +296,12 @@ def update_coupon(project_id: int, coupon_id: int, coupon_update: schemas.Coupon
     return coupon
 
 @router.get("/projects/{project_id}/coupons/{coupon_id}/history", response_model=List[schemas.CouponHistory])
-def get_coupon_history(project_id: int, coupon_id: int, db: Session = Depends(get_db)):
+def get_coupon_history(
+    project_id: int,
+    coupon_id: int,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.manager))
+):
     return db.query(models.CouponHistory)\
         .options(joinedload(models.CouponHistory.modified_by))\
         .filter(models.CouponHistory.coupon_id == coupon_id)\
@@ -266,7 +309,13 @@ def get_coupon_history(project_id: int, coupon_id: int, db: Session = Depends(ge
         .all()
 
 @router.post("/projects/{project_id}/coupons/{coupon_id}/revert/{history_id}", response_model=schemas.Coupon)
-def revert_coupon(project_id: int, coupon_id: int, history_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def revert_coupon(
+    project_id: int,
+    coupon_id: int,
+    history_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_project_role(ProjectRole.manager))
+):
     coupon = db.query(models.Coupon).filter(models.Coupon.id == coupon_id, models.Coupon.project_id == project_id).first()
     if not coupon:
         raise HTTPException(status_code=404, detail="Coupon not found")
@@ -307,34 +356,50 @@ def get_all_order_states(db: Session = Depends(get_db)):
     return db.query(models.OrderState).all()
 
 @router.get("/projects/{project_id}/order-states", response_model=List[schemas.OrderState])
-def get_project_order_states(project_id: int, db: Session = Depends(get_db)):
-    """
-    Get effective order states for a project.
-    Optimized to use a single query.
-    """
+def get_project_order_states(
+    project_id: int,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.viewer))
+):
+    """Get effective order states for a project."""
     return order_service.get_effective_order_states(db, project_id)
 
 @router.put("/projects/{project_id}/order-states", status_code=status.HTTP_204_NO_CONTENT)
-def update_project_order_states(project_id: int, state_ids: List[int], db: Session = Depends(get_db)):
-    """
-    Update the active states for a project.
-    """
+def update_project_order_states(
+    project_id: int,
+    state_ids: List[int],
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.manager))
+):
+    """Update the active states for a project."""
     order_service.update_project_order_states_config(db, project_id, state_ids)
     return None
 
 
 @router.post("/projects/{project_id}/orders", response_model=schemas.Order)
-def create_order(project_id: int, order_data: schemas.OrderCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def create_order(
+    project_id: int,
+    order_data: schemas.OrderCreate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_project_role(ProjectRole.editor))
+):
     return order_service.create_order(db, project_id, order_data, current_user)
 
 @router.get("/projects/{project_id}/orders", response_model=List[schemas.Order])
-def get_project_orders(project_id: int, db: Session = Depends(get_db)):
-    orders = db.query(models.Order).filter(models.Order.project_id == project_id).all()
-    return orders
+def get_project_orders(
+    project_id: int,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.viewer))
+):
+    return db.query(models.Order).filter(models.Order.project_id == project_id).all()
 
 @router.get("/projects/{project_id}/orders/{order_id}", response_model=schemas.Order)
-def get_order(project_id: int, order_id: int, db: Session = Depends(get_db)):
-    # Use joinedload to fetch details efficiently
+def get_order(
+    project_id: int,
+    order_id: int,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.viewer))
+):
     order = db.query(models.Order)\
         .options(joinedload(models.Order.items).joinedload(models.OrderItem.details))\
         .filter(
@@ -346,12 +411,22 @@ def get_order(project_id: int, order_id: int, db: Session = Depends(get_db)):
     return order
 
 @router.put("/projects/{project_id}/orders/{order_id}", response_model=schemas.Order)
-def update_order(project_id: int, order_id: int, order_update: schemas.OrderUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+def update_order(
+    project_id: int,
+    order_id: int,
+    order_update: schemas.OrderUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(require_project_role(ProjectRole.editor))
+):
     return order_service.update_order(db, project_id, order_id, order_update, current_user)
 
 
 @router.post("/orders/{order_id}/upload")
-async def upload_order_file(order_id: int, file: UploadFile = File(...)):
+async def upload_order_file(
+    order_id: int,
+    file: UploadFile = File(...),
+    _auth: models.User = Depends(get_current_user)
+):
     filename = file.filename.replace(" ", "_")
     folder = f"uploads/orders/{order_id}"
     content = await file.read()
@@ -359,10 +434,13 @@ async def upload_order_file(order_id: int, file: UploadFile = File(...)):
     return {"url": url, "filename": filename}
 
 @router.get("/orders/{order_id}/history", response_model=List[schemas.OrderHistory])
-def get_order_history(order_id: int, db: Session = Depends(get_db)):
-    history = db.query(models.OrderHistory)\
+def get_order_history(
+    order_id: int,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(get_current_user)
+):
+    return db.query(models.OrderHistory)\
         .options(joinedload(models.OrderHistory.user))\
         .filter(models.OrderHistory.order_id == order_id)\
         .order_by(models.OrderHistory.created_at.asc())\
         .all()
-    return history

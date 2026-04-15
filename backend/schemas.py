@@ -1,6 +1,16 @@
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 from datetime import datetime
+from enum import Enum
+
+
+class ProjectRole(str, Enum):
+    viewer = "viewer"
+    editor = "editor"
+    manager = "manager"
+    owner = "owner"
+
+ROLE_HIERARCHY = [ProjectRole.viewer, ProjectRole.editor, ProjectRole.manager, ProjectRole.owner]
 
 # --- Cost Types ---
 class CostTypeBase(BaseModel):
@@ -64,7 +74,33 @@ class ProjectUpdate(BaseModel):
 class Project(ProjectBase):
     id: int
     created_at: datetime
-    
+
+    class Config:
+        from_attributes = True
+
+class ProjectWithRole(ProjectBase):
+    """Project with the current user's role — used in /auth/me response."""
+    id: int
+    created_at: datetime
+    role: Optional[ProjectRole] = None
+
+    class Config:
+        from_attributes = True
+
+class AssignUserToProject(BaseModel):
+    role: ProjectRole = ProjectRole.editor
+
+class UpdateProjectRole(BaseModel):
+    role: ProjectRole
+
+class ProjectUserWithRole(BaseModel):
+    id: int
+    email: str
+    full_name: Optional[str] = None
+    is_approved: bool
+    is_admin: bool
+    role: ProjectRole
+
     class Config:
         from_attributes = True
 

@@ -5,7 +5,8 @@ from typing import List
 from backend import models
 from backend import schemas
 from backend.core.database import get_db
-from backend.core.deps import get_current_user
+from backend.core.deps import get_current_user, check_project_role
+from backend.schemas import ProjectRole
 
 router = APIRouter(
     prefix="/api/finance",
@@ -17,19 +18,18 @@ router = APIRouter(
 
 @router.post("/cost-types", response_model=schemas.CostType)
 def create_cost_type(
-    cost_type: schemas.CostTypeCreate, 
+    cost_type: schemas.CostTypeCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Check if exists for this project
-    db_cost_type = db.query(models.CostType).filter(
+    check_project_role(cost_type.project_id, current_user, db, ProjectRole.manager)
+
+    if db.query(models.CostType).filter(
         models.CostType.name == cost_type.name,
         models.CostType.project_id == cost_type.project_id
-    ).first()
-    
-    if db_cost_type:
+    ).first():
         raise HTTPException(status_code=400, detail="Cost type already exists in this project")
-    
+
     new_cost_type = models.CostType(
         name=cost_type.name,
         description=cost_type.description,
@@ -45,17 +45,19 @@ def create_cost_type(
 @router.get("/cost-types", response_model=List[schemas.CostType])
 def read_cost_types(
     project_id: int = None,
-    skip: int = 0, 
-    limit: int = 100, 
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
+    if project_id:
+        check_project_role(project_id, current_user, db, ProjectRole.viewer)
+
     query = db.query(models.CostType)
     if project_id:
         query = query.filter(models.CostType.project_id == project_id)
-    
-    cost_types = query.offset(skip).limit(limit).all()
-    return cost_types
+
+    return query.offset(skip).limit(limit).all()
 
 @router.put("/cost-types/{cost_type_id}", response_model=schemas.CostType)
 def update_cost_type(
@@ -67,6 +69,8 @@ def update_cost_type(
     db_type = db.query(models.CostType).filter(models.CostType.id == cost_type_id).first()
     if not db_type:
         raise HTTPException(status_code=404, detail="Cost type not found")
+
+    check_project_role(db_type.project_id, current_user, db, ProjectRole.manager)
 
     if cost_type_update.name is not None:
         db_type.name = cost_type_update.name
@@ -85,14 +89,15 @@ def update_cost_type(
 
 @router.post("/costs", response_model=schemas.OperativeCost)
 def create_operative_cost(
-    cost: schemas.OperativeCostCreate, 
+    cost: schemas.OperativeCostCreate,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    # Verify type exists
     cost_type = db.query(models.CostType).filter(models.CostType.id == cost.cost_type_id).first()
     if not cost_type:
         raise HTTPException(status_code=404, detail="Cost type not found")
+
+    check_project_role(cost_type.project_id, current_user, db, ProjectRole.manager)
 
     new_cost = models.OperativeCost(
         cost_type_id=cost.cost_type_id,
@@ -109,25 +114,24 @@ def create_operative_cost(
 def read_operative_costs(
     cost_type_id: int = None,
     parent_cost_id: int = None,
-    skip: int = 0, 
-    limit: int = 100, 
+    skip: int = 0,
+    limit: int = 100,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
     query = db.query(models.OperativeCost)
     if cost_type_id:
+        cost_type = db.query(models.CostType).filter(models.CostType.id == cost_type_id).first()
+        if cost_type:
+            check_project_role(cost_type.project_id, current_user, db, ProjectRole.viewer)
         query = query.filter(models.OperativeCost.cost_type_id == cost_type_id)
-    
+
     if parent_cost_id is not None:
-        # Explicitly requested derived costs for a specific parent
         query = query.filter(models.OperativeCost.parent_cost_id == parent_cost_id)
     else:
-        # Default: only top-level costs (no parent). Derived costs are hidden
-        # unless a parent_cost_id is explicitly requested.
-        query = query.filter(models.OperativeCost.parent_cost_id == None)
-    
-    costs = query.offset(skip).limit(limit).all()
-    return costs
+        query = query.filter(models.OperativeCost.parent_cost_id == None)  # noqa: E711
+
+    return query.offset(skip).limit(limit).all()
 
 @router.put("/costs/{cost_id}", response_model=schemas.OperativeCost)
 def update_operative_cost(
@@ -139,13 +143,15 @@ def update_operative_cost(
     db_cost = db.query(models.OperativeCost).filter(models.OperativeCost.id == cost_id).first()
     if not db_cost:
         raise HTTPException(status_code=404, detail="Cost not found")
-    
+
+    cost_type = db.query(models.CostType).filter(models.CostType.id == db_cost.cost_type_id).first()
+    if cost_type:
+        check_project_role(cost_type.project_id, current_user, db, ProjectRole.manager)
+
     if cost_update.base_cost is not None:
         db_cost.base_cost = cost_update.base_cost
-    
     if cost_update.attributes is not None:
         db_cost.attributes = cost_update.attributes
-    
     if cost_update.parent_cost_id is not None:
         db_cost.parent_cost_id = cost_update.parent_cost_id
 
@@ -159,13 +165,14 @@ def delete_operative_cost(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user)
 ):
-    if not current_user.is_admin:
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     db_cost = db.query(models.OperativeCost).filter(models.OperativeCost.id == cost_id).first()
     if not db_cost:
         raise HTTPException(status_code=404, detail="Cost not found")
-    
+
+    cost_type = db.query(models.CostType).filter(models.CostType.id == db_cost.cost_type_id).first()
+    if cost_type:
+        check_project_role(cost_type.project_id, current_user, db, ProjectRole.manager)
+
     db.delete(db_cost)
     db.commit()
     return {"ok": True}

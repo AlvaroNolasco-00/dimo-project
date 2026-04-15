@@ -51,12 +51,18 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 
 @router.get("/me")
 async def read_users_me(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    projects_list = []
     if current_user.is_admin:
         all_projs = db.query(models.Project).all()
-        projects_list = [{"id": p.id, "name": p.name} for p in all_projs]
+        projects_list = [{"id": p.id, "name": p.name, "role": "owner"} for p in all_projs]
     else:
-        projects_list = [{"id": p.id, "name": p.name} for p in current_user.projects]
+        memberships = db.query(models.UserProject).filter(
+            models.UserProject.user_id == current_user.id
+        ).all()
+        membership_map = {m.project_id: m.role for m in memberships}
+        projects_list = [
+            {"id": p.id, "name": p.name, "role": membership_map.get(p.id)}
+            for p in current_user.projects
+        ]
 
     return {
         "email": current_user.email,

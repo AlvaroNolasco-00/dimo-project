@@ -1,9 +1,10 @@
-from typing import List, Optional
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from backend import models
 from backend import schemas
-from backend.core.deps import get_db, get_current_user
+from backend.core.deps import get_db, require_project_role
+from backend.schemas import ProjectRole
 
 router = APIRouter(
     prefix="/api",
@@ -11,18 +12,22 @@ router = APIRouter(
 )
 
 @router.get("/projects/{project_id}/clients", response_model=List[schemas.Client])
-def get_clients(project_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    """
-    Lista todos los clientes de un proyecto.
-    """
-    clients = db.query(models.Client).filter(models.Client.project_id == project_id).all()
-    return clients
+def get_clients(
+    project_id: int,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.viewer))
+):
+    """Lista todos los clientes de un proyecto."""
+    return db.query(models.Client).filter(models.Client.project_id == project_id).all()
 
 @router.get("/projects/{project_id}/clients/{client_id}", response_model=schemas.Client)
-def get_client(project_id: int, client_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    """
-    Obtiene los detalles de un cliente específico por ID.
-    """
+def get_client(
+    project_id: int,
+    client_id: int,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.viewer))
+):
+    """Obtiene los detalles de un cliente específico por ID."""
     client = db.query(models.Client).filter(
         models.Client.project_id == project_id,
         models.Client.id == client_id
@@ -32,10 +37,13 @@ def get_client(project_id: int, client_id: int, db: Session = Depends(get_db), c
     return client
 
 @router.get("/projects/{project_id}/clients/search/{phone_number}", response_model=schemas.Client)
-def get_client_by_phone(project_id: int, phone_number: str, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    """
-    Busca un cliente por su número de teléfono dentro de un proyecto.
-    """
+def get_client_by_phone(
+    project_id: int,
+    phone_number: str,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.viewer))
+):
+    """Busca un cliente por su número de teléfono dentro de un proyecto."""
     client = db.query(models.Client).filter(
         models.Client.project_id == project_id,
         models.Client.phone_number == phone_number
@@ -45,19 +53,20 @@ def get_client_by_phone(project_id: int, phone_number: str, db: Session = Depend
     return client
 
 @router.post("/projects/{project_id}/clients", response_model=schemas.Client)
-def create_client(project_id: int, client_data: schemas.ClientCreate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    """
-    Crea un nuevo cliente. Verifica que el número de teléfono sea único por proyecto.
-    """
-    # Check if client with same phone already exists in project
+def create_client(
+    project_id: int,
+    client_data: schemas.ClientCreate,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.editor))
+):
+    """Crea un nuevo cliente. Verifica que el número de teléfono sea único por proyecto."""
     existing = db.query(models.Client).filter(
         models.Client.project_id == project_id,
         models.Client.phone_number == client_data.phone_number
     ).first()
-    
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe un cliente con este número de teléfono.")
-    
+
     new_client = models.Client(
         project_id=project_id,
         phone_number=client_data.phone_number,
@@ -75,21 +84,23 @@ def create_client(project_id: int, client_data: schemas.ClientCreate, db: Sessio
     return new_client
 
 @router.put("/projects/{project_id}/clients/{client_id}", response_model=schemas.Client)
-def update_client(project_id: int, client_id: int, client_update: schemas.ClientUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    """
-    Actualiza la información de un cliente existente.
-    """
+def update_client(
+    project_id: int,
+    client_id: int,
+    client_update: schemas.ClientUpdate,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.editor))
+):
+    """Actualiza la información de un cliente existente."""
     client = db.query(models.Client).filter(
         models.Client.project_id == project_id,
         models.Client.id == client_id
     ).first()
-    
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
-        
+
     update_data = client_update.model_dump(exclude_unset=True)
-    
-    # If phone number is being updated, check for uniqueness
+
     if "phone_number" in update_data and update_data["phone_number"] != client.phone_number:
         existing = db.query(models.Client).filter(
             models.Client.project_id == project_id,
@@ -100,24 +111,26 @@ def update_client(project_id: int, client_id: int, client_update: schemas.Client
 
     for key, value in update_data.items():
         setattr(client, key, value)
-        
+
     db.commit()
     db.refresh(client)
     return client
 
 @router.delete("/projects/{project_id}/clients/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_client(project_id: int, client_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
-    """
-    Elimina un cliente.
-    """
+def delete_client(
+    project_id: int,
+    client_id: int,
+    db: Session = Depends(get_db),
+    _auth: models.User = Depends(require_project_role(ProjectRole.manager))
+):
+    """Elimina un cliente."""
     client = db.query(models.Client).filter(
         models.Client.project_id == project_id,
         models.Client.id == client_id
     ).first()
-    
     if not client:
         raise HTTPException(status_code=404, detail="Cliente no encontrado")
-        
+
     db.delete(client)
     db.commit()
     return None

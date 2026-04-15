@@ -1,5 +1,5 @@
 import { Routes } from '@angular/router';
-import { approvedGuard, adminGuard, projectGuard } from './guards/auth.guard';
+import { approvedGuard, adminGuard, projectGuard, managerGuard, editorGuard } from './guards/auth.guard';
 
 export const routes: Routes = [
     // Auth Routes (Clean layout, no sidebar)
@@ -105,22 +105,22 @@ export const routes: Routes = [
                 children: [
                     { path: '', redirectTo: 'pedidos', pathMatch: 'full' },
                     { path: 'pedidos', loadComponent: () => import('./gestion/pedidos/pedidos.component').then(m => m.PedidosComponent) },
-                    { path: 'pedidos/crear', loadComponent: () => import('./gestion/pedidos/crear-pedido/crear-pedido.component').then(m => m.CrearPedidoComponent) },
+                    { path: 'pedidos/crear', loadComponent: () => import('./gestion/pedidos/crear-pedido/crear-pedido.component').then(m => m.CrearPedidoComponent), canActivate: [editorGuard] },
                     { path: 'pedidos/:id', loadComponent: () => import('./gestion/pedidos/detalle-pedido/detalle-pedido.component').then(m => m.DetallePedidoComponent) },
                     { path: 'clientes', loadComponent: () => import('./gestion/clientes/clientes.component').then(m => m.ClientesComponent) },
-                    { path: 'clientes/crear', loadComponent: () => import('./gestion/clientes/cliente-form/cliente-form.component').then(m => m.ClienteFormComponent) },
-                    { path: 'clientes/editar/:id', loadComponent: () => import('./gestion/clientes/cliente-form/cliente-form.component').then(m => m.ClienteFormComponent) },
+                    { path: 'clientes/crear', loadComponent: () => import('./gestion/clientes/cliente-form/cliente-form.component').then(m => m.ClienteFormComponent), canActivate: [editorGuard] },
+                    { path: 'clientes/editar/:id', loadComponent: () => import('./gestion/clientes/cliente-form/cliente-form.component').then(m => m.ClienteFormComponent), canActivate: [editorGuard] },
                     { path: 'proyectos', loadComponent: () => import('./gestion/proyectos/proyectos.component').then(m => m.ProyectosComponent), canActivate: [adminGuard] },
-                    { path: 'finanzas', loadComponent: () => import('./gestion/finanzas/finanzas.component').then(m => m.FinanzasComponent) },
-                    { path: 'finanzas/costos-operativos', loadComponent: () => import('./gestion/finanzas/costos-operativos/costos-operativos.component').then(m => m.CostosOperativosComponent) },
-                    { path: 'finanzas/recuento-gastos', loadComponent: () => import('./gestion/finanzas/recuento-gastos/recuento-gastos.component').then(m => m.RecuentoGastosComponent) },
-                    { path: 'finanzas/recuento-ganancias', loadComponent: () => import('./gestion/finanzas/recuento-ganancias/recuento-ganancias.component').then(m => m.RecuentoGananciasComponent) },
-                    { path: 'finanzas/delivery-zones', loadComponent: () => import('./gestion/finanzas/delivery-zones/delivery-zones.component').then(m => m.DeliveryZonesComponent) },
-                    { path: 'finanzas/coupons', loadComponent: () => import('./gestion/finanzas/coupons/coupons.component').then(m => m.CouponsComponent) },
-                    { path: 'catalogo', loadComponent: () => import('./gestion/catalogo/catalogo.component').then(m => m.CatalogoComponent) },
-                    { path: 'catalogo/nuevo', loadComponent: () => import('./gestion/catalogo/producto-form/producto-form.component').then(m => m.ProductoFormComponent) },
-                    { path: 'catalogo/:id/editar', loadComponent: () => import('./gestion/catalogo/producto-form/producto-form.component').then(m => m.ProductoFormComponent) },
-                    { path: 'catalogo/categorias', loadComponent: () => import('./gestion/catalogo/categorias/categorias.component').then(m => m.CategoriasComponent) },
+                    { path: 'finanzas', loadComponent: () => import('./gestion/finanzas/finanzas.component').then(m => m.FinanzasComponent), canActivate: [managerGuard] },
+                    { path: 'finanzas/costos-operativos', loadComponent: () => import('./gestion/finanzas/costos-operativos/costos-operativos.component').then(m => m.CostosOperativosComponent), canActivate: [managerGuard] },
+                    { path: 'finanzas/recuento-gastos', loadComponent: () => import('./gestion/finanzas/recuento-gastos/recuento-gastos.component').then(m => m.RecuentoGastosComponent), canActivate: [managerGuard] },
+                    { path: 'finanzas/recuento-ganancias', loadComponent: () => import('./gestion/finanzas/recuento-ganancias/recuento-ganancias.component').then(m => m.RecuentoGananciasComponent), canActivate: [managerGuard] },
+                    { path: 'finanzas/delivery-zones', loadComponent: () => import('./gestion/finanzas/delivery-zones/delivery-zones.component').then(m => m.DeliveryZonesComponent), canActivate: [managerGuard] },
+                    { path: 'finanzas/coupons', loadComponent: () => import('./gestion/finanzas/coupons/coupons.component').then(m => m.CouponsComponent), canActivate: [managerGuard] },
+                    { path: 'catalogo', loadComponent: () => import('./gestion/catalogo/catalogo.component').then(m => m.CatalogoComponent), canActivate: [managerGuard] },
+                    { path: 'catalogo/nuevo', loadComponent: () => import('./gestion/catalogo/producto-form/producto-form.component').then(m => m.ProductoFormComponent), canActivate: [managerGuard] },
+                    { path: 'catalogo/:id/editar', loadComponent: () => import('./gestion/catalogo/producto-form/producto-form.component').then(m => m.ProductoFormComponent), canActivate: [managerGuard] },
+                    { path: 'catalogo/categorias', loadComponent: () => import('./gestion/catalogo/categorias/categorias.component').then(m => m.CategoriasComponent), canActivate: [managerGuard] },
                     { path: 'bitacora', loadComponent: () => import('./gestion/bitacora/bitacora.component').then(m => m.BitacoraComponent), canActivate: [adminGuard] },
                 ]
             }
