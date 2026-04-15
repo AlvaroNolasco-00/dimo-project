@@ -58,6 +58,9 @@ export class EditorComponent implements OnDestroy {
   pipelineResults = this.pipelineService.pipelineResults;
   selectedResultIndex = this.pipelineService.selectedResultIndex;
 
+  // Chain mode: next step uses previous step's output as input
+  chainWithPrevious = signal(true);
+
   // Unified display source: selected pipeline step, or single-step result
   displayImageSource = computed(() => {
     const results = this.pipelineResults();
@@ -408,6 +411,9 @@ export class EditorComponent implements OnDestroy {
   }
 
   addToPipeline() {
+    const queueHasItems = this.operationQueue().length > 0;
+    const inputMode = queueHasItems && this.chainWithPrevious() ? 'chained' : 'original';
+
     const operation: Operation = {
       id: Date.now().toString(),
       type: this.mode() as OperationType,
@@ -415,6 +421,7 @@ export class EditorComponent implements OnDestroy {
       timestamp: Date.now(),
       inputBlob: this.currentImageBlob() ?? undefined,
       inputUrl: this.currentImageSource() ?? undefined,
+      inputMode,
     };
 
     this.pipelineService.addOperation(operation);
@@ -456,9 +463,17 @@ export class EditorComponent implements OnDestroy {
           estimatedSecondsRemaining: null
         });
 
-        // Each operation runs on its own stored input blob (captured at add-time).
-        // Falls back to fallbackBlob only if the operation predates this fix.
-        const inputBlob = operation.inputBlob ?? fallbackBlob;
+        // Chained: use previous step's output. Original: use captured input blob.
+        let inputBlob: Blob;
+        let inputUrl: string | undefined;
+        if (operation.inputMode === 'chained' && i > 0 && newResults[i - 1]) {
+          inputBlob = newResults[i - 1].outputBlob;
+          inputUrl = newResults[i - 1].outputUrl;
+        } else {
+          inputBlob = operation.inputBlob ?? fallbackBlob;
+          inputUrl = operation.inputUrl;
+        }
+
         const resultBlob = await this.executeOperation(inputBlob, operation);
 
         const url = URL.createObjectURL(resultBlob);
@@ -469,7 +484,7 @@ export class EditorComponent implements OnDestroy {
           label: this.getOperationName(operation.type),
           outputUrl: url,
           outputBlob: resultBlob,
-          inputUrl: operation.inputUrl,
+          inputUrl,
         });
       }
 

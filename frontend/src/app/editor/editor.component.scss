@@ -132,6 +132,40 @@ header {
     justify-content: center;
 }
 
+/* Chain mode toggle */
+.chain-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    padding: 0.4rem 0.75rem;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    user-select: none;
+    transition: border-color 0.2s, color 0.2s;
+
+    input[type="checkbox"] {
+        display: none;
+    }
+
+    .ph-link {
+        color: var(--accent-color);
+        font-size: 1rem;
+    }
+
+    .ph-link-break {
+        font-size: 1rem;
+    }
+
+    &:has(input:checked) {
+        border-color: var(--accent-color);
+        color: var(--accent-color);
+    }
+}
+
 /* Action buttons and generic overrides if needed */
 .action-buttons {
     display: flex;
@@ -353,6 +387,17 @@ header {
     .operation-name {
         font-weight: 500;
         color: var(--text-primary);
+    }
+
+    .chain-badge {
+        display: flex;
+        align-items: center;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+
+        .ph-link {
+            color: var(--accent-color);
+        }
     }
 
     .operation-actions {

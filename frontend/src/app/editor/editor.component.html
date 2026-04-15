@@ -50,6 +50,11 @@
             <div class="operation-info">
               <span class="operation-index">{{ i + 1 }}</span>
               <span class="operation-name">{{ getOperationName(op.type) }}</span>
+              @if (i > 0) {
+              <span class="chain-badge" [title]="op.inputMode === 'chained' ? 'Encadenado: usa salida del paso anterior' : 'Independiente: usa imagen original'">
+                <i class="ph" [class.ph-link]="op.inputMode === 'chained'" [class.ph-link-break]="op.inputMode !== 'chained'"></i>
+              </span>
+              }
             </div>
             <div class="operation-actions">
               @if (i > 0) {
@@ -114,6 +119,13 @@
         </button>
         }
         @if (isPipelineMode()) {
+        @if (operationQueue().length > 0 && mode() !== operationQueue()[operationQueue().length - 1].type) {
+        <label class="chain-toggle" [title]="chainWithPrevious() ? 'Encadenar: este paso usará la salida del paso anterior' : 'Independiente: este paso usará la imagen original'">
+          <input type="checkbox" [ngModel]="chainWithPrevious()" (ngModelChange)="chainWithPrevious.set($event)">
+          <i class="ph" [class.ph-link]="chainWithPrevious()" [class.ph-link-break]="!chainWithPrevious()"></i>
+          <span>{{ chainWithPrevious() ? 'Encadenado' : 'Independiente' }}</span>
+        </label>
+        }
         <button class="btn-secondary btn-pill" (click)="addToPipeline()" [disabled]="isLoading()">
           <i class="ph ph-plus"></i> Agregar al Pipeline
         </button>

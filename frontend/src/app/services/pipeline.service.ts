@@ -9,6 +9,7 @@ export interface Operation {
   timestamp: number;
   inputBlob?: Blob;
   inputUrl?: string;
+  inputMode: 'original' | 'chained';
 }
 
 export interface ExecutionResult {
