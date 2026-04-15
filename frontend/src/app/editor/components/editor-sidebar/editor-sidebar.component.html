@@ -1,28 +1,39 @@
-<div class="session-sidebar" [class.collapsed]="isCollapsed()">
-    <button class="collapse-toggle" (click)="toggleSidebar()"
-        [title]="isCollapsed() ? 'Mostrar trabajos recientes' : 'Ocultar'">
-        <i class="ph" [class.ph-caret-left]="isCollapsed()" [class.ph-caret-right]="!isCollapsed()"></i>
-    </button>
+<!-- FAB trigger (visible when collapsed) -->
+@if (isCollapsed()) {
+<button class="gallery-fab" (click)="toggleSidebar()"
+    [title]="'Mostrar trabajos recientes (' + galleryItems().length + ')'">
+    <i class="ph ph-images"></i>
+    <span class="fab-badge">{{ galleryItems().length }}</span>
+</button>
+}
 
-    <div class="sidebar-content">
-        <div class="gallery-header">
-            <h3>Trabajos Recientes</h3>
-            <span class="count">{{ galleryItems().length }}</span>
-        </div>
+<!-- Backdrop (visible when open) -->
+@if (!isCollapsed()) {
+<div class="drawer-backdrop" (click)="toggleSidebar()"></div>
+}
 
-        <div class="gallery-list">
-            @for (item of galleryItems(); track item.id) {
-            <div class="gallery-item" (click)="imageSelected.emit(item)">
-                <div class="thumb-wrapper">
-                    <img [src]="getUrl(item.id)" [alt]="item.name">
-                    <button class="delete-btn" (click)="onDelete(item.id, $event)">×</button>
-                </div>
-                <div class="meta">
-                    <span class="name">{{ item.name }}</span>
-                    <span class="time">{{ item.timestamp | date:'shortTime' }}</span>
-                </div>
+<!-- Drawer panel -->
+<div class="drawer-panel" [class.open]="!isCollapsed()">
+    <div class="drawer-header">
+        <h3>Trabajos Recientes</h3>
+        <span class="count">{{ galleryItems().length }}</span>
+        <button class="close-btn" (click)="toggleSidebar()" title="Cerrar">
+            <i class="ph ph-x"></i>
+        </button>
+    </div>
+
+    <div class="gallery-list">
+        @for (item of galleryItems(); track item.id) {
+        <div class="gallery-item" (click)="imageSelected.emit(item)">
+            <div class="thumb-wrapper">
+                <img [src]="getUrl(item.id)" [alt]="item.name">
+                <button class="delete-btn" (click)="onDelete(item.id, $event)">×</button>
             </div>
-            }
+            <div class="meta">
+                <span class="name">{{ item.name }}</span>
+                <span class="time">{{ item.timestamp | date:'shortTime' }}</span>
+            </div>
         </div>
+        }
     </div>
 </div>

@@ -10,7 +10,9 @@
       "mcp__wompi-api__searchDocumentation",
       "Bash(npx tsc *)",
       "Bash(node_modules/.bin/tsc --noEmit)",
-      "Bash(echo \"EXIT:$?\")"
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(npm start *)",
+      "Bash(ng serve *)"
     ]
   }
 }

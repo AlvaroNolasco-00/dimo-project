@@ -130,11 +130,12 @@
       }
     </div>
 
-    <!-- Session Sidebar -->
-    @if (sessionGallery().length > 0) {
-    <app-editor-sidebar [galleryItems]="sessionGallery()" (imageSelected)="loadFromGallery($event)"
-      (imageDeleted)="deleteFromGallery($event)">
-    </app-editor-sidebar>
-    }
   </div>
+
+  <!-- Session Sidebar (Floating Drawer) -->
+  @if (sessionGallery().length > 0) {
+  <app-editor-sidebar [galleryItems]="sessionGallery()" (imageSelected)="loadFromGallery($event)"
+    (imageDeleted)="deleteFromGallery($event)">
+  </app-editor-sidebar>
+  }
 </div>
