@@ -12,7 +12,9 @@
       "Bash(node_modules/.bin/tsc --noEmit)",
       "Bash(echo \"EXIT:$?\")",
       "Bash(npm start *)",
-      "Bash(ng serve *)"
+      "Bash(ng serve *)",
+      "Bash(git -C /Users/alvaronolasco/Documents/Projects/dimo-project log --oneline --all)",
+      "Bash(chmod +x /Users/alvaronolasco/Documents/Projects/dimo-project/docs/adr/new-adr.sh)"
     ]
   }
 }

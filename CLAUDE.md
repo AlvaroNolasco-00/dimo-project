@@ -125,3 +125,16 @@ frontend/src/app/
 | Database | PostgreSQL (external, referenced via `DATABASE_URL`) |
 
 SQL migration scripts live in `backend/sql/`. There is no ORM migration tool (Alembic) — schema changes are applied manually.
+
+## Architecture Decision Records (ADRs)
+
+Architectural decisions are documented in `docs/adr/`. Each ADR follows the template in `docs/adr/TEMPLATE.md`.
+
+**When to create an ADR:**
+- Choosing or changing a technology, library, or service
+- Defining a new architectural pattern or convention
+- Database schema design decisions (especially important given manual SQL migrations)
+- Decisions that affect multiple modules or have long-term consequences
+- When deprecating or replacing a previous approach
+
+**Workflow:** Create via `./docs/adr/new-adr.sh "titulo"`, fill in all sections, update `docs/adr/INDEX.md`, commit with the implementing code.
