@@ -16,7 +16,7 @@ TITLE="$1"
 SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9áéíóúñü]/-/g' | sed 's/--*/-/g' | sed 's/^-//' | sed 's/-$//')
 
 # Find next number (portable for macOS and Linux)
-LAST=$(ls "$ADR_DIR"/[0-9][0-9][0-9][0-9]-*.md 2>/dev/null | sort | tail -1 | cut -d- -f1 | rev | cut -c1-4 | rev || echo "0000")
+LAST=$(ls "$ADR_DIR"/[0-9][0-9][0-9][0-9]-*.md 2>/dev/null | sort -V | tail -1 | xargs basename | cut -c1-4 || echo "0000")
 NEXT=$(printf "%04d" $((10#$LAST + 1)))
 
 FILENAME="$ADR_DIR/${NEXT}-${SLUG}.md"
