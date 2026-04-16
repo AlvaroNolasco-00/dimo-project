@@ -18,6 +18,7 @@
 | [0009](./0009-fix-visualización-acumulada-de-resultados-en-pipeline-y-recálculo-de-inputmode-en-reordenamiento.md) | Fix: visualización acumulada y recálculo de inputMode en pipeline | accepted | frontend | 2026-04-15 |
 | [0010](./0010-control-acceso-basado-roles-por-proyecto.md) | Control de acceso basado en roles por proyecto (RBAC) | accepted | fullstack | 2026-04-15 |
 | [0011](./0011-componentizacion-interfaz-usuario-compartida.md) | Componentización de interfaz de usuario compartida | accepted | frontend | 2026-04-16 |
+| [0012](./0012-modal-tooltip-ayuda-herramientas.md) | Modal en lugar de tooltip para ayuda de herramientas | accepted | frontend | 2026-04-16 |
 
 ## Cómo usar
 

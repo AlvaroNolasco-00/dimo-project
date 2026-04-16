@@ -1,4 +1,4 @@
-import { Component, computed, signal, input, HostListener, ElementRef, inject } from '@angular/core';
+import { Component, computed, signal, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TOOL_HELP_CONTENT } from './tool-help-content';
 
@@ -10,8 +10,6 @@ import { TOOL_HELP_CONTENT } from './tool-help-content';
   styleUrl: './tool-help.component.scss'
 })
 export class ToolHelpComponent {
-  private elementRef = inject(ElementRef);
-
   toolId = input.required<string>();
 
   isOpen = signal(false);
@@ -23,10 +21,7 @@ export class ToolHelpComponent {
     this.isOpen.update(v => !v);
   }
 
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(event: Event) {
-    if (this.isOpen() && !this.elementRef.nativeElement.contains(event.target)) {
-      this.isOpen.set(false);
-    }
+  close() {
+    this.isOpen.set(false);
   }
 }

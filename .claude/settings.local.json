@@ -27,7 +27,8 @@
       "Bash(find /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/public -type f \\\\\\( -name \"*.ts\" -o -name \"*.html\" \\\\\\) -exec wc -l {} +)",
       "Bash(find /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/layout -type f \\\\\\( -name \"*.ts\" -o -name \"*.html\" \\\\\\) -exec wc -l {} +)",
       "Bash(find /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/services -type f \\\\\\( -name \"*.ts\" -o -name \"*.html\" \\\\\\) -exec wc -l {} +)",
-      "Bash(npx ng *)"
+      "Bash(npx ng *)",
+      "Bash(git add *)"
     ]
   }
 }

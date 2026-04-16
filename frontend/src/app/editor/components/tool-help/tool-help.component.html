@@ -2,21 +2,22 @@
   <button class="tool-help-btn" (click)="toggle($event)" [class.active]="isOpen()" title="Instrucciones de uso">
     <i class="ph ph-info"></i>
   </button>
-
-  @if (isOpen() && content()) {
-  <div class="tool-help-panel">
-    <div class="help-header">
-      <h4>{{ content().title }}</h4>
-      <button class="help-close" (click)="toggle($event)">
-        <i class="ph ph-x"></i>
-      </button>
-    </div>
-    <p class="help-description">{{ content().description }}</p>
-    <ol class="help-steps">
-      @for (step of content().steps; track $index) {
-      <li [innerHTML]="step.instruction"></li>
-      }
-    </ol>
-  </div>
-  }
 </div>
+
+@if (isOpen() && content()) {
+<div class="tool-help-backdrop" (click)="close()"></div>
+<div class="tool-help-modal" role="dialog" aria-modal="true">
+  <div class="help-header">
+    <h4>{{ content().title }}</h4>
+    <button class="help-close" (click)="close()">
+      <i class="ph ph-x"></i>
+    </button>
+  </div>
+  <p class="help-description">{{ content().description }}</p>
+  <ol class="help-steps">
+    @for (step of content().steps; track $index) {
+    <li [innerHTML]="step.instruction"></li>
+    }
+  </ol>
+</div>
+}

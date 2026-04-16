@@ -30,31 +30,29 @@
   }
 }
 
-.tool-help-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 300px;
+.tool-help-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  animation: backdropFadeIn 0.15s ease-out;
+}
+
+.tool-help-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(420px, 90vw);
+  max-height: 80vh;
+  overflow-y: auto;
   background: var(--card-bg);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  padding: 1rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  animation: helpSlideDown 0.18s ease-out;
-  z-index: 100;
-
-  @include mobile {
-    position: fixed;
-    top: auto;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    border-radius: var(--radius) var(--radius) 0 0;
-    max-height: 55vh;
-    overflow-y: auto;
-    animation: helpSlideUp 0.2s ease-out;
-  }
+  padding: 1.25rem;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+  animation: modalScaleIn 0.18s ease-out;
 }
 
 .help-header {
@@ -121,24 +119,18 @@
   }
 }
 
-@keyframes helpSlideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-@keyframes helpSlideUp {
+@keyframes modalScaleIn {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translate(-50%, -50%) scale(0.95);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(-50%, -50%) scale(1);
   }
 }
