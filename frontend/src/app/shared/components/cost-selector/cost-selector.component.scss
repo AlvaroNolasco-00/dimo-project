@@ -1,0 +1,8 @@
+// Styles are consumed from the parent component's stylesheet
+// via CSS class names that already exist (cost-selector-grid,
+// cost-config-card, etc.). This component uses :host display
+// block to participate in the layout.
+
+:host {
+  display: block;
+}

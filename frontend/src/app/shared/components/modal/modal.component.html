@@ -1,0 +1,21 @@
+@if (isOpen) {
+<div class="modal-overlay" (click)="onBackdrop()">
+  <div class="modal-content card fade-in" [ngClass]="cssClass" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div>
+        <h2>{{ title }}</h2>
+        @if (subtitle) {
+          <p class="subtitle">{{ subtitle }}</p>
+        }
+      </div>
+      <button class="btn-icon-only" (click)="closed.emit()">
+        <i class="ph ph-x"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <ng-content></ng-content>
+    </div>
+    <ng-content select="[modal-footer]"></ng-content>
+  </div>
+</div>
+}

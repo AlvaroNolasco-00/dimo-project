@@ -4,12 +4,14 @@ import { FormsModule } from '@angular/forms';
 import { trigger, transition, style, animate, query, stagger, group } from '@angular/animations';
 import { Router } from '@angular/router';
 import { ApiService } from '../../../services/api.service';
+import { CostSelectorComponent } from '../../../shared/components/cost-selector/cost-selector.component';
+import { QuantityControlComponent } from '../../../shared/components/quantity-control/quantity-control.component';
 
 
 @Component({
   selector: 'app-crear-pedido',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CostSelectorComponent, QuantityControlComponent],
   templateUrl: './crear-pedido.component.html',
   styleUrl: './crear-pedido.component.scss',
   encapsulation: ViewEncapsulation.None,
@@ -303,6 +305,16 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
   // --- Item Logic ---
 
   // --- Item Logic ---
+
+  onSelectorCostTypeChange(id: number | null) {
+    this.tempSubItem.cost_type_id = id;
+    this.onCostTypeChange();
+  }
+
+  onSelectorCostChange(id: number | null) {
+    this.tempSubItem.operative_cost_id = id;
+    this.onOperativeCostChange();
+  }
 
   onCostTypeChange() {
     this.tempSubItem.operative_cost_id = null;

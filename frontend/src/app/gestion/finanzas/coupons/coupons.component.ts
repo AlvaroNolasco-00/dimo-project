@@ -3,12 +3,14 @@ import { CommonModule } from '@angular/common';
 import { ApiService } from '../../../services/api.service';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { ModalComponent } from '../../../shared/components/modal/modal.component';
+import { StatCardComponent } from '../../../shared/components/stat-card/stat-card.component';
 import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-coupons',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, ModalComponent, StatCardComponent],
   templateUrl: './coupons.component.html',
   styleUrl: './coupons.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

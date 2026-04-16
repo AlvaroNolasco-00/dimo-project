@@ -20,34 +20,10 @@
     <!-- Tarjetas de estadísticas -->
     @if (stats()) {
     <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-icon total"><i class="ph ph-chart-bar"></i></div>
-            <div class="stat-info">
-                <span class="stat-value">{{ stats()!.total_operations }}</span>
-                <span class="stat-label">Total operaciones</span>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon success"><i class="ph ph-check-circle"></i></div>
-            <div class="stat-info">
-                <span class="stat-value">{{ successRate() }}%</span>
-                <span class="stat-label">Tasa de éxito ({{ stats()!.success_count }} exitosas)</span>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon failed"><i class="ph ph-x-circle"></i></div>
-            <div class="stat-info">
-                <span class="stat-value">{{ stats()!.failure_count }}</span>
-                <span class="stat-label">Fallidas</span>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon duration"><i class="ph ph-clock"></i></div>
-            <div class="stat-info">
-                <span class="stat-value">{{ formatDuration(stats()!.avg_duration_ms) }}</span>
-                <span class="stat-label">Duración promedio</span>
-            </div>
-        </div>
+        <app-stat-card iconClass="total" icon="ph-chart-bar" label="Total operaciones" [value]="stats()!.total_operations" />
+        <app-stat-card iconClass="success" icon="ph-check-circle" [label]="'Tasa de éxito (' + stats()!.success_count + ' exitosas)'" [value]="successRate() + '%'" />
+        <app-stat-card iconClass="failed" icon="ph-x-circle" label="Fallidas" [value]="stats()!.failure_count" />
+        <app-stat-card iconClass="duration" icon="ph-clock" label="Duración promedio" [value]="formatDuration(stats()!.avg_duration_ms)" />
     </div>
 
     <!-- Operaciones por tipo -->

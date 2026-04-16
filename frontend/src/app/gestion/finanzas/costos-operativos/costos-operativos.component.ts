@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FinanceService, CostType, OperativeCost } from '../../../services/finance.service';
 import { AuthService } from '../../../services/auth.service';
+import { ModalComponent } from '../../../shared/components/modal/modal.component';
 import Swal from 'sweetalert2';
 
 export interface CamisaCost {
@@ -22,7 +23,7 @@ export interface EstampadoCost {
 @Component({
   selector: 'app-costos-operativos',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ModalComponent],
   templateUrl: './costos-operativos.component.html',
   styleUrl: './costos-operativos.component.scss'
 })

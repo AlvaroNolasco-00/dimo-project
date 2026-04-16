@@ -2,6 +2,7 @@ import { Component, inject, signal, computed, OnInit, ChangeDetectionStrategy } 
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { StatCardComponent } from '../../shared/components/stat-card/stat-card.component';
 
 export interface AuditEntry {
     id: number;
@@ -44,7 +45,7 @@ const OPERATION_LABELS: Record<string, string> = {
 @Component({
     selector: 'app-bitacora',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, StatCardComponent],
     templateUrl: './bitacora.component.html',
     styleUrls: ['./bitacora.component.scss'],
     changeDetection: ChangeDetectionStrategy.Default

@@ -6,6 +6,8 @@ import { CatalogService, ProductCategory, ProductCostLineCreate } from '../../..
 import { FinanceService, CostType, OperativeCost } from '../../../services/finance.service';
 import { ProjectService } from '../../../services/project.service';
 import { environment } from '../../../../environments/environment';
+import { CostSelectorComponent } from '../../../shared/components/cost-selector/cost-selector.component';
+import { QuantityControlComponent } from '../../../shared/components/quantity-control/quantity-control.component';
 import Swal from 'sweetalert2';
 
 interface CostLineForm extends ProductCostLineCreate {
@@ -15,7 +17,7 @@ interface CostLineForm extends ProductCostLineCreate {
 @Component({
     selector: 'app-producto-form',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterModule],
+    imports: [CommonModule, FormsModule, RouterModule, CostSelectorComponent, QuantityControlComponent],
     templateUrl: './producto-form.component.html',
     styleUrl: './producto-form.component.scss'
 })
@@ -118,6 +120,16 @@ export class ProductoFormComponent implements OnInit {
         } else {
             this.loading = false;
         }
+    }
+
+    onSelectorCostTypeChange(id: number | null) {
+        this.selectedCostTypeId = id;
+        this.onCostTypeChange();
+    }
+
+    onSelectorCostChange(id: number | null) {
+        this.selectedCostId = id;
+        this.onCostSelected();
     }
 
     onCostTypeChange() {

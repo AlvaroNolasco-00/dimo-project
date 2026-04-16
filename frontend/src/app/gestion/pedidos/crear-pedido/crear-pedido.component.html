@@ -130,156 +130,31 @@
               <h4>Construir Item</h4>
               <p class="helper-text-sm">Selecciona el tipo y costo para configurar cada componente.</p>
 
-              <!-- Selector: Tipo + Costo -->
-              <div class="cost-selector-grid">
-                <div class="form-group">
-                  <label>Tipo de Costo</label>
-                  <div class="input-wrapper">
-                    <i class="ph ph-tag"></i>
-                    <select [(ngModel)]="tempSubItem.cost_type_id" name="subCostType" (ngModelChange)="onCostTypeChange()"
-                      [disabled]="isLoadingTypes">
-                      <option [ngValue]="null" disabled selected>Tipo</option>
-                      @for (type of costTypes; track type.id) {
-                      <option [value]="type.id">{{ type.name }}</option>
-                      }
-                    </select>
-                    <i class="ph ph-caret-down select-icon"></i>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label>Item / Costo</label>
-                  <div class="input-wrapper">
-                    <i class="ph ph-package"></i>
-                    <select [(ngModel)]="tempSubItem.operative_cost_id" name="subOpCost"
-                      [disabled]="!tempSubItem.cost_type_id || isLoadingCosts" (ngModelChange)="onOperativeCostChange()">
-                      <option [ngValue]="null" disabled selected>Selecciona opción</option>
-                      @for (cost of availableOperativeCosts; track cost.id) {
-                      <option [ngValue]="cost.id">
-                        {{ cost.base_cost | currency }}
-                        @if (cost.attributes) {
-                        - @for (attr of cost.attributes | keyvalue; track attr.key) {
-                          @if (!$any(attr.key).startsWith('__')) {
-                            {{ attr.key }}: {{ attr.value }}
-                          }
-                        }
-                        }
-                      </option>
-                      }
-                    </select>
-                    <i class="ph ph-caret-down select-icon"></i>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Tarjeta de configuración contextual -->
-              @if (selectedCost) {
-              <div class="cost-config-card">
-
-                <!-- Header: costo seleccionado + precio actual -->
-                <div class="cost-config-header">
-                  <div class="cost-config-name-wrap">
-                    <i class="ph ph-package"></i>
-                    <span>{{ tempSubItem.description }}</span>
-                  </div>
-                  <div class="cost-config-price-wrap">
-                    @if (getEffectiveMargin(selectedCost) > 0) {
-                    <span class="cost-config-base-price">{{ selectedCost.base_cost | currency }}</span>
-                    <span class="cost-config-margin-badge">+{{ getEffectiveMargin(selectedCost) }}%</span>
-                    }
-                    <span class="cost-config-price">{{ tempSubItem.unit_price | currency }}</span>
-                  </div>
-                </div>
-
-                <!-- Sección: Opciones / Variantes -->
-                @if (selectedCost?.attributes?.__type === 'variants' && selectedCost?.attributes?.__config?.groups) {
-                <div class="config-section">
-                  <div class="config-section-header">
-                    <i class="ph ph-sliders"></i>
-                    <span>Opciones</span>
-                  </div>
-                  <div class="variants-grid">
-                    @for (group of selectedCost.attributes.__config.groups; track group.name) {
-                    <div class="form-group">
-                      <label>{{ group.name }}</label>
-                      <div class="input-wrapper">
-                        <i class="ph ph-caret-right"></i>
-                        <select [(ngModel)]="tempSubItem.variantSelections[group.name]" (ngModelChange)="onVariantChange()">
-                          <option [ngValue]="null" disabled selected>Selecciona {{ group.name }}</option>
-                          @for (option of group.options; track option.label) {
-                          <option [ngValue]="option">
-                            {{ option.label }}
-                            @if (option.priceMod > 0) { (+{{ option.priceMod | currency }}) }
-                          </option>
-                          }
-                        </select>
-                        <i class="ph ph-caret-down select-icon"></i>
-                      </div>
-                    </div>
-                    }
-                  </div>
-                </div>
-                }
-
-                <!-- Sección: Servicios adicionales (costos derivados) -->
-                @if (isLoadingDerivedCosts) {
-                <div class="config-section">
-                  <div class="config-section-header">
-                    <i class="ph ph-circle-notch ph-spin"></i>
-                    <span>Cargando servicios adicionales...</span>
-                  </div>
-                </div>
-                } @else if (availableDerivedCosts.length > 0) {
-                <div class="config-section">
-                  <div class="config-section-header">
-                    <i class="ph ph-plus-circle"></i>
-                    <span>Servicios adicionales</span>
-                    @if (selectedDerivedCostIds.size > 0) {
-                    <span class="derived-badge">{{ selectedDerivedCostIds.size }} seleccionado(s)</span>
-                    }
-                  </div>
-                  <div class="derived-costs-list">
-                    @for (cost of availableDerivedCosts; track cost.id) {
-                    <label class="derived-cost-option" [class.selected]="isDerivedCostSelected(cost.id)"
-                      (click)="toggleDerivedCost(cost.id)">
-                      <span class="derived-checkbox">
-                        <i class="ph" [class.ph-check-square]="isDerivedCostSelected(cost.id)"
-                          [class.ph-square]="!isDerivedCostSelected(cost.id)"></i>
-                      </span>
-                      <span class="derived-info">
-                        <span class="derived-name">{{ cost.attributes?.['Descripción'] || 'Complemento' }}</span>
-                        <span class="derived-price">{{ cost.base_cost | currency }}</span>
-                      </span>
-                    </label>
-                    }
-                  </div>
-                </div>
-                }
-
-                <!-- Footer: Cantidad + botón Agregar componente -->
-                <div class="cost-config-footer">
-                  <div class="qty-wrapper">
-                    <span class="qty-label">Cantidad</span>
-                    <div class="quantity-control">
-                      <button type="button" class="qty-btn" (click)="decrementTempSubQty()">
-                        <i class="ph ph-minus"></i>
-                      </button>
-                      <input type="number" [(ngModel)]="tempSubItem.quantity" name="subItemQty" min="1"
-                        (change)="validateTempSubQty()">
-                      <button type="button" class="qty-btn" (click)="incrementTempSubQty()">
-                        <i class="ph ph-plus"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <button type="button" class="btn-add-component" (click)="addSubItem()"
-                    [disabled]="!tempSubItem.operative_cost_id || tempSubItem.quantity <= 0">
-                    <i class="ph ph-plus"></i>
-                    Agregar componente
-                  </button>
-                </div>
-
-              </div>
-              }
+              <app-cost-selector
+                [costTypes]="costTypes"
+                [availableCosts]="availableOperativeCosts"
+                [selectedCostTypeId]="tempSubItem.cost_type_id"
+                [selectedCostId]="tempSubItem.operative_cost_id"
+                [selectedCost]="selectedCost"
+                [isLoadingTypes]="isLoadingTypes"
+                [isLoadingCosts]="isLoadingCosts"
+                [isLoadingDerivedCosts]="isLoadingDerivedCosts"
+                [availableDerivedCosts]="availableDerivedCosts"
+                [selectedDerivedCostIds]="selectedDerivedCostIds"
+                [variantSelections]="tempSubItem.variantSelections"
+                [currentPrice]="tempSubItem.unit_price"
+                [description]="tempSubItem.description"
+                [quantity]="tempSubItem.quantity"
+                [addDisabled]="!tempSubItem.operative_cost_id || tempSubItem.quantity <= 0"
+                addButtonText="Agregar componente"
+                costSelectLabel="Item / Costo"
+                (costTypeChange)="onSelectorCostTypeChange($event)"
+                (costChange)="onSelectorCostChange($event)"
+                (variantChange)="onVariantChange()"
+                (derivedCostToggle)="toggleDerivedCost($event)"
+                (quantityChange)="tempSubItem.quantity = $event"
+                (add)="addSubItem()"
+              />
 
               <!-- Vista previa del item compuesto -->
               @if (newItem.subItems.length > 0) {
@@ -301,16 +176,11 @@
                 <div class="composite-actions">
                   <div class="form-group">
                     <label>Cantidad total de este item</label>
-                    <div class="quantity-control">
-                      <button type="button" class="qty-btn" (click)="decrementNewItemQty()">
-                        <i class="ph ph-minus"></i>
-                      </button>
-                      <input type="number" [(ngModel)]="newItem.quantity" name="compositeQty" min="1"
-                        (change)="validateNewItemQty()">
-                      <button type="button" class="qty-btn" (click)="incrementNewItemQty()">
-                        <i class="ph ph-plus"></i>
-                      </button>
-                    </div>
+                    <app-quantity-control
+                      [value]="newItem.quantity"
+                      (valueChange)="newItem.quantity = $event; updateCompositeItemPrice()"
+                      [min]="1"
+                    />
                   </div>
 
                   <div class="composite-summary">

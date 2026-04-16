@@ -1,0 +1,174 @@
+<div class="cost-selector-grid">
+  <div class="form-group">
+    <label>{{ typeSelectLabel }}</label>
+    <div class="input-wrapper">
+      <i class="ph ph-tag"></i>
+      <select
+        [ngModel]="selectedCostTypeId"
+        (ngModelChange)="costTypeChange.emit($event)"
+        [disabled]="isLoadingTypes"
+      >
+        <option [ngValue]="null" disabled selected>Tipo</option>
+        @for (type of costTypes; track type.id) {
+          <option [value]="type.id">{{ type.name }}</option>
+        }
+      </select>
+      <i class="ph ph-caret-down select-icon"></i>
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label>{{ costSelectLabel }}</label>
+    <div class="input-wrapper">
+      <i class="ph ph-package"></i>
+      <select
+        [ngModel]="selectedCostId"
+        (ngModelChange)="costChange.emit($event)"
+        [disabled]="!selectedCostTypeId || isLoadingCosts"
+      >
+        <option [ngValue]="null" disabled selected>Selecciona opción</option>
+        @for (cost of availableCosts; track cost.id) {
+          <option [ngValue]="cost.id">
+            {{ cost.base_cost | currency }}
+            @if (cost.attributes) {
+              - @for (attr of cost.attributes | keyvalue; track attr.key) {
+                @if (!$any(attr.key).startsWith('__')) {
+                  {{ attr.key }}: {{ attr.value }}
+                }
+              }
+            }
+          </option>
+        }
+      </select>
+      <i class="ph ph-caret-down select-icon"></i>
+    </div>
+  </div>
+</div>
+
+@if (selectedCost) {
+<div class="cost-config-card">
+
+  <!-- Header: name + price with margin -->
+  <div class="cost-config-header">
+    <div class="cost-config-name-wrap">
+      <i class="ph ph-package"></i>
+      <span>{{ description || 'Costo seleccionado' }}</span>
+    </div>
+    <div class="cost-config-price-wrap">
+      @if (getEffectiveMargin(selectedCost) > 0) {
+        <span class="cost-config-base-price">{{ selectedCost.base_cost | currency }}</span>
+        <span class="cost-config-margin-badge">+{{ getEffectiveMargin(selectedCost) }}%</span>
+      }
+      <span class="cost-config-price">{{ currentPrice | currency }}</span>
+    </div>
+  </div>
+
+  <!-- Variants section -->
+  @if (selectedCost?.attributes?.__type === 'variants' && selectedCost?.attributes?.__config?.groups) {
+  <div class="config-section">
+    <div class="config-section-header">
+      <i class="ph ph-sliders"></i>
+      <span>Opciones</span>
+    </div>
+    <div class="variants-grid">
+      @for (group of selectedCost.attributes.__config.groups; track group.name) {
+        <div class="form-group">
+          <label>{{ group.name }}</label>
+          <div class="input-wrapper">
+            <i class="ph ph-caret-right"></i>
+            <select
+              [ngModel]="variantSelections[group.name]"
+              (ngModelChange)="onVariantSelect(group.name, $event)"
+            >
+              <option [ngValue]="null" disabled selected>Selecciona {{ group.name }}</option>
+              @for (option of group.options; track option.label) {
+                <option [ngValue]="option">
+                  {{ option.label }}
+                  @if (option.priceMod > 0) { (+{{ option.priceMod | currency }}) }
+                </option>
+              }
+            </select>
+            <i class="ph ph-caret-down select-icon"></i>
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- Derived costs section -->
+  @if (isLoadingDerivedCosts) {
+  <div class="config-section">
+    <div class="config-section-header">
+      <i class="ph ph-circle-notch ph-spin"></i>
+      <span>Cargando servicios adicionales...</span>
+    </div>
+  </div>
+  } @else if (availableDerivedCosts.length > 0) {
+  <div class="config-section">
+    <div class="config-section-header">
+      <i class="ph ph-plus-circle"></i>
+      <span>Servicios adicionales</span>
+      @if (selectedDerivedCostIds.size > 0) {
+        <span class="derived-badge">{{ selectedDerivedCostIds.size }} seleccionado(s)</span>
+      }
+    </div>
+    <div class="derived-costs-list">
+      @for (cost of availableDerivedCosts; track cost.id) {
+        <label
+          class="derived-cost-option"
+          [class.selected]="isDerivedCostSelected(cost.id)"
+          (click)="derivedCostToggle.emit(cost.id)"
+        >
+          <span class="derived-checkbox">
+            <i class="ph"
+              [class.ph-check-square]="isDerivedCostSelected(cost.id)"
+              [class.ph-square]="!isDerivedCostSelected(cost.id)"
+            ></i>
+          </span>
+          <span class="derived-info">
+            <span class="derived-name">{{ cost.attributes?.['Descripción'] || 'Complemento' }}</span>
+            <span class="derived-price">{{ cost.base_cost | currency }}</span>
+          </span>
+        </label>
+      }
+    </div>
+  </div>
+  }
+
+  <!-- Footer: label input (optional) + quantity + add button -->
+  <div class="cost-config-footer">
+    @if (showLabelInput) {
+      <div class="form-group footer-label-group">
+        <label>Etiqueta en el producto</label>
+        <input
+          type="text"
+          [ngModel]="label"
+          (ngModelChange)="labelChange.emit($event)"
+          placeholder="Ej: Sublimación talla M..."
+        />
+      </div>
+    }
+
+    <div class="qty-wrapper">
+      <span class="qty-label">Cantidad</span>
+      <app-quantity-control
+        [value]="quantity"
+        (valueChange)="quantityChange.emit($event)"
+        [min]="1"
+      />
+    </div>
+
+    <button
+      type="button"
+      class="btn-add-component"
+      [disabled]="addDisabled"
+      (click)="add.emit()"
+    >
+      <i class="ph ph-plus"></i>
+      {{ addButtonText }}
+    </button>
+  </div>
+
+</div>
+}

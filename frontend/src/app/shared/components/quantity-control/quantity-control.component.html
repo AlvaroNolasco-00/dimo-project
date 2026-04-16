@@ -1,0 +1,14 @@
+<div class="quantity-control">
+  <button type="button" class="qty-btn" (click)="decrement()">
+    <i class="ph ph-minus"></i>
+  </button>
+  <input
+    type="number"
+    [value]="value()"
+    [min]="min"
+    (input)="onInput($event)"
+  />
+  <button type="button" class="qty-btn" (click)="increment()">
+    <i class="ph ph-plus"></i>
+  </button>
+</div>
