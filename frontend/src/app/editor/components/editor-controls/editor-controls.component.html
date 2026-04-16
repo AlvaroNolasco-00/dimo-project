@@ -2,6 +2,7 @@
 @case ('enhance') {
 <!-- Controls: Enhance -->
 <div class="controls">
+    <app-tool-help toolId="enhance" />
     <div class="control-group">
         <label>Contraste: {{ contrast() }}</label>
         <input type="range" min="0.5" max="2.0" step="0.1" [ngModel]="contrast()"
@@ -23,6 +24,7 @@
 @case ('upscale') {
 <!-- Controls: Upscale -->
 <div class="controls">
+    <app-tool-help toolId="upscale" />
     <div class="control-group">
         <label>Factor de Escala: {{ upscaleFactor() }}x</label>
         <select [ngModel]="upscaleFactor()" (ngModelChange)="upscaleFactor.set($event)">
@@ -44,6 +46,7 @@
 @case ('remove-bg') {
 <!-- Controls: Remove Background -->
 <div class="controls">
+    <app-tool-help toolId="remove-bg" />
     <div class="mode-selector">
         <label>
             <input type="radio" name="bgMode" value="auto" [ngModel]="bgRemovalMode()"
@@ -130,6 +133,7 @@
 @case ('remove-objects') {
 <!-- Controls: Remove Objects -->
 <div class="controls">
+    <app-tool-help toolId="remove-objects" />
     <div class="mode-selector">
         <label>
             <input type="radio" name="remMethod" value="brush" [ngModel]="removalMethod()"
@@ -176,6 +180,7 @@
 @case ('halftone') {
 <!-- Controls: Halftone -->
 <div class="controls">
+    <app-tool-help toolId="halftone" />
     <div class="control-group">
         <label>Tamaño de Punto: {{ dotSize() }}px</label>
         <input type="range" min="2" max="10" [ngModel]="dotSize()" (ngModelChange)="dotSize.set($event)">
@@ -216,6 +221,7 @@
 @case ('contour-clip') {
 <!-- Controls: Contour Clip -->
 <div class="controls">
+    <app-tool-help toolId="contour-clip" />
     <div class="mode-selector">
         <label>
             <input type="radio" name="contourMode" value="auto" [ngModel]="bgRemovalMode()"
@@ -254,6 +260,7 @@
 @case ('crop') {
 <!-- Controls: Crop -->
 <div class="controls">
+    <app-tool-help toolId="crop" />
     <div class="mode-selector aspect-ratios">
         <button class="btn-small" [class.active]="isNaN(cropAspectRatio())" (click)="setAspectRatio(NaN)">Libre</button>
         <button class="btn-small" [class.active]="cropAspectRatio() === 1" (click)="setAspectRatio(1)">1:1</button>

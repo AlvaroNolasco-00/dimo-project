@@ -1,11 +1,12 @@
 import { Component, input, model, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ToolHelpComponent } from '../tool-help/tool-help.component';
 
 @Component({
     selector: 'app-editor-controls',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, ToolHelpComponent],
     templateUrl: './editor-controls.component.html',
     styleUrl: './editor-controls.component.scss'
 })

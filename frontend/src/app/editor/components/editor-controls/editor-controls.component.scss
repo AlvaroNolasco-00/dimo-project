@@ -1,6 +1,7 @@
 @use 'app/shared/mixins' as *;
 
 .controls {
+    position: relative;
     display: flex;
     justify-content: center;
     gap: 2rem;

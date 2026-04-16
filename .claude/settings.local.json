@@ -19,7 +19,14 @@
       "Bash(./node_modules/.bin/tsc --noEmit)",
       "Bash(echo \"EXIT: $?\")",
       "Bash(bash new-adr.sh \"Pipeline no-destructivo con encadenamiento de pasos\")",
-      "Bash(bash docs/adr/new-adr.sh \"Fix: visualización acumulada de resultados en pipeline y recálculo de inputMode en reordenamiento\")"
+      "Bash(bash docs/adr/new-adr.sh \"Fix: visualización acumulada de resultados en pipeline y recálculo de inputMode en reordenamiento\")",
+      "Bash(find /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/editor -type f \\\\\\( -name \"*.ts\" -o -name \"*.html\" \\\\\\) -exec wc -l {} +)",
+      "Bash(find /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/gestion -type f \\\\\\( -name \"*.ts\" -o -name \"*.html\" \\\\\\) -exec wc -l {} +)",
+      "Bash(find /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/auth -type f \\\\\\( -name \"*.ts\" -o -name \"*.html\" \\\\\\) -exec wc -l {} +)",
+      "Bash(find /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/usuarios -type f \\\\\\( -name \"*.ts\" -o -name \"*.html\" \\\\\\) -exec wc -l {} +)",
+      "Bash(find /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/public -type f \\\\\\( -name \"*.ts\" -o -name \"*.html\" \\\\\\) -exec wc -l {} +)",
+      "Bash(find /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/layout -type f \\\\\\( -name \"*.ts\" -o -name \"*.html\" \\\\\\) -exec wc -l {} +)",
+      "Bash(find /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/services -type f \\\\\\( -name \"*.ts\" -o -name \"*.html\" \\\\\\) -exec wc -l {} +)"
     ]
   }
 }
