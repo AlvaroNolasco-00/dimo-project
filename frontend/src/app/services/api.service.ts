@@ -354,5 +354,38 @@ export class ApiService {
     getProcessingAuditStats(days: number = 30): Observable<any> {
         return this.http.get<any>(`${environment.apiUrl}/audit/processing/stats?days=${days}`);
     }
+
+    executePipeline(image: Blob, operations: PipelineOperationDTO[], masks: Map<number, Blob>): Observable<PipelineResponse> {
+        const formData = new FormData();
+        formData.append('image', image);
+        formData.append('operations', JSON.stringify(operations));
+        masks.forEach((maskBlob, index) => {
+            formData.append(`mask_${index}`, maskBlob);
+        });
+        return this.http.post<PipelineResponse>(`${environment.apiUrl}/pipeline`, formData);
+    }
+}
+
+export interface PipelineOperationDTO {
+    type: string;
+    params: Record<string, any>;
+    input_mode: 'original' | 'chained';
+}
+
+export interface PipelineStepResult {
+    step_index: number;
+    operation_type: string;
+    status: 'success' | 'failed';
+    error?: string;
+    image_base64?: string;
+    duration_ms?: number;
+}
+
+export interface PipelineResponse {
+    pipeline_id: string;
+    total_steps: number;
+    completed_steps: number;
+    status: 'completed' | 'partial_failure';
+    results: PipelineStepResult[];
 }
 

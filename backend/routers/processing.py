@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Response, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Response, BackgroundTasks, Request
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from PIL import UnidentifiedImageError
 import uuid
 import json
+import base64
+import time
 
-from typing import Optional
+from typing import Optional, List
 from backend import models
 from backend import schemas
 from backend.services import processing
@@ -351,3 +353,157 @@ async def api_watermark(
         raise HTTPException(status_code=503, detail="Image too large to process. Try a smaller image.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/pipeline", response_model=schemas.PipelineResponse)
+async def api_pipeline(
+    request: Request,
+    image: UploadFile = File(...),
+    operations: str = Form(...),
+    user: models.User = Depends(get_approved_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Execute a chain of image operations server-side.
+    Sends image once; backend chains results in memory.
+    Masks sent as mask_0, mask_1, ... form fields matching operation index.
+    """
+    try:
+        ops_list: List[schemas.PipelineOperation] = [
+            schemas.PipelineOperation(**op) for op in json.loads(operations)
+        ]
+    except (json.JSONDecodeError, TypeError, KeyError) as e:
+        raise HTTPException(status_code=422, detail=f"Invalid operations JSON: {e}")
+
+    # Collect mask files by index (mask_0, mask_1, ...)
+    form = await request.form()
+    masks: dict[int, bytes] = {}
+    for key in form.keys():
+        if key.startswith("mask_"):
+            try:
+                idx = int(key.split("_", 1)[1])
+                field = form[key]
+                masks[idx] = await field.read()
+            except (ValueError, AttributeError):
+                pass
+
+    pipeline_id = str(uuid.uuid4())
+    image_bytes = await image.read()
+    results: List[schemas.PipelineStepResult] = []
+    current_bytes = image_bytes
+
+    for i, op in enumerate(ops_list):
+        step_input = current_bytes if (op.input_mode == "chained" and i > 0) else image_bytes
+        mask_bytes = masks.get(i)
+        params = op.params
+        t0 = time.time()
+
+        audit = AuditContext(db, user, f"PIPELINE_{op.type.upper().replace('-', '_')}", step_input, params)
+
+        try:
+            if op.type == "enhance":
+                result_bytes = await processing.enhance_quality(
+                    step_input,
+                    params.get("contrast", 1.2),
+                    params.get("brightness", 1.1),
+                    params.get("sharpness", 1.3)
+                )
+
+            elif op.type == "upscale":
+                result_bytes = await processing.upscale_image(
+                    step_input,
+                    params.get("factor", 2.0),
+                    params.get("detailBoost", params.get("detail_boost", 1.5))
+                )
+
+            elif op.type == "remove-bg":
+                mode = params.get("mode", "auto")
+                if mode == "draw" and mask_bytes:
+                    result_bytes = await processing.remove_background_with_mask(
+                        step_input, mask_bytes, params.get("smartRefine", params.get("refine", False))
+                    )
+                elif mode == "manual" and params.get("selectedColors"):
+                    result_bytes = await run_in_threadpool(
+                        processing.remove_specific_colors,
+                        step_input,
+                        params["selectedColors"],
+                        params.get("colorTolerance", params.get("threshold", 30))
+                    )
+                else:
+                    result_bytes = await processing.remove_background(step_input)
+
+            elif op.type == "remove-objects":
+                method = params.get("method", "brush")
+                if method == "magic-wand":
+                    x, y = params.get("x"), params.get("y")
+                    if x is None or y is None:
+                        raise ValueError("magic-wand requires x, y coordinates in params")
+                    tolerance = params.get("colorTolerance", params.get("tolerance", 30))
+                    generated_mask = await run_in_threadpool(
+                        processing.create_mask_from_point, step_input, x, y, tolerance
+                    )
+                    result_bytes = await run_in_threadpool(processing.remove_objects, step_input, generated_mask)
+                else:
+                    if not mask_bytes:
+                        raise ValueError("remove-objects brush mode requires a mask")
+                    result_bytes = await run_in_threadpool(processing.remove_objects, step_input, mask_bytes)
+
+            elif op.type == "halftone":
+                colors_list = params.get("selectedColors") or None
+                result_bytes = await run_in_threadpool(
+                    processing.generate_halftone,
+                    step_input,
+                    dot_size=params.get("dotSize", params.get("dot_size", 10)),
+                    scale=params.get("scale", 1.0),
+                    remove_colors=colors_list,
+                    tolerance=params.get("colorTolerance", params.get("threshold", 30)),
+                    spacing=params.get("spacing", 0)
+                )
+
+            elif op.type == "contour-clip":
+                mode = params.get("mode", "manual")
+                colors_list = params.get("selectedColors") or None
+                result_bytes = await processing.contour_clip(
+                    step_input,
+                    mask_bytes,
+                    mode,
+                    params.get("smartRefine", params.get("refine", False)),
+                    colors_list,
+                    params.get("colorTolerance", params.get("threshold", 30))
+                )
+
+            else:
+                raise ValueError(f"Unknown operation type: {op.type}")
+
+            duration_ms = int((time.time() - t0) * 1000)
+            audit.complete(result_bytes)
+            current_bytes = result_bytes
+            results.append(schemas.PipelineStepResult(
+                step_index=i,
+                operation_type=op.type,
+                status="success",
+                image_base64=base64.b64encode(result_bytes).decode(),
+                duration_ms=duration_ms
+            ))
+
+        except Exception as e:
+            duration_ms = int((time.time() - t0) * 1000)
+            audit.fail(str(e))
+            results.append(schemas.PipelineStepResult(
+                step_index=i,
+                operation_type=op.type,
+                status="failed",
+                error=str(e),
+                duration_ms=duration_ms
+            ))
+            break  # Fail fast
+
+    completed = sum(1 for r in results if r.status == "success")
+    pipeline_status = "completed" if completed == len(ops_list) else "partial_failure"
+
+    return schemas.PipelineResponse(
+        pipeline_id=pipeline_id,
+        total_steps=len(ops_list),
+        completed_steps=completed,
+        status=pipeline_status,
+        results=results
+    )

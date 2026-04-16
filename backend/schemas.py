@@ -546,6 +546,27 @@ class ProcessingAuditLogList(BaseModel):
     page: int
     page_size: int
 
+# --- Pipeline ---
+class PipelineOperation(BaseModel):
+    type: str  # enhance | upscale | remove-bg | remove-objects | halftone | contour-clip
+    params: Dict[str, Any] = {}
+    input_mode: str = "chained"  # chained | original
+
+class PipelineStepResult(BaseModel):
+    step_index: int
+    operation_type: str
+    status: str  # success | failed
+    error: Optional[str] = None
+    image_base64: Optional[str] = None
+    duration_ms: Optional[int] = None
+
+class PipelineResponse(BaseModel):
+    pipeline_id: str
+    total_steps: int
+    completed_steps: int
+    status: str  # completed | partial_failure
+    results: List[PipelineStepResult]
+
 class ProcessingAuditStats(BaseModel):
     total_operations: int
     success_count: int

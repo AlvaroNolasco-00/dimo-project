@@ -10,6 +10,7 @@ export interface Operation {
   inputBlob?: Blob;
   inputUrl?: string;
   inputMode: 'original' | 'chained';
+  maskBlob?: Blob;  // captured at add-time for draw/brush/manual modes
 }
 
 export interface ExecutionResult {

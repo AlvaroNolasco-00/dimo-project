@@ -21,6 +21,7 @@
 | [0012](./0012-modal-tooltip-ayuda-herramientas.md) | Modal en lugar de tooltip para ayuda de herramientas | accepted | frontend | 2026-04-16 |
 | [0013](./0013-visualizacion-parametros-pasos-pipeline.md) | Visualización de parámetros de pasos en pipeline | accepted | frontend | 2026-04-16 |
 | [0014](./0014-nombre-sugerido-descargas-con-timestamp.md) | Nombre sugerido para descargas con timestamp automático | accepted | frontend | 2026-04-16 |
+| [0015](./0015-pipeline-batch-server-side-chaining.md) | Pipeline batch server-side chaining | accepted | fullstack | 2026-04-16 |
 
 ## Cómo usar
 

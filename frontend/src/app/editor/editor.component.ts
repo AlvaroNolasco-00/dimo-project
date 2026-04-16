@@ -2,7 +2,7 @@ import { Component, computed, signal, inject, effect, ViewChild, OnDestroy, View
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { ActivatedRoute, Router } from '@angular/router';
-import { ApiService } from '../services/api.service';
+import { ApiService, PipelineOperationDTO, PipelineResponse } from '../services/api.service';
 import { lastValueFrom } from 'rxjs';
 import { FormsModule } from '@angular/forms';
 import { ImagePersistenceService, SessionImage } from '../services/image-persistence.service';
@@ -430,18 +430,54 @@ export class EditorComponent implements OnDestroy {
     this.pipelineService.togglePipelineMode();
   }
 
-  addToPipeline() {
+  async addToPipeline() {
     const queueHasItems = this.operationQueue().length > 0;
     const inputMode = queueHasItems && this.chainWithPrevious() ? 'chained' : 'original';
+    const mode = this.mode() as OperationType;
+    const params = this.getCurrentParams();
+
+    // Capture mask at add-time for operations that need canvas drawing
+    let maskBlob: Blob | undefined;
+    if (mode === 'remove-bg' && params['mode'] === 'draw') {
+      maskBlob = (await this.previewComponent?.getMaskBlob()) ?? undefined;
+      if (!maskBlob) {
+        this.toastService.warning('Dibuja una máscara primero para el modo de dibujo');
+        return;
+      }
+    } else if (mode === 'remove-objects' && params['method'] !== 'magic-wand') {
+      maskBlob = (await this.previewComponent?.getMaskBlob()) ?? undefined;
+      if (!maskBlob) {
+        this.toastService.warning('Dibuja una máscara primero');
+        return;
+      }
+    } else if (mode === 'contour-clip' && params['mode'] === 'manual') {
+      maskBlob = (await this.previewComponent?.getMaskBlob()) ?? undefined;
+      if (!maskBlob) {
+        this.toastService.warning('Marca el objeto primero');
+        return;
+      }
+    }
+
+    // Capture magic-wand coords at add-time
+    if (mode === 'remove-objects' && params['method'] === 'magic-wand') {
+      const coords = this.lastClickCoords();
+      if (!coords) {
+        this.toastService.warning('Haz clic en la imagen primero para seleccionar área');
+        return;
+      }
+      params['x'] = coords.x;
+      params['y'] = coords.y;
+    }
 
     const operation: Operation = {
       id: Date.now().toString(),
-      type: this.mode() as OperationType,
-      params: this.getCurrentParams(),
+      type: mode,
+      params,
       timestamp: Date.now(),
       inputBlob: this.currentImageBlob() ?? undefined,
       inputUrl: this.currentImageSource() ?? undefined,
       inputMode,
+      maskBlob,
     };
 
     this.pipelineService.addOperation(operation);
@@ -475,41 +511,124 @@ export class EditorComponent implements OnDestroy {
     const newResults: ExecutionResult[] = [];
 
     try {
+      // Partition queue into segments: chained groups (2+ ops) vs singles
+      // A group starts with any op. Subsequent ops with inputMode='chained' extend the group.
+      const segments: Array<{ ops: Operation[]; startIndex: number }> = [];
+      let currentSegment: Operation[] = [];
+      let segmentStart = 0;
+
       for (let i = 0; i < queue.length; i++) {
-        const operation = queue[i];
-        this.processingState.set({
-          step: `Procesando ${i + 1}/${queue.length}: ${this.getOperationName(operation.type)}`,
-          progress: Math.round(((i) / queue.length) * 100),
-          estimatedSecondsRemaining: null
-        });
-
-        // Chained: use previous step's output. Original: use captured input blob.
-        let inputBlob: Blob;
-        let inputUrl: string | undefined;
-        if (operation.inputMode === 'chained' && i > 0 && newResults[i - 1]) {
-          inputBlob = newResults[i - 1].outputBlob;
-          inputUrl = newResults[i - 1].outputUrl;
+        const op = queue[i];
+        if (op.inputMode === 'chained' && currentSegment.length > 0) {
+          currentSegment.push(op);
         } else {
-          inputBlob = operation.inputBlob ?? fallbackBlob;
-          inputUrl = operation.inputUrl;
+          if (currentSegment.length > 0) {
+            segments.push({ ops: currentSegment, startIndex: segmentStart });
+          }
+          currentSegment = [op];
+          segmentStart = i;
         }
+      }
+      if (currentSegment.length > 0) {
+        segments.push({ ops: currentSegment, startIndex: segmentStart });
+      }
 
-        const resultBlob = await this.executeOperation(inputBlob, operation);
+      let globalIndex = 0;
+      for (const segment of segments) {
+        const { ops, startIndex } = segment;
 
-        const url = URL.createObjectURL(resultBlob);
-        this.pipelineService.trackUrl(url);
-        newResults.push({
-          stepIndex: i,
-          operationId: operation.id,
-          label: this.getOperationName(operation.type),
-          outputUrl: url,
-          outputBlob: resultBlob,
-          inputUrl,
-        });
+        if (ops.length >= 2) {
+          // Chained group → single backend pipeline call
+          this.processingState.set({
+            step: `Procesando pasos ${startIndex + 1}–${startIndex + ops.length}/${queue.length} en servidor...`,
+            progress: Math.round((globalIndex / queue.length) * 100),
+            estimatedSecondsRemaining: null
+          });
+
+          const sourceOp = ops[0];
+          // Source image: first op's captured blob or fallback
+          let sourceBlob: Blob;
+          if (startIndex > 0 && newResults[startIndex - 1]) {
+            sourceBlob = newResults[startIndex - 1].outputBlob;
+          } else {
+            sourceBlob = sourceOp.inputBlob ?? fallbackBlob;
+          }
+
+          const pipelineOps: PipelineOperationDTO[] = ops.map(op => ({
+            type: op.type,
+            params: op.params,
+            input_mode: op.inputMode,
+          }));
+
+          const masks = new Map<number, Blob>();
+          ops.forEach((op, idx) => {
+            if (op.maskBlob) masks.set(idx, op.maskBlob);
+          });
+
+          const response: PipelineResponse = await lastValueFrom(
+            this.api.executePipeline(sourceBlob, pipelineOps, masks)
+          );
+
+          for (const stepResult of response.results) {
+            const absoluteIndex = startIndex + stepResult.step_index;
+            const op = ops[stepResult.step_index];
+
+            if (stepResult.status === 'failed') {
+              throw new Error(`Paso ${absoluteIndex + 1} (${this.getOperationName(op.type)}): ${stepResult.error}`);
+            }
+
+            const resultBlob = this.base64ToBlob(stepResult.image_base64!);
+            const url = URL.createObjectURL(resultBlob);
+            this.pipelineService.trackUrl(url);
+            newResults[absoluteIndex] = {
+              stepIndex: absoluteIndex,
+              operationId: op.id,
+              label: this.getOperationName(op.type),
+              outputUrl: url,
+              outputBlob: resultBlob,
+              inputUrl: absoluteIndex > 0 ? newResults[absoluteIndex - 1]?.outputUrl : op.inputUrl,
+            };
+          }
+
+          globalIndex += ops.length;
+
+        } else {
+          // Single op → existing individual endpoint
+          const op = ops[0];
+          this.processingState.set({
+            step: `Procesando ${startIndex + 1}/${queue.length}: ${this.getOperationName(op.type)}`,
+            progress: Math.round((globalIndex / queue.length) * 100),
+            estimatedSecondsRemaining: null
+          });
+
+          let inputBlob: Blob;
+          let inputUrl: string | undefined;
+          if (op.inputMode === 'chained' && startIndex > 0 && newResults[startIndex - 1]) {
+            inputBlob = newResults[startIndex - 1].outputBlob;
+            inputUrl = newResults[startIndex - 1].outputUrl;
+          } else {
+            inputBlob = op.inputBlob ?? fallbackBlob;
+            inputUrl = op.inputUrl;
+          }
+
+          const resultBlob = await this.executeOperation(inputBlob, op);
+          const url = URL.createObjectURL(resultBlob);
+          this.pipelineService.trackUrl(url);
+          newResults[startIndex] = {
+            stepIndex: startIndex,
+            operationId: op.id,
+            label: this.getOperationName(op.type),
+            outputUrl: url,
+            outputBlob: resultBlob,
+            inputUrl,
+          };
+
+          globalIndex += 1;
+        }
       }
 
       this.pipelineResults.set(newResults);
-      this.selectedResultIndex.set(-1); // default to last step
+      this.selectedResultIndex.set(-1);
       this.processedAt.set(new Date());
 
       this.toastService.success('Pipeline completado exitosamente');
@@ -521,6 +640,15 @@ export class EditorComponent implements OnDestroy {
       this.isLoading.set(false);
       this.processingState.set(null);
     }
+  }
+
+  private base64ToBlob(b64: string): Blob {
+    const byteString = atob(b64);
+    const arr = new Uint8Array(byteString.length);
+    for (let i = 0; i < byteString.length; i++) {
+      arr[i] = byteString.charCodeAt(i);
+    }
+    return new Blob([arr], { type: 'image/png' });
   }
 
   selectPipelineStep(index: number) {
