@@ -49,12 +49,23 @@
           <div class="operation-item">
             <div class="operation-info">
               <span class="operation-index">{{ i + 1 }}</span>
-              <span class="operation-name">{{ getOperationName(op.type) }}</span>
-              @if (i > 0) {
-              <span class="chain-badge" [title]="op.inputMode === 'chained' ? 'Encadenado: usa salida del paso anterior' : 'Independiente: usa imagen original'">
-                <i class="ph" [class.ph-link]="op.inputMode === 'chained'" [class.ph-link-break]="op.inputMode !== 'chained'"></i>
-              </span>
-              }
+              <div class="operation-meta">
+                <div class="operation-header">
+                  <span class="operation-name">{{ getOperationName(op.type) }}</span>
+                  @if (i > 0) {
+                  <span class="chain-badge" [title]="op.inputMode === 'chained' ? 'Encadenado: usa salida del paso anterior' : 'Independiente: usa imagen original'">
+                    <i class="ph" [class.ph-link]="op.inputMode === 'chained'" [class.ph-link-break]="op.inputMode !== 'chained'"></i>
+                  </span>
+                  }
+                </div>
+                @if (getParamsSummary(op).length > 0) {
+                <div class="operation-params">
+                  @for (chip of getParamsSummary(op); track chip) {
+                  <span class="param-chip">{{ chip }}</span>
+                  }
+                </div>
+                }
+              </div>
             </div>
             <div class="operation-actions">
               @if (i > 0) {

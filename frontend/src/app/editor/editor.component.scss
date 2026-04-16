@@ -357,7 +357,7 @@ header {
 
     .operation-item {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: space-between;
         background: var(--card-bg);
         padding: 0.75rem 1rem;
@@ -367,8 +367,40 @@ header {
 
     .operation-info {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 0.75rem;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .operation-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        min-width: 0;
+    }
+
+    .operation-header {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .operation-params {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .param-chip {
+        font-size: 0.7rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        background: var(--bg-color);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 0.1rem 0.4rem;
+        white-space: nowrap;
     }
 
     .operation-index {

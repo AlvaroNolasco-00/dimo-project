@@ -553,6 +553,39 @@ export class EditorComponent implements OnDestroy {
     }
   }
 
+  protected getParamsSummary(op: Operation): string[] {
+    const p = op.params;
+    switch (op.type) {
+      case 'enhance':
+        return [`Contraste: ${p['contrast']}`, `Brillo: ${p['brightness']}`, `Nitidez: ${p['sharpness']}`];
+      case 'upscale':
+        return [`${p['factor']}x`, `Detalle: ${p['detailBoost']}`];
+      case 'remove-bg': {
+        const chips = [`Modo: ${p['mode']}`];
+        if (p['mode'] !== 'auto') chips.push(`Tolerancia: ${p['colorTolerance']}`);
+        if (p['mode'] === 'draw' && p['smartRefine']) chips.push('Smart Refine');
+        return chips;
+      }
+      case 'remove-objects': {
+        const chips = [`Método: ${p['method']}`];
+        if (p['method'] === 'brush') chips.push(`Pincel: ${p['brushSize']}px`);
+        else chips.push(`Tolerancia: ${p['colorTolerance']}`);
+        return chips;
+      }
+      case 'halftone':
+        return [`Punto: ${p['dotSize']}px`, `Escala: ${p['scale']}`, `Sep: ${p['spacing']}px`];
+      case 'contour-clip': {
+        const chips = [`Modo: ${p['mode']}`];
+        if (p['mode'] === 'manual' && p['smartRefine']) chips.push('Smart Refine');
+        return chips;
+      }
+      case 'crop':
+        return [isNaN(p['aspectRatio']) ? 'Libre' : `Relación: ${p['aspectRatio'].toFixed(2)}`];
+      default:
+        return [];
+    }
+  }
+
   protected getOperationName(type: OperationType): string {
     const names: Record<OperationType, string> = {
       enhance: 'Mejorar Calidad',

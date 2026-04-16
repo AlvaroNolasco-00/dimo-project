@@ -19,6 +19,7 @@
 | [0010](./0010-control-acceso-basado-roles-por-proyecto.md) | Control de acceso basado en roles por proyecto (RBAC) | accepted | fullstack | 2026-04-15 |
 | [0011](./0011-componentizacion-interfaz-usuario-compartida.md) | Componentización de interfaz de usuario compartida | accepted | frontend | 2026-04-16 |
 | [0012](./0012-modal-tooltip-ayuda-herramientas.md) | Modal en lugar de tooltip para ayuda de herramientas | accepted | frontend | 2026-04-16 |
+| [0013](./0013-visualizacion-parametros-pasos-pipeline.md) | Visualización de parámetros de pasos en pipeline | accepted | frontend | 2026-04-16 |
 
 ## Cómo usar
 
