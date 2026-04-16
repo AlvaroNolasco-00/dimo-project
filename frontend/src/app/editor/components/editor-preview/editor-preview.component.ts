@@ -229,9 +229,10 @@ export class EditorPreviewComponent implements OnDestroy {
         if (!canvas) return;
 
         const rect = canvas.getBoundingClientRect();
+        const zoom = this.zoomLevel();
         this.brushCursorPosition.set({
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top
+            x: (event.clientX - rect.left) / zoom + canvas.offsetLeft,
+            y: (event.clientY - rect.top) / zoom + canvas.offsetTop
         });
         this.brushCursorVisible.set(true);
     }
@@ -527,6 +528,7 @@ export class EditorPreviewComponent implements OnDestroy {
     }
 
     startPan(event: MouseEvent) {
+        if (this.isInBrushMode()) return;
         this.panMoved = false;
         event.preventDefault();
         this.isPanning.set(true);

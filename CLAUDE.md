@@ -1,10 +1,10 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code on this repo.
 
 ## What This Project Is
 
-A multi-tenant photo editing platform + business management suite. Users can process images (AI background removal, object removal, upscaling, halftone effects) and manage orders, clients, delivery zones, coupons, and finances — all scoped per project (tenant).
+Multi-tenant photo editor + business suite. Users process images (AI background removal, object removal, upscaling, halftone) and manage orders, clients, zones, coupons, finances — all per project (tenant).
 
 ## Commands
 
@@ -28,13 +28,13 @@ npm test         # Vitest unit tests
 
 ## Environment Variables
 
-Backend requires a `.env` file (see `configuracion_backend.md`):
-- `APP_ENV`: `local` or `production` — controls which `DATABASE_URL` is used
-- `DATABASE_URL_LOCAL` / `DATABASE_URL`: PostgreSQL connection strings
-- `WOMPI_*`: Payment gateway keys (Wompi, Latin America)
-- `GPU_UPSCALE_URL`, `GPU_REMOVER_URL`, `GPU_SERVICE_SECRET`: Optional cloud GPU endpoints
+Backend needs `.env` (see `configuracion_backend.md`):
+- `APP_ENV`: `local` or `production` — picks `DATABASE_URL`
+- `DATABASE_URL_LOCAL` / `DATABASE_URL`: PostgreSQL strings
+- `WOMPI_*`: Payment keys (Wompi, Latin America)
+- `GPU_UPSCALE_URL`, `GPU_REMOVER_URL`, `GPU_SERVICE_SECRET`: Optional cloud GPU
 
-Frontend API base URL is set in `frontend/src/environments/`:
+Frontend API base in `frontend/src/environments/`:
 - Dev: `http://localhost:8000/api`
 - Prod: Koyeb URL
 
@@ -54,18 +54,18 @@ backend/
 ```
 
 **Key patterns:**
-- Schemas live in a single `schemas.py`; models in a single `models.py`
-- Routers are thin — delegate to `services/` for non-trivial logic
-- Image processing routes to GPU (via async HTTP) or local CPU depending on `GPU_*` env vars
-- Async task polling for upscaling: task ID stored in `ProcessingTask` model, frontend polls `/api/processing/tasks/{task_id}`
+- Schemas + models in single files (`schemas.py`, `models.py`)
+- Routers thin — logic in `services/`
+- Image processing → GPU (async HTTP) or local CPU by `GPU_*` vars
+- Async upscale polling: task ID in `ProcessingTask`, frontend polls `/api/processing/tasks/{task_id}`
 
-**Authorization levels (via `core/deps.py`):**
-1. No auth — public order view via token (`/api/orders/public/{token}`)
+**Authorization (`core/deps.py`):**
+1. No auth — public order via token (`/api/orders/public/{token}`)
 2. `get_current_user` — any valid JWT
 3. `get_approved_user` — JWT + `is_approved=True`
 4. `get_admin_user` — JWT + `is_admin=True`
 
-**Multi-tenancy:** Most endpoints scope data to `current_user.projects` (many-to-many). Admins see all projects.
+**Multi-tenancy:** Most endpoints scope to `current_user.projects` (many-to-many). Admins see all.
 
 ## Frontend Architecture
 
@@ -83,38 +83,38 @@ frontend/src/app/
 └── app.routes.ts     # Lazy-loaded routes with guard composition
 ```
 
-**State management (Angular Signals):**
-- `AuthService._user` signal → current user + their projects
-- `AuthService._currentProject` signal → selected project (multi-project users)
+**State (Angular Signals):**
+- `AuthService._user` signal → current user + projects
+- `AuthService._currentProject` signal → selected project
 - Computed: `isAuthenticated()`, `isApproved()`, `isAdmin()`
-- Persisted in localStorage: `dimo_auth_token`, `dimo_current_project`
+- Persisted: `dimo_auth_token`, `dimo_current_project` in localStorage
 
 **Auth flow:**
-1. Login → JWT (30-day expiry) stored in localStorage
-2. `auth.interceptor.ts` injects Bearer token on every request
+1. Login → JWT (30-day expiry) → localStorage
+2. `auth.interceptor.ts` injects Bearer token
 3. Guards compose: `authGuard` → `approvedGuard` → `projectGuard` → `adminGuard`
-4. First registered user auto-becomes admin+approved; others need admin approval
+4. First user auto-admin+approved; others need approval
 
-**Route structure:**
+**Routes:**
 - `/auth/*` — public (login, register)
 - `/track/:token` — public order view
-- `/utilidades/*` — image editor (approved users)
-- `/gestion/*` — management (approved users; `/proyectos` admin-only)
-- `/usuarios/*` — user management (admin for create/permissions)
+- `/utilidades/*` — editor (approved)
+- `/gestion/*` — management (approved; `/proyectos` admin only)
+- `/usuarios/*` — users (admin only)
 
 ## Key Domain Models
 
 | Model | Purpose |
 |-------|---------|
-| `User` | Auth, approval, admin flag, project membership |
-| `Project` | Tenant container; users assigned via `user_projects` join table |
-| `Order` + `OrderItem` | Orders with line items, coupon, delivery zone, payment tracking, state machine |
-| `CostType` | Configurable cost categories per project (with required attribute definitions) |
-| `OperativeCost` | Costs with dynamic JSON attributes; supports parent-child variants |
-| `DeliveryZone` | Geographic delivery areas with pricing and polygon coordinates |
-| `Coupon` | Discount codes (fixed/percentage), single-use, usage history |
-| `Client` | Customer data linked to delivery zones |
-| `ProcessingTask` | Async GPU task tracking (task_id, status, result_url) |
+| `User` | Auth, approval, admin, project membership |
+| `Project` | Tenant; users via `user_projects` join |
+| `Order` + `OrderItem` | Orders with items, coupon, zone, payment, state |
+| `CostType` | Configurable costs per project (required attrs) |
+| `OperativeCost` | Costs with dynamic JSON attrs; parent-child variants |
+| `DeliveryZone` | Geographic areas with pricing, polygon coords |
+| `Coupon` | Discounts (fixed/%), single-use, history |
+| `Client` | Customer data linked to zones |
+| `ProcessingTask` | Async GPU task (id, status, result_url) |
 
 ## Deployment
 
@@ -122,19 +122,28 @@ frontend/src/app/
 |-----------|----------|
 | Backend | Koyeb (`koyeb.yaml`) — 1 Gunicorn worker |
 | Frontend | Vercel |
-| Database | PostgreSQL (external, referenced via `DATABASE_URL`) |
+| Database | PostgreSQL (external, `DATABASE_URL`) |
 
-SQL migration scripts live in `backend/sql/`. There is no ORM migration tool (Alembic) — schema changes are applied manually.
+SQL migrations in `backend/sql/`. Manual (no Alembic).
+
+## Communication Style
+
+**Caveman Mode: Always Active (full)**
+- Terse: drop articles (a/an/the), filler (just/really), pleasantries
+- Fragments OK. Short synonyms
+- Pattern: `[thing] [action] [reason]. [next step].`
+- Technical terms exact, code blocks normal
+- Off: "stop caveman" / "normal mode"
 
 ## Architecture Decision Records (ADRs)
 
-Architectural decisions are documented in `docs/adr/`. Each ADR follows the template in `docs/adr/TEMPLATE.md`.
+ADRs in `docs/adr/`. Template: `docs/adr/TEMPLATE.md`.
 
-**When to create an ADR:**
-- Choosing or changing a technology, library, or service
-- Defining a new architectural pattern or convention
-- Database schema design decisions (especially important given manual SQL migrations)
-- Decisions that affect multiple modules or have long-term consequences
-- When deprecating or replacing a previous approach
+**When to create:**
+- Technology/library/service choice
+- New architectural pattern
+- Database schema design (important: manual migrations)
+- Multi-module decisions + long-term impact
+- Deprecating/replacing existing approach
 
-**Workflow:** Create via `./docs/adr/new-adr.sh "titulo"`, fill in all sections, update `docs/adr/INDEX.md`, commit with the implementing code.
+**Workflow:** `./docs/adr/new-adr.sh "titulo"` → fill sections → update `docs/adr/INDEX.md` → commit with code.

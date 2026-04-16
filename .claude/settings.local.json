@@ -18,7 +18,8 @@
       "Bash(./docs/adr/new-adr.sh \"test decision para verificar sistema\")",
       "Bash(./node_modules/.bin/tsc --noEmit)",
       "Bash(echo \"EXIT: $?\")",
-      "Bash(bash new-adr.sh \"Pipeline no-destructivo con encadenamiento de pasos\")"
+      "Bash(bash new-adr.sh \"Pipeline no-destructivo con encadenamiento de pasos\")",
+      "Bash(bash docs/adr/new-adr.sh \"Fix: visualización acumulada de resultados en pipeline y recálculo de inputMode en reordenamiento\")"
     ]
   }
 }
