@@ -119,7 +119,7 @@
       <div class="action-buttons">
         @if (displayImageSource()) {
         <div class="filename-input">
-          <input type="text" [(ngModel)]="customFilename" placeholder="nombre-archivo">
+          <input type="text" [(ngModel)]="customFilename" [placeholder]="suggestedFilename()">
           <span>.png</span>
         </div>
         }
@@ -147,7 +147,7 @@
         </button>
         @if (displayImageSource()) {
         <a [href]="displayImageSource()" class="btn-success btn-pill"
-          [download]="(customFilename || 'resultado') + '.png'">Descargar</a>
+          [download]="(customFilename || suggestedFilename()) + '.png'">Descargar</a>
         }
       </div>
       }

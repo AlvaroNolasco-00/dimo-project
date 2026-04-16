@@ -114,6 +114,28 @@ export class EditorComponent implements OnDestroy {
 
   // Params - Output
   customFilename = '';
+  processedAt = signal<Date | null>(null);
+
+  suggestedFilename = computed(() => {
+    const modeSlug: Record<string, string> = {
+      'remove-bg': 'sin-fondo',
+      'remove-objects': 'sin-objetos',
+      'enhance': 'mejorado',
+      'upscale': 'upscale',
+      'halftone': 'semitonos',
+      'contour-clip': 'recorte',
+      'crop': 'recortado',
+    };
+    const slug = modeSlug[this.mode()] ?? this.mode();
+    const d = this.processedAt() ?? new Date();
+    const fecha = d.getFullYear().toString() +
+      (d.getMonth() + 1).toString().padStart(2, '0') +
+      d.getDate().toString().padStart(2, '0');
+    const hora = d.getHours().toString().padStart(2, '0') +
+      d.getMinutes().toString().padStart(2, '0') +
+      d.getSeconds().toString().padStart(2, '0');
+    return `${slug}-${fecha}-${hora}`;
+  });
 
   // Params - Crop
   cropAspectRatio = signal<number>(NaN); // NaN for free/custom
@@ -333,6 +355,7 @@ export class EditorComponent implements OnDestroy {
       const url = URL.createObjectURL(resultBlob);
       this.pipelineService.trackUrl(url);
       this.processedImageSource.set(url);
+      this.processedAt.set(new Date());
 
     } catch (err: any) {
       console.error(err);
@@ -487,6 +510,7 @@ export class EditorComponent implements OnDestroy {
 
       this.pipelineResults.set(newResults);
       this.selectedResultIndex.set(-1); // default to last step
+      this.processedAt.set(new Date());
 
       this.toastService.success('Pipeline completado exitosamente');
       this.pipelineService.clearQueue();
