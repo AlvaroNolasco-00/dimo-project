@@ -23,6 +23,7 @@
 | [0014](./0014-nombre-sugerido-descargas-con-timestamp.md) | Nombre sugerido para descargas con timestamp automático | accepted | frontend | 2026-04-16 |
 | [0015](./0015-pipeline-batch-server-side-chaining.md) | Pipeline batch server-side chaining | accepted | fullstack | 2026-04-16 |
 | [0016](./0016-visualizacion-estadisticas-imagen-entrada-salida.md) | Image input/output statistics visualization | accepted | frontend | 2026-04-17 |
+| [0017](./0017-fix-trackpad-zoom-pan-state-interference.md) | Fix trackpad gesture interference with zoom controls | accepted | frontend | 2026-04-17 |
 
 ## Cómo usar
 

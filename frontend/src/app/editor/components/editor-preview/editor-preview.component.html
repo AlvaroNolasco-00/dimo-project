@@ -69,7 +69,8 @@
              (mousedown)="startPan($event)"
              (mousemove)="onPan($event)"
              (mouseup)="stopPan()"
-             (mouseleave)="stopPan()">
+             (mouseleave)="stopPan()"
+             (pointercancel)="stopPan()">
 
             <!-- Original view -->
             @if (!processedImageSource() || viewMode() === 'original') {

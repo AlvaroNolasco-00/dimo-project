@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, input, signal, computed, effect, OnDestroy, output } from '@angular/core';
+import { Component, ElementRef, ViewChild, input, signal, computed, effect, OnDestroy, output, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import Cropper from 'cropperjs';
 
@@ -9,7 +9,7 @@ import Cropper from 'cropperjs';
     templateUrl: './editor-preview.component.html',
     styleUrl: './editor-preview.component.scss'
 })
-export class EditorPreviewComponent implements OnDestroy {
+export class EditorPreviewComponent implements OnInit, OnDestroy {
     // Inputs from parent
     currentImageSource = input<string | null>(null);
     processedImageSource = input<string | null>(null);
@@ -56,6 +56,7 @@ export class EditorPreviewComponent implements OnDestroy {
     private _naturalHeight = 0;
     private resizeObserver: ResizeObserver | null = null;
     private panMoved = false;
+    private readonly boundStopPan = () => this.stopPan();
 
     // Zoom and Pan state (original / resultado views)
     zoomLevel = signal(1);
@@ -142,9 +143,14 @@ export class EditorPreviewComponent implements OnDestroy {
         });
     }
 
+    ngOnInit() {
+        window.addEventListener('mouseup', this.boundStopPan);
+    }
+
     ngOnDestroy() {
         this.destroyCropper();
         this.resizeObserver?.disconnect();
+        window.removeEventListener('mouseup', this.boundStopPan);
     }
 
     onImageLoad(event: Event) {
@@ -504,10 +510,12 @@ export class EditorPreviewComponent implements OnDestroy {
     compZoomOut() { this.compZoomLevel.update(z => Math.max(0.5, z - 0.25)); }
 
     // Unified zoom controls (called from template, work for both modes)
-    activeZoomLevel = computed(() => this.viewMode() === 'comparison' ? this.compZoomLevel() : this.zoomLevel());
-    activeZoomIn() { this.viewMode() === 'comparison' ? this.compZoomIn() : this.zoomIn(); }
-    activeZoomOut() { this.viewMode() === 'comparison' ? this.compZoomOut() : this.zoomOut(); }
-    activeResetZoom() { this.viewMode() === 'comparison' ? this.resetCompZoom() : this.resetZoom(); }
+    // Comparison view only renders when processedImageSource exists; otherwise normal (zoomLevel) view is shown.
+    private isComparisonActive = computed(() => this.viewMode() === 'comparison' && !!this.processedImageSource());
+    activeZoomLevel = computed(() => this.isComparisonActive() ? this.compZoomLevel() : this.zoomLevel());
+    activeZoomIn() { this.isComparisonActive() ? this.compZoomIn() : this.zoomIn(); }
+    activeZoomOut() { this.isComparisonActive() ? this.compZoomOut() : this.zoomOut(); }
+    activeResetZoom() { this.isComparisonActive() ? this.resetCompZoom() : this.resetZoom(); }
 
     // Zoom and Pan Methods
     setZoom(level: number) {
@@ -516,10 +524,12 @@ export class EditorPreviewComponent implements OnDestroy {
 
     zoomIn() {
         this.zoomLevel.update(z => Math.min(5, z + 0.25));
+        this.panOffset.set({ x: 0, y: 0 });
     }
 
     zoomOut() {
         this.zoomLevel.update(z => Math.max(0.5, z - 0.25));
+        this.panOffset.set({ x: 0, y: 0 });
     }
 
     resetZoom() {
