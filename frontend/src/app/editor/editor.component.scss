@@ -223,6 +223,63 @@ header {
     }
 }
 
+/* Image Stats Bar */
+.image-stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem 1rem;
+    background: var(--bg-color);
+    border-radius: 10px;
+    width: fit-content;
+
+    @include mobile {
+        width: 100%;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+}
+
+.image-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .stat-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .stat-size {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    .stat-dims {
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        padding: 0.1rem 0.4rem;
+    }
+
+    &.image-stat--output .stat-size {
+        color: var(--accent-color);
+    }
+}
+
+.stat-arrow {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
 /* Stats Row Styles */
 .stats-row {
     display: flex;

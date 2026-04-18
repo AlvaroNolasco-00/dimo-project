@@ -22,6 +22,27 @@
         (colorPicked)="onPreviewColorPicked($event)" (canvasHistoryChange)="onHistoryChange($event)">
       </app-editor-preview>
 
+      <!-- Image Stats Bar -->
+      <div class="image-stats-bar">
+        <div class="image-stat">
+          <span class="stat-label">Entrada</span>
+          <span class="stat-size">{{ formatFileSize(currentImageBlob()!.size) }}</span>
+          @if (inputDimensions() && (mode() === 'upscale' || outputDimensions() !== null)) {
+          <span class="stat-dims">{{ inputDimensions()!.width }} × {{ inputDimensions()!.height }} px</span>
+          }
+        </div>
+        @if (outputFileSize() !== null) {
+        <i class="ph ph-arrow-right stat-arrow"></i>
+        <div class="image-stat image-stat--output">
+          <span class="stat-label">Salida</span>
+          <span class="stat-size">{{ formatFileSize(outputFileSize()!) }}</span>
+          @if (outputDimensions()) {
+          <span class="stat-dims">{{ outputDimensions()!.width }} × {{ outputDimensions()!.height }} px</span>
+          }
+        </div>
+        }
+      </div>
+
       <!-- Controls -->
       <app-editor-controls [mode]="mode()" [(contrast)]="contrast" [(brightness)]="brightness" [(sharpness)]="sharpness"
         [(upscaleFactor)]="upscaleFactor" [(upscaleDetailBoost)]="upscaleDetailBoost" [(bgRemovalMode)]="bgRemovalMode"

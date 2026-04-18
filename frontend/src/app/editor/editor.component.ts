@@ -79,6 +79,11 @@ export class EditorComponent implements OnDestroy {
     return this.currentImageSource();
   });
 
+  // Image Stats
+  inputDimensions = signal<{ width: number; height: number } | null>(null);
+  outputFileSize = signal<number | null>(null);
+  outputDimensions = signal<{ width: number; height: number } | null>(null);
+
   // UI State
   isLoading = signal(false);
   processingState = signal<{
@@ -223,6 +228,12 @@ export class EditorComponent implements OnDestroy {
     this.selectedResultIndex.set(-1);
     this.hasFile.set(true);
 
+    // Reset stats
+    this.inputDimensions.set(null);
+    this.outputFileSize.set(null);
+    this.outputDimensions.set(null);
+    this.loadDimensions(url).then(dims => this.inputDimensions.set(dims));
+
     // Reset state
     this.lastClickCoords.set(null);
     this.selectedColors.set([]);
@@ -241,6 +252,9 @@ export class EditorComponent implements OnDestroy {
     this.lastClickCoords.set(null);
     this.selectedColors.set([]);
     this.isLoading.set(false);
+    this.inputDimensions.set(null);
+    this.outputFileSize.set(null);
+    this.outputDimensions.set(null);
     this.previewComponent?.setViewMode('comparison');
   }
 
@@ -357,6 +371,12 @@ export class EditorComponent implements OnDestroy {
       this.processedImageSource.set(url);
       this.processedAt.set(new Date());
 
+      this.outputFileSize.set(resultBlob.size);
+      this.outputDimensions.set(null);
+      if (this.mode() === 'upscale') {
+        this.loadDimensions(url).then(dims => this.outputDimensions.set(dims));
+      }
+
     } catch (err: any) {
       console.error(err);
       const errorMessage = err.message || 'Error al procesar';
@@ -418,6 +438,20 @@ export class EditorComponent implements OnDestroy {
     } catch (e) {
       console.error(e);
     }
+  }
+
+  private loadDimensions(src: string): Promise<{ width: number; height: number }> {
+    return new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      img.src = src;
+    });
+  }
+
+  formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   }
 
   ngOnDestroy() {
@@ -631,6 +665,15 @@ export class EditorComponent implements OnDestroy {
       this.selectedResultIndex.set(-1);
       this.processedAt.set(new Date());
 
+      const lastResult = newResults[newResults.length - 1];
+      if (lastResult) {
+        this.outputFileSize.set(lastResult.outputBlob.size);
+        this.outputDimensions.set(null);
+        if (lastResult.label === 'Upscaling') {
+          this.loadDimensions(lastResult.outputUrl).then(dims => this.outputDimensions.set(dims));
+        }
+      }
+
       this.toastService.success('Pipeline completado exitosamente');
       this.pipelineService.clearQueue();
     } catch (err: any) {
@@ -653,6 +696,14 @@ export class EditorComponent implements OnDestroy {
 
   selectPipelineStep(index: number) {
     this.selectedResultIndex.set(index);
+    const result = this.pipelineResults()[index];
+    if (result) {
+      this.outputFileSize.set(result.outputBlob.size);
+      this.outputDimensions.set(null);
+      if (result.label === 'Upscaling') {
+        this.loadDimensions(result.outputUrl).then(dims => this.outputDimensions.set(dims));
+      }
+    }
   }
 
   useStepAsSource(result: ExecutionResult) {
@@ -675,6 +726,12 @@ export class EditorComponent implements OnDestroy {
     // Load step result as new base image
     this.currentImageBlob.set(result.outputBlob);
     this.currentImageSource.set(result.outputUrl); // reuse existing blob URL
+
+    // Reset stats — new base image
+    this.inputDimensions.set(null);
+    this.outputFileSize.set(null);
+    this.outputDimensions.set(null);
+    this.loadDimensions(result.outputUrl).then(dims => this.inputDimensions.set(dims));
 
     // Reset canvas/selection state
     this.lastClickCoords.set(null);
