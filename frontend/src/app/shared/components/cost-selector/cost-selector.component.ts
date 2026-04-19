@@ -32,6 +32,9 @@ export class CostSelectorComponent {
   // Variant selections (object mutated in place; parent recalculates on variantChange)
   @Input() variantSelections: { [groupName: string]: any } = {};
 
+  // Hint when parent has variants but none picked yet
+  @Input() variantHintVisible = false;
+
   // Price display
   @Input() currentPrice = 0;
   @Input() description = '';

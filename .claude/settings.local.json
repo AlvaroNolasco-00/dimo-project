@@ -29,7 +29,8 @@
       "Bash(find /Users/alvaronolasco/Documents/Projects/dimo-project/frontend/src/app/services -type f \\\\\\( -name \"*.ts\" -o -name \"*.html\" \\\\\\) -exec wc -l {} +)",
       "Bash(npx ng *)",
       "Bash(git add *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:4200)"
     ]
   }
 }

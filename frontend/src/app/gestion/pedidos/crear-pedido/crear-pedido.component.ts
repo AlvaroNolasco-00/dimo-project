@@ -124,6 +124,7 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
   costTypes: any[] = [];
   availableOperativeCosts: any[] = [];
   availableDerivedCosts: any[] = [];
+  filteredDerivedCosts: any[] = [];
   selectedDerivedCostIds = new Set<number>();
   isLoadingDerivedCosts = false;
 
@@ -321,6 +322,7 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
     this.tempSubItem.unit_price = 0;
     this.availableOperativeCosts = [];
     this.availableDerivedCosts = [];
+    this.filteredDerivedCosts = [];
     this.selectedDerivedCostIds = new Set();
     this.selectedCost = null;
 
@@ -343,6 +345,7 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
 
   onOperativeCostChange() {
     this.availableDerivedCosts = [];
+    this.filteredDerivedCosts = [];
     this.selectedDerivedCostIds = new Set();
     this.selectedCost = this.availableOperativeCosts.find(c => c.id == this.tempSubItem.operative_cost_id);
 
@@ -352,6 +355,7 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
       this.apiService.getDerivedCosts(this.selectedCost.id).subscribe({
         next: (derived) => {
           this.availableDerivedCosts = derived;
+          this.refreshFilteredDerivedCosts();
           this.isLoadingDerivedCosts = false;
           this.cd.detectChanges();
         },
@@ -413,6 +417,52 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
     return this.selectedDerivedCostIds.has(id);
   }
 
+  private buildSelectedVariantStrings(): string[] {
+    return Object.entries(this.tempSubItem.variantSelections)
+      .filter(([, opt]: any) => opt && opt.label)
+      .map(([group, opt]: any) => `${group}: ${opt.label}`);
+  }
+
+  private isDerivedCostApplicable(cost: any, selectedVariants: string[]): boolean {
+    const deps: string[] = cost?.attributes?.__dependent_variants || [];
+    if (!deps.length) return true;
+
+    const depsByGroup: Record<string, string[]> = {};
+    for (const d of deps) {
+      const idx = d.indexOf(': ');
+      if (idx === -1) continue;
+      const group = d.slice(0, idx);
+      (depsByGroup[group] ||= []).push(d);
+    }
+
+    return Object.values(depsByGroup).every(groupDeps =>
+      groupDeps.some(d => selectedVariants.includes(d))
+    );
+  }
+
+  private refreshFilteredDerivedCosts() {
+    const selectedVariants = this.buildSelectedVariantStrings();
+
+    const hasVariants = this.selectedCost?.attributes?.__type === 'variants';
+    const requiredGroups: string[] = hasVariants
+      ? (this.selectedCost.attributes.__config?.groups || []).map((g: any) => g.name)
+      : [];
+    const allPicked = requiredGroups.every(g => !!this.tempSubItem.variantSelections[g]);
+
+    if (hasVariants && !allPicked) {
+      this.filteredDerivedCosts = [];
+    } else {
+      this.filteredDerivedCosts = this.availableDerivedCosts
+        .filter(c => this.isDerivedCostApplicable(c, selectedVariants));
+    }
+
+    for (const id of Array.from(this.selectedDerivedCostIds)) {
+      if (!this.filteredDerivedCosts.some(c => c.id === id)) {
+        this.selectedDerivedCostIds.delete(id);
+      }
+    }
+  }
+
   onVariantChange() {
     if (!this.selectedCost) return;
 
@@ -444,6 +494,7 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
     if (variantDesc) desc += ` (${variantDesc})`;
 
     this.tempSubItem.description = desc;
+    this.refreshFilteredDerivedCosts();
   }
 
   addSubItem() {
@@ -537,6 +588,7 @@ export class CrearPedidoComponent implements AfterViewInit, OnInit {
     this.selectedCost = null;
     this.availableOperativeCosts = [];
     this.availableDerivedCosts = [];
+    this.filteredDerivedCosts = [];
     this.selectedDerivedCostIds = new Set();
   }
 
