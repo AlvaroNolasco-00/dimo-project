@@ -7,7 +7,6 @@ import { FinanceService, CostType, OperativeCost } from '../../../services/finan
 import { ProjectService } from '../../../services/project.service';
 import { environment } from '../../../../environments/environment';
 import { CostSelectorComponent } from '../../../shared/components/cost-selector/cost-selector.component';
-import { QuantityControlComponent } from '../../../shared/components/quantity-control/quantity-control.component';
 import Swal from 'sweetalert2';
 
 interface CostLineForm extends ProductCostLineCreate {
@@ -17,7 +16,7 @@ interface CostLineForm extends ProductCostLineCreate {
 @Component({
     selector: 'app-producto-form',
     standalone: true,
-    imports: [CommonModule, FormsModule, RouterModule, CostSelectorComponent, QuantityControlComponent],
+    imports: [CommonModule, FormsModule, RouterModule, CostSelectorComponent],
     templateUrl: './producto-form.component.html',
     styleUrl: './producto-form.component.scss'
 })
@@ -327,6 +326,7 @@ export class ProductoFormComponent implements OnInit {
                 productId = updated!.id;
             } else {
                 const created = await this.catalogService.createProduct(this.projectId, {
+                    project_id: this.projectId,
                     name: this.name,
                     description: this.description,
                     sale_price: this.salePrice,

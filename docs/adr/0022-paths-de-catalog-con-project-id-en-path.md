@@ -57,3 +57,33 @@ Migrar todos los paths de catalog para usar `/projects/{project_id}/recurso`:
 - ADR-0010: Control de acceso basado en roles por proyecto
 - Backend router example: `orders.py`, `clients.py`
 - Commits: este cambio
+
+---
+
+## Actualización: Fix errores de compilación TypeScript (2026-04-19)
+
+Al migrar componentes frontend a nueva convención de paths con `project_id`, surgieron errores TypeScript:
+
+### Errores corregidos
+
+1. **Signal sin invocar** (`catalogo.component.ts:101,120`)
+   - `this.projectId` es Signal `<number | null>` pero se pasaba sin `()`
+   - Fix: usar `this.projectId()!`
+
+2. **Null check ausente** (`categorias.component.ts:121`)
+   - `cat.id` puede ser null en ProductCategory
+   - Fix: agregar check `&& cat.id && this.projectId`
+
+3. **project_id faltante en ProductCreate** (`producto-form.component.ts:329`)
+   - `ProductCreate` requiere `project_id` en tipo
+   - Fix: agregar `project_id: this.projectId` al objeto
+
+4. **Import no usado** (`producto-form.component.ts:10,20`)
+   - `QuantityControlComponent` importado pero no usado en template
+   - Fix: remover import
+
+### Archivos modificados
+- `frontend/src/app/gestion/catalogo/catalogo.component.ts`
+- `frontend/src/app/gestion/catalogo/categorias/categorias.component.ts`
+- `frontend/src/app/gestion/catalogo/producto-form/producto-form.component.ts`
+- `frontend/src/app/services/catalog.service.ts` (type ProductCreate)

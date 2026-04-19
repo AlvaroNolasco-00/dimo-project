@@ -98,7 +98,7 @@ export class CatalogoComponent {
     }
 
     toggleActive(product: Product) {
-        this.catalogService.updateProduct(this.projectId, product.id, { is_active: !product.is_active }).subscribe({
+        this.catalogService.updateProduct(this.projectId()!, product.id, { is_active: !product.is_active }).subscribe({
             next: (updated) => {
                 this.products.update(prods => prods.map(p => p.id === updated.id ? updated : p));
             }
@@ -117,7 +117,7 @@ export class CatalogoComponent {
             cancelButtonText: 'Cancelar'
         }).then(result => {
             if (result.isConfirmed) {
-                this.catalogService.deleteProduct(this.projectId, product.id).subscribe({
+                this.catalogService.deleteProduct(this.projectId()!, product.id).subscribe({
                     next: () => {
                         this.products.update(prods => prods.filter(p => p.id !== product.id));
                     },

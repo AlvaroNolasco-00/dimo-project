@@ -117,7 +117,7 @@ export class CategoriasComponent implements OnInit {
             confirmButtonText: 'Sí, eliminar',
             cancelButtonText: 'Cancelar'
         }).then(result => {
-            if (result.isConfirmed) {
+            if (result.isConfirmed && cat.id && this.projectId) {
                 this.catalogService.deleteCategory(this.projectId, cat.id).subscribe({
                     next: () => this.loadCategories(),
                     error: () => Swal.fire('Error', 'No se pudo eliminar la categoría', 'error')
