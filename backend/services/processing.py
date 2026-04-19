@@ -25,7 +25,7 @@ APP_ENV = os.getenv("APP_ENV", "local")
 # ─── Module-level singletons ─────────────────────────────────────────────────
 
 _LOCAL_ACCELERATOR_CACHE = None
-_LOCAL_REMBG_SESSION = None
+_REMBG_SESSIONS: dict = {}
 _HTTP_CLIENT: Optional[httpx.AsyncClient] = None
 
 def _get_http_client() -> httpx.AsyncClient:
@@ -440,12 +440,47 @@ def remove_specific_colors(image_bytes: bytes, colors: list, tolerance: int = 30
     
     return pil_to_bytes(Image.fromarray(data))
 
+def _get_rembg_session(model: str = "u2net"):
+    """Returns cached rembg session for given model, creating it on first use."""
+    global _REMBG_SESSIONS
+    if model in _REMBG_SESSIONS:
+        return _REMBG_SESSIONS[model]
+
+    from rembg import new_session
+    accelerator = _get_local_accelerator()
+
+    if accelerator in ('coreml', 'mps'):
+        providers = ['CoreMLExecutionProvider', 'CPUExecutionProvider']
+    else:
+        providers = ['CPUExecutionProvider']
+
+    try:
+        session = new_session(model, providers=providers)
+        logger.info(f"✅ rembg session '{model}' initialized — providers: {providers}")
+    except Exception as e:
+        logger.warning(f"⚠️ Accelerated rembg session failed ({e}). Using default session.")
+        session = new_session(model)
+
+    _REMBG_SESSIONS[model] = session
+    return session
+
+
 # 2. Quitar Fondo
-async def remove_background(image_bytes: bytes) -> bytes:
+async def remove_background(
+    image_bytes: bytes,
+    model: str = "u2net",
+    alpha_matting: bool = False,
+    fg_threshold: int = 220,
+    bg_threshold: int = 20,
+    erode_size: Optional[int] = None
+) -> bytes:
     """
     Removes background.
     - Production: tries Cloud GPU first, falls back to local.
     - Local: uses CoreML (Neural Engine on M-chips) or CPU via rembg.
+    model: rembg model name (e.g. 'u2net', 'birefnet-general', 'isnet-general-use')
+    alpha_matting: enable soft edge matting via pymatting (best for hair/fur/fine details)
+    erode_size: trimap erosion radius; smaller = preserves thin outlines better (auto-calculated if None)
     """
     if _should_use_cloud_gpu("remove-background"):
         try:
@@ -454,36 +489,30 @@ async def remove_background(image_bytes: bytes) -> bytes:
         except Exception as e:
             logger.error(f"❌ Cloud GPU BG Removal failed: {e}. Falling back to local engine.")
 
-    # Local processing — use best available accelerator
     accelerator = _get_local_accelerator()
-    logger.info(f"🍎 Removing background via local engine (accelerator: {accelerator.upper()})...")
+    logger.info(f"🍎 Removing background via local engine (model: {model}, accelerator: {accelerator.upper()})...")
 
-    global _LOCAL_REMBG_SESSION
-    if _LOCAL_REMBG_SESSION is None:
-        from rembg import new_session
-
-        # Order providers by what's actually available on this machine.
-        # CoreML → Neural Engine on M-chips (requires onnxruntime-silicon).
-        # CUDA   → NVIDIA GPU (not present on Mac, ignored gracefully).
-        # CPU    → universal fallback.
-        if accelerator == 'coreml':
-            providers = ['CoreMLExecutionProvider', 'CPUExecutionProvider']
-        elif accelerator == 'mps':
-            # onnxruntime doesn't support MPS directly; CoreML is still the right
-            # ONNX backend on Apple Silicon even when PyTorch MPS is available.
-            providers = ['CoreMLExecutionProvider', 'CPUExecutionProvider']
-        else:
-            providers = ['CPUExecutionProvider']
-
-        try:
-            _LOCAL_REMBG_SESSION = new_session("u2net", providers=providers)
-            logger.info(f"✅ rembg session initialized — providers: {providers}")
-        except Exception as e:
-            logger.warning(f"⚠️ Accelerated rembg session failed ({e}). Using default session.")
-            _LOCAL_REMBG_SESSION = new_session("u2net")
+    session = _get_rembg_session(model)
 
     from rembg import remove
-    output_bytes = await asyncio.to_thread(remove, image_bytes, session=_LOCAL_REMBG_SESSION)
+    if alpha_matting:
+        if erode_size is None:
+            # Escalar basado en dimensión más pequeña
+            with Image.open(io.BytesIO(image_bytes)) as img:
+                w, h = img.size
+            erode_size = max(2, min(10, min(h, w) // 200))
+            
+        output_bytes = await asyncio.to_thread(
+            remove,
+            image_bytes,
+            session=session,
+            alpha_matting=True,
+            alpha_matting_foreground_threshold=fg_threshold,
+            alpha_matting_background_threshold=bg_threshold,
+            alpha_matting_erode_size=erode_size,
+        )
+    else:
+        output_bytes = await asyncio.to_thread(remove, image_bytes, session=session)
     return output_bytes
 
 # ... (omitted unrelated code)
@@ -771,104 +800,269 @@ def generate_halftone(image_bytes: bytes, dot_size: int = 10, scale: float = 1.0
         cv2.circle(output, (v_cx[i], v_cy[i]), v_r[i], (b, g, r, 255), -1, cv2.LINE_AA)
 
     return pil_to_bytes(cv2_to_pil(output))
+
+
+# ─── Auto Contour Clip Helpers ───────────────────────────────────────────────
+
+_ROI_DILATE_RATIO = 15          # region-of-interest dilation around birefnet hint
+_ROI_DILATE_MIN = 31
+_CHROMA_THRESHOLD = 28          # RGB distance to treat pixel as "not background"
+_BG_CORNER_SAMPLE_RATIO = 20    # corner patch size = min(h,w) // ratio
+_BG_CORNER_SAMPLE_MIN = 20
+_BG_VARIANCE_FALLBACK = 40.0    # if corner std > this, corners contaminated → use outside-ring fallback
+
+
+def _estimate_bg_color_from_image(rgb: np.ndarray, subject_mask: np.ndarray) -> np.ndarray:
+    """
+    Estimate background color from ORIGINAL image (not rembg output).
+    Strategy:
+      1. Sample 4 image corners. If std is low → corners are clean background → use them.
+      2. Else sample a ring just outside the subject mask.
+      3. Else fall back to all non-subject pixels.
+    Returns median RGB as int32 array [R,G,B].
+    """
+    h, w = rgb.shape[:2]
+    cs = max(_BG_CORNER_SAMPLE_MIN, min(h, w) // _BG_CORNER_SAMPLE_RATIO)
+    corners = np.vstack([
+        rgb[:cs, :cs].reshape(-1, 3),
+        rgb[:cs, -cs:].reshape(-1, 3),
+        rgb[-cs:, :cs].reshape(-1, 3),
+        rgb[-cs:, -cs:].reshape(-1, 3),
+    ]).astype(np.int32)
+
+    corner_std = float(np.mean(np.std(corners, axis=0)))
+    if corner_std < _BG_VARIANCE_FALLBACK:
+        return np.median(corners, axis=0).astype(np.int32)
+
+    # Corners noisy → subject likely touches corner. Try ring just outside mask.
+    outside = cv2.bitwise_not(subject_mask)
+    ring_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (31, 31))
+    ring = cv2.dilate(subject_mask, ring_kernel, iterations=1) & outside
+    ring_pixels = rgb[ring > 0]
+    if len(ring_pixels) >= 200:
+        return np.median(ring_pixels.astype(np.int32), axis=0)
+
+    all_outside = rgb[outside > 0]
+    if len(all_outside) == 0:
+        return np.median(corners, axis=0).astype(np.int32)
+    return np.median(all_outside.astype(np.int32), axis=0)
+
+
+def _keep_largest_components(mask: np.ndarray, min_area_ratio: float = 0.005) -> np.ndarray:
+    """Keep only foreground blobs >= min_area_ratio * total pixels. Removes floaters."""
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    total = mask.shape[0] * mask.shape[1]
+    min_area = int(total * min_area_ratio)
+
+    out = np.zeros_like(mask)
+    # Label 0 is background — skip it
+    areas = stats[1:, cv2.CC_STAT_AREA]
+    if len(areas) == 0:
+        return mask  # nothing to filter
+
+    # Always keep the largest component regardless of ratio
+    max_label = int(np.argmax(areas)) + 1
+    for label_idx in range(1, num_labels):
+        area = stats[label_idx, cv2.CC_STAT_AREA]
+        if area >= min_area or label_idx == max_label:
+            out[labels == label_idx] = 255
+    return out
+
+
+def _fill_holes(mask: np.ndarray) -> np.ndarray:
+    """Fill interior holes (background pockets completely enclosed by foreground)."""
+    h, w = mask.shape
+    inverted = 255 - mask  # 0=subject, 255=background
+    # Border=255 so flood fill can reach all border-connected background
+    padded = cv2.copyMakeBorder(inverted, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=255)
+    flood = np.zeros((h + 4, w + 4), np.uint8)
+    # Fill all background connected to image border with 0 (mark as reachable)
+    cv2.floodFill(padded, flood, (0, 0), 0)
+    inner = padded[1:-1, 1:-1]
+    # Pixels still 255 = background NOT reachable from border = interior holes
+    holes = (inner == 255).astype(np.uint8) * 255
+    return cv2.bitwise_or(mask, holes)
+
+
+def _decontaminate_edges(rgba: np.ndarray) -> np.ndarray:
+    """
+    Remove background color fringe on semi-transparent edge pixels.
+    For each partially-transparent pixel: estimates nearby opaque BG contribution
+    and subtracts it from the RGB channels.
+    """
+    alpha = rgba[:, :, 3].astype(np.float32) / 255.0
+    semi_mask = (alpha > 0.05) & (alpha < 0.95)
+    if not semi_mask.any():
+        return rgba
+
+    result = rgba.copy().astype(np.float32)
+
+    # Estimate local background from surrounding fully-transparent pixels via dilation
+    bg_sample = rgba[:, :, :3].astype(np.float32)
+    transparent_mask = (rgba[:, :, 3] < 10).astype(np.uint8) * 255
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+    # Spread transparent pixel colors inward as BG estimate
+    for c in range(3):
+        channel = bg_sample[:, :, c]
+        filled = cv2.dilate(channel.astype(np.uint8), kernel).astype(np.float32)
+        bg_sample[:, :, c] = np.where(transparent_mask > 0, channel, filled)
+
+    a = alpha[:, :, np.newaxis]
+    fg = (result[:, :, :3] - (1.0 - a) * bg_sample) / np.where(a > 0.05, a, 1.0)
+    decontaminated = np.clip(fg, 0, 255)
+
+    result[:, :, :3] = np.where(semi_mask[:, :, np.newaxis], decontaminated, result[:, :, :3])
+    return result.astype(np.uint8)
+
+
+def _smooth_alpha_edge_aware(rgba: np.ndarray) -> np.ndarray:
+    """
+    Edge-aware alpha smoothing: joint bilateral using RGB as guide.
+    Preserves hard object edges while smoothing staircase aliasing.
+    Falls back to bilateral on alpha alone if ximgproc unavailable.
+    """
+    alpha = rgba[:, :, 3]
+    guide = rgba[:, :, :3]
+    try:
+        smoothed = cv2.ximgproc.jointBilateralFilter(
+            joint=guide, src=alpha, d=5, sigmaColor=30, sigmaSpace=5
+        )
+    except AttributeError:
+        smoothed = cv2.bilateralFilter(alpha, d=5, sigmaColor=30, sigmaSpace=5)
+    result = rgba.copy()
+    result[:, :, 3] = smoothed
+    return result
+
+
 async def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str = 'manual', refine: bool = False, colors: list = None, tolerance: int = 30) -> bytes:
     """
-    Advanced Contour Clipping (GrabCut or Automatic).
-    - If mode == 'manual', uses user strokes as 'Definite Foreground'.
-    - If mode == 'auto', uses 'rembg' (via GPU service if avail) (with optional color hints).
-    - If refine == True, uses GrabCut snapped refinement.
+    Advanced Contour Clipping.
+    - mode='auto': birefnet-general + alpha matting + cleanup pipeline (SOTA quality).
+    - mode='manual': GrabCut guided by user brush strokes.
     """
     img_pil = read_image_file(image_bytes).convert("RGB")
     img_cv = pil_to_cv2(img_pil)
     h, w = img_cv.shape[:2]
 
     if mode == 'auto':
-        # 1. Get initial mask from rembg (Use our async wrapper which tries GPU)
-        rembg_res = await remove_background(image_bytes)
-        
-        rembg_pil = Image.open(io.BytesIO(rembg_res)).convert("L")
-        rembg_mask = np.array(rembg_pil)
-        
-        if rembg_mask.shape[:2] != (h, w):
-            rembg_mask = cv2.resize(rembg_mask, (w, h), interpolation=cv2.INTER_NEAREST)
-            
-        if not colors:
-            return rembg_res
+        logger.info("🔬 Auto contour clip — chromakey-augmented pipeline v2")
 
-        # 2. Hybrid Mode: Refine rembg mask with specific color hints
-        # Create GrabCut mask from rembg mask
-        # rembg is usually very confident, but we'll mark it as Probable Foreground
-        gc_mask = np.where(rembg_mask > 200, cv2.GC_PR_FGD, cv2.GC_BGD).astype(np.uint8)
-        
-        # Add color-based Definite Background hints
+        # Original image for color analysis (rembg may zero RGB in transparent pixels)
+        orig_rgb = np.array(img_pil)  # (h, w, 3) RGB
+
+        # 1. Fast model for ROUGH subject location only — chromakey handles pixel-level detail
+        rembg_res = await remove_background(image_bytes, model="u2net", alpha_matting=False)
+        rgba = np.array(Image.open(io.BytesIO(rembg_res)).convert("RGBA"))
+        if rgba.shape[:2] != (h, w):
+            rgba = cv2.resize(rgba, (w, h), interpolation=cv2.INTER_LINEAR)
+        soft_alpha = rgba[:, :, 3].copy()
+
+        # 2. Force alpha=0 on pixels matching user-supplied BG color hints
         if colors:
-            data_rgb = np.array(img_pil)
+            data_lab = cv2.cvtColor(rgba[:, :, :3].astype(np.uint8), cv2.COLOR_RGB2LAB)
             for color in colors:
-                target = np.array(color)
-                diff = data_rgb - target
-                dist = np.linalg.norm(diff, axis=2)
-                color_mask = dist <= tolerance
-                # If color matches, it's definitely background
-                gc_mask[color_mask] = cv2.GC_BGD
-    
-    else: # Manual Mode
-        if not mask_bytes:
-            return await remove_background(image_bytes)
+                target_lab = cv2.cvtColor(
+                    np.array([[color[:3]]], dtype=np.uint8),
+                    cv2.COLOR_RGB2LAB
+                )[0, 0]
+                dist = np.linalg.norm(data_lab.astype(np.float32) - target_lab.astype(np.float32), axis=2)
+                soft_alpha[dist <= tolerance] = 0
 
-        mask_pil = read_image_file(mask_bytes).convert("L")
-        mask_cv = np.array(mask_pil)
-        if mask_cv.shape[:2] != (h, w):
-            mask_cv = cv2.resize(mask_cv, (w, h), interpolation=cv2.INTER_NEAREST)
-        _, mask_binary = cv2.threshold(mask_cv, 127, 255, cv2.THRESH_BINARY)
-        
-        if np.sum(mask_binary) == 0:
-            return await remove_background(image_bytes)
+        # 3. Build birefnet hint mask → keep largest → dilate HEAVILY to form ROI
+        birefnet_hint = (soft_alpha > 30).astype(np.uint8) * 255
+        birefnet_hint = _keep_largest_components(birefnet_hint, min_area_ratio=0.005)
 
-        if refine:
-            gc_mask = np.full((h, w), cv2.GC_BGD, dtype=np.uint8)
-            search_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (40, 40))
-            search_area = cv2.dilate(mask_binary, search_kernel, iterations=1)
-            gc_mask[search_area > 0] = cv2.GC_PR_BGD
-            gc_mask[mask_binary > 0] = cv2.GC_PR_FGD
-            core_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
-            forest_core = cv2.erode(mask_binary, core_kernel, iterations=2)
-            gc_mask[forest_core > 0] = cv2.GC_FGD
-        else:
-            gc_mask = np.full((h, w), cv2.GC_PR_BGD, dtype=np.uint8)
-            gc_mask[mask_binary > 0] = cv2.GC_FGD
-    
+        roi_kernel_sz = max(_ROI_DILATE_MIN, min(h, w) // _ROI_DILATE_RATIO)
+        if roi_kernel_sz % 2 == 0:
+            roi_kernel_sz += 1
+        roi_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (roi_kernel_sz, roi_kernel_sz))
+        roi = cv2.dilate(birefnet_hint, roi_kernel, iterations=1)
+
+        # 4. Estimate bg color from ORIGINAL image (corners first, fallback to ring)
+        bg_color = _estimate_bg_color_from_image(orig_rgb, birefnet_hint)
+        logger.info(f"   bg_color estimate: {bg_color.tolist()}")
+
+        # 5. Chromakey inside ROI: pixels whose color differs from bg → subject
+        orig_int = orig_rgb.astype(np.int32)
+        color_dist = np.linalg.norm(orig_int - bg_color[np.newaxis, np.newaxis, :], axis=2)
+        chroma_mask = (color_dist > _CHROMA_THRESHOLD).astype(np.uint8) * 255
+        chroma_in_roi = cv2.bitwise_and(chroma_mask, roi)
+
+        # 6. Combine: (birefnet strong) OR (chroma inside ROI)
+        combined = cv2.bitwise_or(birefnet_hint, chroma_in_roi)
+        combined = _keep_largest_components(combined, min_area_ratio=0.005)
+        combined = _fill_holes(combined)
+
+        # 7. Alpha assembly:
+        #    - Outside combined → 0
+        #    - Inside combined where birefnet was soft-uncertain (hair/fur) → preserve soft_alpha
+        #    - Inside combined otherwise → 255
+        final_alpha = np.zeros_like(soft_alpha)
+        inside = combined > 0
+        soft_zone = inside & (soft_alpha >= 40) & (soft_alpha < 220)
+        final_alpha[inside] = 255
+        final_alpha[soft_zone] = np.maximum(soft_alpha[soft_zone], final_alpha[soft_zone])
+
+        # Restore RGB from original (avoid rembg zeroing bg pixels)
+        rgba[:, :, :3] = orig_rgb
+        rgba[:, :, 3] = final_alpha
+
+        # 8. Edge-aware alpha smoothing (joint bilateral guided by RGB)
+        rgba = _smooth_alpha_edge_aware(rgba)
+
+        # 9. Color decontamination — remove BG color fringe on semi-transparent edges
+        rgba = _decontaminate_edges(rgba)
+
+        logger.info("✅ Auto contour clip complete")
+        return pil_to_bytes(Image.fromarray(rgba))
+
+    # ── Manual Mode (GrabCut) ────────────────────────────────────────────────
+    if not mask_bytes:
+        return await remove_background(image_bytes)
+
+    mask_pil = read_image_file(mask_bytes).convert("L")
+    mask_cv = np.array(mask_pil)
+    if mask_cv.shape[:2] != (h, w):
+        mask_cv = cv2.resize(mask_cv, (w, h), interpolation=cv2.INTER_NEAREST)
+    _, mask_binary = cv2.threshold(mask_cv, 127, 255, cv2.THRESH_BINARY)
+
+    if np.sum(mask_binary) == 0:
+        return await remove_background(image_bytes)
+
+    if refine:
+        gc_mask = np.full((h, w), cv2.GC_BGD, dtype=np.uint8)
+        search_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (40, 40))
+        search_area = cv2.dilate(mask_binary, search_kernel, iterations=1)
+        gc_mask[search_area > 0] = cv2.GC_PR_BGD
+        gc_mask[mask_binary > 0] = cv2.GC_PR_FGD
+        core_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+        forest_core = cv2.erode(mask_binary, core_kernel, iterations=2)
+        gc_mask[forest_core > 0] = cv2.GC_FGD
+    else:
+        gc_mask = np.full((h, w), cv2.GC_PR_BGD, dtype=np.uint8)
+        gc_mask[mask_binary > 0] = cv2.GC_FGD
+
     bgd_model = np.zeros((1, 65), np.float64)
     fgd_model = np.zeros((1, 65), np.float64)
-    
+
     try:
-        iterations = 10 if (refine or mode == 'auto') else 5
-        cv2.grabCut(img_cv, gc_mask, None, bgd_model, fgd_model, iterations, cv2.GC_INIT_WITH_MASK)
+        cv2.grabCut(img_cv, gc_mask, None, bgd_model, fgd_model, 5, cv2.GC_INIT_WITH_MASK)
     except Exception as e:
-        print(f"GrabCut error: {e}")
+        logger.error(f"GrabCut error: {e}")
         return await remove_background(image_bytes)
-    
-    # Final mask: where GrabCut says it is foreground
+
     mask_res = np.where((gc_mask == cv2.GC_FGD) | (gc_mask == cv2.GC_PR_FGD), 255, 0).astype(np.uint8)
-    
-    # 5. Post-processing to remove small artifacts and smooth edges
+
     if refine:
-        # Remove small isolated noise (floaters)
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
         mask_res = cv2.morphologyEx(mask_res, cv2.MORPH_OPEN, kernel, iterations=1)
-        
-        # Slight dilation to ensure tips aren't cut off too aggressively
         mask_res = cv2.dilate(mask_res, kernel, iterations=1)
-    
-    # Set Alpha to 0 where it's not foreground
+
     img_rgba = cv2.cvtColor(img_cv, cv2.COLOR_BGR2RGBA)
     img_rgba[mask_res == 0, 3] = 0
-    
-    # 6. Smooth the Alpha edges to avoid jaggy borders
+
     if refine:
-        alpha = img_rgba[:, :, 3]
-        # Gaussian blur only on the alpha channel edges
-        alpha_blurred = cv2.GaussianBlur(alpha, (3, 3), 0)
-        img_rgba[:, :, 3] = alpha_blurred
+        img_rgba[:, :, 3] = cv2.GaussianBlur(img_rgba[:, :, 3], (3, 3), 0)
 
     return pil_to_bytes(Image.fromarray(img_rgba))
 

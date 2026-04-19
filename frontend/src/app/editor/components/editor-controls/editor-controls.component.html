@@ -235,6 +235,30 @@
         </label>
     </div>
 
+    @if (bgRemovalMode() === 'auto') {
+    <div class="bg-options">
+        <div class="control-group">
+            <label>Colores de Fondo (Selecciona en la imagen):</label>
+            <div class="color-list">
+                @for (color of selectedColors(); track i; let i = $index) {
+                <div class="color-chip"
+                    [style.background-color]="'rgb(' + color[0] + ',' + color[1] + ',' + color[2] + ')'">
+                    <span class="remove" (click)="removeColor(i)">&times;</span>
+                </div>
+                }
+            </div>
+            <input type="color" #colorPicker (change)="addColorFromPicker(colorPicker.value)" style="display:none">
+            <button class="btn-small" (click)="openColorPicker(colorPicker)">Agregar Color</button>
+        </div>
+        @if (selectedColors().length > 0) {
+        <div class="control-group">
+            <label>Tolerancia de Color: {{ colorTolerance() }}</label>
+            <input type="range" min="1" max="100" [ngModel]="colorTolerance()" (ngModelChange)="colorTolerance.set($event)">
+        </div>
+        }
+    </div>
+    }
+
     @if (bgRemovalMode() === 'manual') {
     <div class="drawing-controls">
         <div class="control-group">
