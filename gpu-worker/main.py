@@ -3,6 +3,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import io
 
+# Import validation utilities
+from core.validation import validate_upload
+
 # Import our core logic
 # We wrap imports in try-except to allow building the docker image without crashing 
 # if dependencies aren't perfect in local dev environment, though Dockerfile handles it.
@@ -21,8 +24,10 @@ except Exception as e:
 
 app = FastAPI(title="Dimo GPU Worker")
 
-# Security: Shared Secret
-API_SECRET = os.getenv("GPU_SERVICE_SECRET", "dev-secret-123")
+# Security: Shared Secret - required environment variable
+if "GPU_SERVICE_SECRET" not in os.environ:
+    raise RuntimeError("GPU_SERVICE_SECRET environment variable is required")
+API_SECRET = os.environ["GPU_SERVICE_SECRET"]
 
 async def verify_token(x_api_key: str = Header(...)):
     if x_api_key != API_SECRET:
@@ -43,6 +48,18 @@ async def upscale(
     
     try:
         content = await file.read()
+        
+        # Validate file before processing
+        try:
+            validate_upload(file, content)
+        except ValueError as e:
+            # Map validation errors to appropriate HTTP status codes
+            if "exceeds maximum" in str(e) and "File size" in str(e):
+                raise HTTPException(status_code=413, detail=str(e))
+            elif "not allowed" in str(e):
+                raise HTTPException(status_code=415, detail=str(e))
+            else:
+                raise HTTPException(status_code=400, detail=str(e))
         
         # Real-ESRGAN native is x4. 
         # If user wants x2, we process x4 then downscale (better quality)
@@ -72,6 +89,18 @@ async def remove_bg(
         
     try:
         content = await file.read()
+        
+        # Validate file before processing
+        try:
+            validate_upload(file, content)
+        except ValueError as e:
+            # Map validation errors to appropriate HTTP status codes
+            if "exceeds maximum" in str(e) and "File size" in str(e):
+                raise HTTPException(status_code=413, detail=str(e))
+            elif "not allowed" in str(e):
+                raise HTTPException(status_code=415, detail=str(e))
+            else:
+                raise HTTPException(status_code=400, detail=str(e))
         result_bytes = remover.process(content)
         return io.BytesIO(result_bytes)
     except Exception as e:

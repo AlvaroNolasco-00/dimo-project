@@ -24,6 +24,9 @@
 | [0015](./0015-pipeline-batch-server-side-chaining.md) | Pipeline batch server-side chaining | accepted | fullstack | 2026-04-16 |
 | [0016](./0016-visualizacion-estadisticas-imagen-entrada-salida.md) | Image input/output statistics visualization | accepted | frontend | 2026-04-17 |
 | [0017](./0017-fix-trackpad-zoom-pan-state-interference.md) | Fix trackpad gesture interference with zoom controls | accepted | frontend | 2026-04-17 |
+| [0018](./0018-validacion-estricta-de-carga-de-imagenes.md) | Validación Estricta de Carga de Imágenes | accepted | fullstack | 2026-04-19 |
+| [0019](./0019-pipeline-hibrido-de-segmentacion-en-auto-contour-clip.md) | Pipeline Híbrido de Segmentación en Auto Contour Clip | accepted | backend | 2026-04-19 |
+| [0020](./0020-optimizacion-de-deployment-y-seguridad-en-worker-gpu.md) | Optimización de Deployment y Seguridad en Worker GPU | accepted | infrastructure | 2026-04-19 |
 
 ## Cómo usar
 

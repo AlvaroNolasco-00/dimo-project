@@ -6,6 +6,9 @@ import uuid
 import json
 import base64
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 from typing import Optional, List
 from backend import models
@@ -317,6 +320,7 @@ async def api_contour_clip(
     except MemoryError:
         raise HTTPException(status_code=503, detail="Image too large to process. Try a smaller image.")
     except Exception as e:
+        logger.exception(f"contour_clip unhandled: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/watermark")
