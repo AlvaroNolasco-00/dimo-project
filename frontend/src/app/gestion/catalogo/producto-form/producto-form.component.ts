@@ -97,7 +97,7 @@ export class ProductoFormComponent implements OnInit {
         });
 
         if (this.isEditMode && this.productId) {
-            this.catalogService.getProduct(this.productId).subscribe({
+            this.catalogService.getProduct(this.projectId, this.productId).subscribe({
                 next: (product) => {
                     this.name = product.name;
                     this.description = product.description || '';
@@ -316,7 +316,7 @@ export class ProductoFormComponent implements OnInit {
             let productId: number;
 
             if (this.isEditMode && this.productId) {
-                const updated = await this.catalogService.updateProduct(this.productId, {
+                const updated = await this.catalogService.updateProduct(this.projectId, this.productId, {
                     name: this.name,
                     description: this.description,
                     sale_price: this.salePrice,
@@ -326,8 +326,7 @@ export class ProductoFormComponent implements OnInit {
                 }).toPromise();
                 productId = updated!.id;
             } else {
-                const created = await this.catalogService.createProduct({
-                    project_id: this.projectId,
+                const created = await this.catalogService.createProduct(this.projectId, {
                     name: this.name,
                     description: this.description,
                     sale_price: this.salePrice,
@@ -339,7 +338,7 @@ export class ProductoFormComponent implements OnInit {
             }
 
             if (this.imageFile) {
-                await this.catalogService.uploadProductImage(productId, this.imageFile).toPromise();
+                await this.catalogService.uploadProductImage(this.projectId, productId, this.imageFile).toPromise();
             }
 
             Swal.fire({

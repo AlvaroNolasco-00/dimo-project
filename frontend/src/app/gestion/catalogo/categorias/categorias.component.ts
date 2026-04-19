@@ -75,8 +75,8 @@ export class CategoriasComponent implements OnInit {
         this.saving = true;
 
         const action = this.editingId
-            ? this.catalogService.updateCategory(this.editingId, this.formData)
-            : this.catalogService.createCategory({ ...this.formData, project_id: this.projectId });
+            ? this.catalogService.updateCategory(this.projectId, this.editingId, this.formData)
+            : this.catalogService.createCategory(this.projectId, this.formData);
 
         action.subscribe({
             next: () => {
@@ -118,7 +118,7 @@ export class CategoriasComponent implements OnInit {
             cancelButtonText: 'Cancelar'
         }).then(result => {
             if (result.isConfirmed) {
-                this.catalogService.deleteCategory(cat.id).subscribe({
+                this.catalogService.deleteCategory(this.projectId, cat.id).subscribe({
                     next: () => this.loadCategories(),
                     error: () => Swal.fire('Error', 'No se pudo eliminar la categoría', 'error')
                 });

@@ -12,16 +12,16 @@ def get_categories(db: Session, project_id: int):
     ).all()
 
 
-def create_category(db: Session, data: schemas.ProductCategoryCreate, user: models.User):
+def create_category(db: Session, project_id: int, data: schemas.ProductCategoryCreate, user: models.User):
     existing = db.query(models.ProductCategory).filter(
         models.ProductCategory.name == data.name,
-        models.ProductCategory.project_id == data.project_id
+        models.ProductCategory.project_id == project_id
     ).first()
     if existing:
         raise HTTPException(status_code=400, detail="Ya existe una categoría con ese nombre en este proyecto")
 
     category = models.ProductCategory(
-        project_id=data.project_id,
+        project_id=project_id,
         name=data.name,
         description=data.description,
         is_active=data.is_active,
@@ -104,9 +104,9 @@ def get_product_by_token(db: Session, token: str):
     return product
 
 
-def create_product(db: Session, data: schemas.ProductCreate, user: models.User):
+def create_product(db: Session, project_id: int, data: schemas.ProductCreate, user: models.User):
     product = models.Product(
-        project_id=data.project_id,
+        project_id=project_id,
         category_id=data.category_id,
         name=data.name,
         description=data.description,

@@ -88,51 +88,49 @@ export class CatalogService {
 
     // Categories
     getCategories(projectId: number): Observable<ProductCategory[]> {
-        return this.http.get<ProductCategory[]>(`${this.apiUrl}/categories`, {
-            params: { project_id: projectId }
-        });
+        return this.http.get<ProductCategory[]>(`${this.apiUrl}/projects/${projectId}/categories`);
     }
 
-    createCategory(data: { project_id: number; name: string; description?: string; is_active?: boolean }): Observable<ProductCategory> {
-        return this.http.post<ProductCategory>(`${this.apiUrl}/categories`, data);
+    createCategory(projectId: number, data: { name: string; description?: string; is_active?: boolean }): Observable<ProductCategory> {
+        return this.http.post<ProductCategory>(`${this.apiUrl}/projects/${projectId}/categories`, data);
     }
 
-    updateCategory(id: number, data: { name?: string; description?: string; is_active?: boolean }): Observable<ProductCategory> {
-        return this.http.put<ProductCategory>(`${this.apiUrl}/categories/${id}`, data);
+    updateCategory(projectId: number, id: number, data: { name?: string; description?: string; is_active?: boolean }): Observable<ProductCategory> {
+        return this.http.put<ProductCategory>(`${this.apiUrl}/projects/${projectId}/categories/${id}`, data);
     }
 
-    deleteCategory(id: number): Observable<any> {
-        return this.http.delete(`${this.apiUrl}/categories/${id}`);
+    deleteCategory(projectId: number, id: number): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/projects/${projectId}/categories/${id}`);
     }
 
     // Products
     getProducts(projectId: number, categoryId?: number): Observable<Product[]> {
-        const params: any = { project_id: projectId };
+        const params: any = {};
         if (categoryId !== undefined) params.category_id = categoryId;
-        return this.http.get<Product[]>(`${this.apiUrl}/products`, { params });
+        return this.http.get<Product[]>(`${this.apiUrl}/projects/${projectId}/products`, { params });
     }
 
-    getProduct(id: number): Observable<Product> {
-        return this.http.get<Product>(`${this.apiUrl}/products/${id}`);
+    getProduct(projectId: number, id: number): Observable<Product> {
+        return this.http.get<Product>(`${this.apiUrl}/projects/${projectId}/products/${id}`);
     }
 
-    createProduct(data: ProductCreate): Observable<Product> {
-        return this.http.post<Product>(`${this.apiUrl}/products`, data);
+    createProduct(projectId: number, data: ProductCreate): Observable<Product> {
+        return this.http.post<Product>(`${this.apiUrl}/projects/${projectId}/products`, data);
     }
 
-    updateProduct(id: number, data: ProductUpdate): Observable<Product> {
-        return this.http.put<Product>(`${this.apiUrl}/products/${id}`, data);
+    updateProduct(projectId: number, id: number, data: ProductUpdate): Observable<Product> {
+        return this.http.put<Product>(`${this.apiUrl}/projects/${projectId}/products/${id}`, data);
     }
 
-    deleteProduct(id: number): Observable<any> {
-        return this.http.delete(`${this.apiUrl}/products/${id}`);
+    deleteProduct(projectId: number, id: number): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/projects/${projectId}/products/${id}`);
     }
 
-    uploadProductImage(productId: number, file: File): Observable<{ url: string; filename: string }> {
+    uploadProductImage(projectId: number, id: number, file: File): Observable<{ url: string; filename: string }> {
         const formData = new FormData();
         formData.append('file', file);
         return this.http.post<{ url: string; filename: string }>(
-            `${this.apiUrl}/products/${productId}/upload`, formData
+            `${this.apiUrl}/projects/${projectId}/products/${id}/upload`, formData
         );
     }
 
