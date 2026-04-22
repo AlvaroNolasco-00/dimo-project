@@ -29,6 +29,7 @@
 | [0020](./0020-optimizacion-de-deployment-y-seguridad-en-worker-gpu.md) | Optimización de Deployment y Seguridad en Worker GPU | accepted | infrastructure | 2026-04-19 |
 | [0021](./0021-costos-derivados-conscientes-de-variantes.md) | Costos Derivados Conscientes de Variantes | accepted | frontend | 2026-04-19 |
 | [0022](./0022-paths-de-catalog-con-project-id-en-path.md) | Paths de catalog con project_id en path | accepted | fullstack | 2026-04-19 |
+| [0023](./0023-studio-shell-nueva-interfaz-de-edicion-de-imagenes.md) | Studio Shell - Nueva Interfaz de Edición de Imágenes | accepted | frontend | 2026-04-21 |
 
 ## Cómo usar
 
