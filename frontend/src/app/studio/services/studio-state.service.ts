@@ -20,6 +20,7 @@ export class StudioStateService {
   private _progress = signal<number | null>(null);
   private _pendingMask = signal<Blob | null>(null);
   private _canvasClick = signal<CanvasPoint | null>(null);
+  private _maskMode = signal<boolean>(false);
 
   readonly currentBlob = this._currentBlob.asReadonly();
   readonly filename = this._filename.asReadonly();
@@ -28,6 +29,7 @@ export class StudioStateService {
   readonly progress = this._progress.asReadonly();
   readonly pendingMask = this._pendingMask.asReadonly();
   readonly canvasClick = this._canvasClick.asReadonly();
+  readonly maskMode = this._maskMode.asReadonly();
 
   readonly hasImage = computed(() => this._currentBlob() !== null);
   readonly currentUrl = computed(() => {
@@ -50,6 +52,11 @@ export class StudioStateService {
     this._activeToolId.set(id);
     this._pendingMask.set(null);
     this._canvasClick.set(null);
+    this._maskMode.set(false);
+  }
+
+  setMaskMode(active: boolean): void {
+    this._maskMode.set(active);
   }
 
   setBusy(busy: boolean, progress: number | null = null): void {

@@ -31,6 +31,7 @@
 | [0022](./0022-paths-de-catalog-con-project-id-en-path.md) | Paths de catalog con project_id en path | accepted | fullstack | 2026-04-19 |
 | [0023](./0023-studio-shell-nueva-interfaz-de-edicion-de-imagenes.md) | Studio Shell - Nueva Interfaz de Edición de Imágenes | accepted | frontend | 2026-04-21 |
 | [0024](./0024-limpieza-de-dot-al-cambiar-herramienta.md) | Limpieza de dot al cambiar herramienta | accepted | frontend | 2026-04-22 |
+| [0025](./0025-control-de-modo-mask-desde-herramientas.md) | Control de modo mask desde herramientas | accepted | frontend | 2026-04-22 |
 
 ## Cómo usar
 

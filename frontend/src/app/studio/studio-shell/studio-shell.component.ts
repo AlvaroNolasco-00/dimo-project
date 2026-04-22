@@ -52,12 +52,8 @@ export class StudioShellComponent {
   readonly maskActive = computed(() => {
     const t = this.activeTool();
     if (!t) return false;
-    const def = TOOLS.find(d => d.id === t);
-    if (!def?.hasMask) return false;
-    // Only show mask overlay for paint/draw modes
     if (t === 'remove-objects') return true;
-    if (t === 'remove-bg' || t === 'contour-clip') return true;
-    return false;
+    return this.state.maskMode();
   });
 
   readonly clickMode = computed(() => {

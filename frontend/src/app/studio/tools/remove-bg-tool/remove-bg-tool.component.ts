@@ -1,4 +1,4 @@
-import { Component, output, signal, inject } from '@angular/core';
+import { Component, output, signal, inject, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { StudioStateService } from '../../services/studio-state.service';
@@ -69,7 +69,7 @@ type BgMode = 'auto' | 'colors' | 'draw';
     </div>
   `
 })
-export class RemoveBgToolComponent {
+export class RemoveBgToolComponent implements OnInit {
   readonly applied = output<Blob>();
   readonly state = inject(StudioStateService);
   private proc = inject(StudioProcessingService);
@@ -80,9 +80,14 @@ export class RemoveBgToolComponent {
   refine = false;
   readonly colors = signal<[number, number, number][]>([]);
 
+  ngOnInit(): void {
+    this.state.setMaskMode(this.mode === 'draw');
+  }
+
   setMode(m: BgMode): void {
     this.mode = m;
     this.state.setMask(null);
+    this.state.setMaskMode(m === 'draw');
   }
 
   addColorFromClick(r: number, g: number, b: number): void {

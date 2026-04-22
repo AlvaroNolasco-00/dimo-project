@@ -23,7 +23,7 @@ import {
   `,
   styles: [`
     :host { position: absolute; inset: 0; display: block; }
-    .mask-canvas { width: 100%; height: 100%; display: block; }
+    .mask-canvas { width: 100%; height: 100%; display: block; mix-blend-mode: screen; opacity: 0.75; }
   `]
 })
 export class MaskPainterComponent implements AfterViewInit, OnChanges {
