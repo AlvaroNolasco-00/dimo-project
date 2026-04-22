@@ -144,6 +144,67 @@ async def call_gpu_service(service_type: str, image_bytes: bytes, params: dict =
 
     return response.content
 
+async def _call_cloud_gpu_with_retry(
+    service_type: str,
+    image_bytes: bytes,
+    params: dict = None,
+    data: dict = None,
+    max_retries: int = 3,
+    initial_backoff: float = 3.0,
+) -> bytes:
+    """
+    Wrapper con retry exponencial para cloud GPU services.
+    
+    Args:
+        service_type: 'upscale' o 'remove-background'
+        image_bytes: imagen a procesar
+        params: query params
+        data: form data
+        max_retries: reintentos máximos (default: 3)
+        initial_backoff: segundos iniciales (default: 3.0)
+    
+    Raises:
+        ValueError: Si URLs GPU no configuradas
+        Exception: Si todos los reintentos fallan
+    """
+    import httpx
+    
+    last_exception = None
+    backoff = initial_backoff
+    
+    for attempt in range(max_retries + 1):
+        try:
+            return await call_gpu_service(service_type, image_bytes, params, data)
+        except httpx.TimeoutException as e:
+            last_exception = e
+            logger.warning(
+                f"⏱️ Timeout {service_type} (attempt {attempt + 1}/{max_retries + 1}), "
+                f"retrying in {backoff}s..."
+            )
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code >= 500:
+                last_exception = e
+                logger.warning(
+                    f"⚠️ HTTP {e.response.status_code} {service_type} "
+                    f"(attempt {attempt + 1}/{max_retries + 1}), retrying..."
+                )
+            else:
+                raise
+        except Exception as e:
+            last_exception = e
+            logger.warning(
+                f"❌ {service_type} error (attempt {attempt + 1}/{max_retries + 1}): {e}"
+            )
+        
+        if attempt < max_retries:
+            await asyncio.sleep(backoff)
+            backoff *= 2
+    
+    raise Exception(
+        f"Cloud GPU {service_type} failed after {max_retries + 1} attempts: {last_exception}"
+    )
+
+
 def read_image_file(file_bytes: bytes) -> Image.Image:
     """Reads image bytes and returns a PIL Image. Preserves Alpha if present."""
     img = Image.open(io.BytesIO(file_bytes))
@@ -484,10 +545,10 @@ async def remove_background(
     """
     if _should_use_cloud_gpu("remove-background"):
         try:
-            logger.info("🎨 Removing background via Cloud GPU...")
-            return await call_gpu_service("remove-background", image_bytes)
+            logger.info("🎨 Removing background via Cloud GPU (with retry)...")
+            return await _call_cloud_gpu_with_retry("remove-background", image_bytes)
         except Exception as e:
-            logger.error(f"❌ Cloud GPU BG Removal failed: {e}. Falling back to local engine.")
+            logger.error(f"❌ Cloud GPU BG Removal failed after retries: {e}. Falling back to local engine.")
 
     accelerator = _get_local_accelerator()
     logger.info(f"🍎 Removing background via local engine (model: {model}, accelerator: {accelerator.upper()})...")
@@ -628,9 +689,9 @@ async def upscale_image(image_bytes: bytes, factor=2, detail_boost=1.5) -> bytes
     NOTE: run_upscale_task controls fallback logic — this function raises on cloud failure.
     """
     if _should_use_cloud_gpu("upscale"):
-        logger.info(f"🔍 Upscaling image x{factor} via Cloud GPU...")
+        logger.info(f"🔍 Upscaling image x{factor} via Cloud GPU (with retry)...")
         form_data = {"scale": factor, "factor": factor, "detail_boost": detail_boost}
-        return await call_gpu_service("upscale", image_bytes, data=form_data)
+        return await _call_cloud_gpu_with_retry("upscale", image_bytes, data=form_data)
 
     # Local path — MPS preferred, CPU fallback
     accelerator = _get_local_accelerator()
