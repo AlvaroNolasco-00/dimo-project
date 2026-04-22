@@ -45,6 +45,7 @@ export class StudioShellComponent {
   @ViewChild(HalftoneToolComponent) halftoneTool?: HalftoneToolComponent;
   @ViewChild(ContourClipToolComponent) contourTool?: ContourClipToolComponent;
   @ViewChild(WatermarkToolComponent) wmTool?: WatermarkToolComponent;
+  @ViewChild(CanvasViewportComponent) viewport?: CanvasViewportComponent;
 
   readonly activeTool = this.state.activeToolId;
 
@@ -75,6 +76,7 @@ export class StudioShellComponent {
 
   onToolSelect(id: ToolId): void {
     this.state.setTool(id);
+    this.viewport?.clearDot();
   }
 
   onImageClick(pt: { x: number; y: number }): void {

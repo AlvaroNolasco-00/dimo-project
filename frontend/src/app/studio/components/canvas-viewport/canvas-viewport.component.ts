@@ -112,6 +112,10 @@ export class CanvasViewportComponent {
     this.naturalHeight.set(img.naturalHeight);
   }
 
+  clearDot(): void {
+    this.dotPos.set(null);
+  }
+
   onImageClick(e: MouseEvent): void {
     if (!this.clickMode()) return;
     const img = this.imgRef.nativeElement;
