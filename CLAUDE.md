@@ -4,7 +4,7 @@ Guidance for Claude Code on this repo.
 
 ## What This Project Is
 
-Multi-tenant photo editor + business suite. Users process images (AI background removal, object removal, upscaling, halftone) and manage orders, clients, zones, coupons, finances — all per project (tenant).
+Multi-tenant photo editor + business suite. Users process images (AI background removal, object removal, upscaling, halftone, contour-clip, crop, watermark) and manage orders, clients, zones, coupons, catalog, finances — all per project (tenant). RBAC roles per project: viewer / editor / manager / owner.
 
 ## Commands
 
@@ -17,7 +17,7 @@ python3 -m backend.main          # Dev server → localhost:8000
 gunicorn -w 1 -k uvicorn.workers.UvicornWorker backend.main:app
 ```
 
-### Frontend (Angular 18)
+### Frontend (Angular 21)
 ```bash
 cd frontend
 npm install
@@ -28,11 +28,12 @@ npm test         # Vitest unit tests
 
 ## Environment Variables
 
-Backend needs `.env` (see `configuracion_backend.md`):
+Backend needs `.env` (see `backend/.env.example`):
 - `APP_ENV`: `local` or `production` — picks `DATABASE_URL`
 - `DATABASE_URL_LOCAL` / `DATABASE_URL`: PostgreSQL strings
 - `WOMPI_*`: Payment keys (Wompi, Latin America)
 - `GPU_UPSCALE_URL`, `GPU_REMOVER_URL`, `GPU_SERVICE_SECRET`: Optional cloud GPU
+- `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`: Prod asset storage (optional in local)
 
 Frontend API base in `frontend/src/environments/`:
 - Dev: `http://localhost:8000/api`
@@ -42,15 +43,16 @@ Frontend API base in `frontend/src/environments/`:
 
 ```
 backend/
-├── main.py           # FastAPI app, CORS, router registration
+├── main.py           # FastAPI app, CORS, GZip, router registration
 ├── models.py         # All SQLAlchemy ORM models
 ├── schemas.py        # All Pydantic request/response schemas
 ├── core/
 │   ├── auth.py       # JWT creation/verification, bcrypt hashing
 │   ├── database.py   # Engine + SessionLocal (env-aware)
 │   └── deps.py       # DI: get_current_user, get_approved_user, get_admin_user
-├── routers/          # One file per domain (auth, users, processing, orders, finance, projects, clients, payments)
-└── services/         # Business logic (processing.py, orders.py, wompi.py)
+├── routers/          # auth, users, processing, orders, finance, projects, clients, payments, catalog, audit
+├── services/         # processing.py, orders.py, wompi.py, catalog.py, audit.py, storage.py
+└── scripts/          # run_migrations.py
 ```
 
 **Key patterns:**
@@ -58,6 +60,7 @@ backend/
 - Routers thin — logic in `services/`
 - Image processing → GPU (async HTTP) or local CPU by `GPU_*` vars
 - Async upscale polling: task ID in `ProcessingTask`, frontend polls `/api/processing/tasks/{task_id}`
+- Asset storage: `services/storage.py` bifurcates local (`backend/static/`) vs. Cloudinary (production)
 
 **Authorization (`core/deps.py`):**
 1. No auth — public order via token (`/api/orders/public/{token}`)
@@ -72,13 +75,17 @@ backend/
 ```
 frontend/src/app/
 ├── auth/             # Login, register, pending-approval, no-project screens
-├── layout/           # main-layout (sidebar), auth-layout, public-layout
-├── editor/           # Image editor — Signals-based, Canvas rendering
-├── gestion/          # Management: pedidos, clientes, proyectos, finanzas/*
-├── usuarios/         # Admin: user list, permissions, creation
-├── public/           # Public order view (no auth)
-├── services/         # api.service, auth.service, finance.service, project.service, ...
-├── guards/           # authGuard, approvedGuard, adminGuard, projectGuard
+├── layout/           # main-layout (sidebar), auth-layout, public-layout, navbar-top
+├── editor/           # Image editor — Signals-based, Canvas rendering; watermark sub-component
+├── gestion/          # pedidos, clientes, proyectos, finanzas/*, catalogo/*, bitacora
+├── usuarios/         # listado, permisos, creacion
+├── public/           # order-view, product-view, category-view (no auth)
+├── profile/          # User profile
+├── components/       # Shared UI: toast-container
+├── directives/       # money-mask
+├── interfaces/       # order, project, user interfaces
+├── services/         # api, auth, finance, project, catalog, pipeline, image-persistence, toast, layout, user
+├── guards/           # authGuard, approvedGuard, adminGuard, projectGuard, editorGuard, managerGuard, ownerGuard
 ├── interceptors/     # auth.interceptor.ts — injects `Authorization: Bearer {token}`
 └── app.routes.ts     # Lazy-loaded routes with guard composition
 ```
@@ -86,35 +93,54 @@ frontend/src/app/
 **State (Angular Signals):**
 - `AuthService._user` signal → current user + projects
 - `AuthService._currentProject` signal → selected project
-- Computed: `isAuthenticated()`, `isApproved()`, `isAdmin()`
+- Computed: `isAuthenticated()`, `isApproved()`, `isAdmin()`, `currentProjectRole()`
 - Persisted: `dimo_auth_token`, `dimo_current_project` in localStorage
 
 **Auth flow:**
 1. Login → JWT (30-day expiry) → localStorage
 2. `auth.interceptor.ts` injects Bearer token
-3. Guards compose: `authGuard` → `approvedGuard` → `projectGuard` → `adminGuard`
+3. Guards compose: `authGuard` → `approvedGuard` → `projectGuard` → role guards
 4. First user auto-admin+approved; others need approval
+
+**RBAC (project-level roles):**
+- Roles: `viewer` < `editor` < `manager` < `owner`
+- Admins always get `owner` role on any project
+- Guards: `editorGuard`, `managerGuard`, `ownerGuard` — use `projectRoleGuard(minRole)` factory
 
 **Routes:**
 - `/auth/*` — public (login, register)
-- `/track/:token` — public order view
-- `/utilidades/*` — editor (approved)
-- `/gestion/*` — management (approved; `/proyectos` admin only)
-- `/usuarios/*` — users (admin only)
+- `/track/:token` — public order tracking
+- `/shop/:token` — public product shop
+- `/catalogo/:token` — public category catalog
+- `/profile` — user profile (approved)
+- `/utilidades/*` — editor tools: remove-bg, remove-objects, enhance, upscale, halftone, contour-clip, crop, watermark (approved + project)
+- `/gestion/*` — management (approved):
+  - `pedidos`, `pedidos/crear` (editor+), `pedidos/:id`
+  - `clientes`, `clientes/crear` (editor+), `clientes/editar/:id` (editor+)
+  - `proyectos` (admin only)
+  - `finanzas`, `finanzas/costos-operativos`, `finanzas/recuento-gastos`, `finanzas/recuento-ganancias`, `finanzas/delivery-zones`, `finanzas/coupons` (manager+)
+  - `catalogo`, `catalogo/nuevo`, `catalogo/:id/editar`, `catalogo/categorias` (manager+)
+  - `bitacora` (admin only)
+- `/usuarios/*` — listado, permisos (approved); creacion (admin)
 
 ## Key Domain Models
 
 | Model | Purpose |
 |-------|---------|
 | `User` | Auth, approval, admin, project membership |
-| `Project` | Tenant; users via `user_projects` join |
-| `Order` + `OrderItem` | Orders with items, coupon, zone, payment, state |
-| `CostType` | Configurable costs per project (required attrs) |
+| `UserProject` | Join table User↔Project with role (viewer/editor/manager/owner) |
+| `Project` | Tenant; users via `user_projects` join; has custom order states |
+| `Order` + `OrderItem` + `OrderItemDetail` | Orders with line items, detail, coupon, zone, payment, state |
+| `OrderState` + `ProjectOrderState` | Global states + per-project state config |
+| `OrderHistory` | State change audit trail |
+| `CostType` | Configurable cost categories per project |
 | `OperativeCost` | Costs with dynamic JSON attrs; parent-child variants |
-| `DeliveryZone` | Geographic areas with pricing, polygon coords |
-| `Coupon` | Discounts (fixed/%), single-use, history |
-| `Client` | Customer data linked to zones |
+| `DeliveryZone` + `DeliveryZoneHistory` | Geographic areas with pricing, polygon coords, change history |
+| `Coupon` + `CouponHistory` | Discounts (fixed/%), single-use, usage history |
+| `Client` + `ClientAddress` | Customer data with multiple addresses |
+| `ProductCategory` + `Product` + `ProductCostLine` | Public-facing product catalog |
 | `ProcessingTask` | Async GPU task (id, status, result_url) |
+| `ProcessingAuditLog` | Processing usage audit log |
 
 ## Deployment
 
@@ -123,6 +149,8 @@ frontend/src/app/
 | Backend | Koyeb (`koyeb.yaml`) — 1 Gunicorn worker |
 | Frontend | Vercel |
 | Database | PostgreSQL (external, `DATABASE_URL`) |
+| Asset storage | Local `backend/static/` (dev) / Cloudinary (prod) |
+| GPU worker | `gpu-worker/` — Modal deployment (`modal_app.py`) |
 
 SQL migrations in `backend/sql/`. Manual (no Alembic).
 
