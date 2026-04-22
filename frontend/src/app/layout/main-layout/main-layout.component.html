@@ -20,7 +20,7 @@
                 (click)="layoutService.closeSidebar()">
             </div>
 
-            <main class="main-content">
+            <main class="main-content" [class.studio-mode]="isStudio()">
                 <router-outlet #outlet="outlet"></router-outlet>
             </main>
         </div>

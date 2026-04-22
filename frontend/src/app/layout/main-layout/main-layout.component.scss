@@ -70,6 +70,13 @@
     overflow-x: hidden;
     padding: 1.5rem;
 
+    &.studio-mode {
+        padding: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
     @include mobile {
         padding: 1rem;
     }

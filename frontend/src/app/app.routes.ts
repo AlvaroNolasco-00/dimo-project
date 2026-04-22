@@ -127,6 +127,19 @@ export const routes: Routes = [
         ]
     },
 
+    // Studio — new image editor
+    {
+        path: 'studio',
+        loadComponent: () => import('./layout/main-layout/main-layout.component').then(m => m.MainLayoutComponent),
+        canActivate: [approvedGuard, projectGuard],
+        children: [
+            {
+                path: '',
+                loadComponent: () => import('./studio/studio-shell/studio-shell.component').then(m => m.StudioShellComponent),
+            }
+        ]
+    },
+
     // Fallback and Root
     { path: '', redirectTo: 'utilidades', pathMatch: 'full' },
     { path: '**', redirectTo: 'utilidades' }

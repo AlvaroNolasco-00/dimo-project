@@ -33,6 +33,11 @@ export class NavbarTopComponent implements AfterViewInit, OnDestroy {
 
   menuItems: NavMenuItem[] = [
     {
+      label: 'Studio',
+      icon: 'ph-paint-brush-broad',
+      route: '/studio',
+    },
+    {
       label: 'Utilidades',
       icon: 'ph-toolbox',
       route: '/utilidades',

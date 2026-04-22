@@ -1,0 +1,94 @@
+<div class="studio">
+  <!-- Top Bar -->
+  <app-studio-top-bar
+    [filename]="state.filename()"
+    [hasImage]="state.hasImage()"
+    [canUndo]="history.canUndo()"
+    [canRedo]="history.canRedo()"
+    (fileSelected)="onFileSelected($event)"
+    (undo)="onUndo()"
+    (redo)="onRedo()"
+    (reset)="onReset()"
+    (download)="onDownload()"
+  />
+
+  <!-- Main Body -->
+  <div class="studio-body">
+    <!-- Tool Sidebar -->
+    <app-tool-sidebar
+      [activeTool]="activeTool()"
+      [hasImage]="state.hasImage()"
+      (toolSelect)="onToolSelect($event)"
+    />
+
+    <!-- Canvas Area -->
+    <app-canvas-viewport
+      [imageUrl]="state.currentUrl()"
+      [maskActive]="maskActive()"
+      [clickMode]="clickMode() || eyedropMode()"
+      (imageClick)="onImageClick($event)"
+      (maskChange)="onMaskChange($event)"
+    >
+      <app-studio-dropzone (fileSelected)="onFileSelected($event)" />
+    </app-canvas-viewport>
+
+    <!-- Params Panel -->
+    @if (state.hasImage() && activeTool()) {
+      <div class="params-panel">
+        @switch (activeTool()) {
+          @case ('remove-bg') {
+            <app-remove-bg-tool />
+          }
+          @case ('remove-objects') {
+            <app-remove-objects-tool />
+          }
+          @case ('enhance') {
+            <app-enhance-tool />
+          }
+          @case ('upscale') {
+            <app-upscale-tool />
+          }
+          @case ('halftone') {
+            <app-halftone-tool />
+          }
+          @case ('contour-clip') {
+            <app-contour-clip-tool />
+          }
+          @case ('watermark') {
+            <app-watermark-tool />
+          }
+        }
+      </div>
+    } @else if (state.hasImage()) {
+      <div class="params-empty">
+        <i class="ph ph-hand-pointing-left"></i>
+        <p>Pick a tool to start editing</p>
+      </div>
+    }
+  </div>
+
+  <!-- History Strip -->
+  @if (state.hasImage()) {
+    <app-history-strip
+      [stack]="history.stack()"
+      [cursor]="history.cursor()"
+      (jump)="onHistoryJump($event)"
+    />
+  }
+
+  <!-- Global Busy Overlay -->
+  @if (state.busy()) {
+    <div class="busy-overlay">
+      <div class="busy-card">
+        <i class="ph ph-spinner spin"></i>
+        <span>Processing…</span>
+        @if (state.progress() !== null) {
+          <div class="busy-progress">
+            <div class="busy-bar" [style.width.%]="state.progress()"></div>
+          </div>
+          <span class="busy-pct">{{ state.progress() }}%</span>
+        }
+      </div>
+    </div>
+  }
+</div>

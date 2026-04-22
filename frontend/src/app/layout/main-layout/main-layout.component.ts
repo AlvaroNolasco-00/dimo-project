@@ -60,6 +60,8 @@ export class MainLayoutComponent implements OnInit {
     return url?.includes('/utilidades') || url?.includes('/gestion') || url?.includes('/usuarios');
   });
 
+  isStudio = computed(() => this.urlSignal()?.includes('/studio'));
+
   currentMenuItems = computed(() => {
     const url = this.urlSignal();
     if (url?.includes('/utilidades')) return this.utilidadesItems;
@@ -71,6 +73,7 @@ export class MainLayoutComponent implements OnInit {
   logoText = computed(() => {
     const url = this.urlSignal();
     if (url?.includes('/utilidades')) return 'photoedit';
+    if (url?.includes('/studio')) return 'studio';
     if (url?.includes('/gestion')) return 'logip';
     if (url?.includes('/usuarios')) return 'admin';
     return 'logip';
