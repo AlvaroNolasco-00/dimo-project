@@ -141,6 +141,6 @@ export const routes: Routes = [
     },
 
     // Fallback and Root
-    { path: '', redirectTo: 'utilidades', pathMatch: 'full' },
-    { path: '**', redirectTo: 'utilidades' }
+    { path: '', redirectTo: 'studio', pathMatch: 'full' },
+    { path: '**', redirectTo: 'studio' }
 ];
