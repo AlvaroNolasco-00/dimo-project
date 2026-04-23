@@ -18,6 +18,8 @@ GPU_REMOVER_URL = os.getenv("GPU_REMOVER_URL")
 GPU_SERVICE_SECRET = os.getenv("GPU_SERVICE_SECRET")
 # Legacy/Koyeb Fallback URL
 GPU_SERVICE_URL = os.getenv("GPU_SERVICE_URL")
+# Dedicated contour-clip GPU URL (reuses remover endpoint if unset)
+GPU_CONTOUR_URL = os.getenv("GPU_CONTOUR_URL")
 
 # App Environment
 APP_ENV = os.getenv("APP_ENV", "local")
@@ -80,6 +82,11 @@ def _should_use_cloud_gpu(capability: str = None) -> bool:
     """
     Determines if we should route to the Cloud GPU Service.
     Only active in production and only if the service URLs are configured.
+    
+    Capabilities:
+    - "upscale": Real-ESRGAN upscaling (GPU_UPSCALE_URL)
+    - "remove-background": rembg neural inference (GPU_REMOVER_URL)
+    - "contour-clip": rembg for auto mode + chromakey post-proc (GPU_CONTOUR_URL or GPU_REMOVER_URL)
     """
     if APP_ENV == "local":
         return False
@@ -87,6 +94,8 @@ def _should_use_cloud_gpu(capability: str = None) -> bool:
     if capability == "upscale" and GPU_UPSCALE_URL:
         return True
     if capability == "remove-background" and GPU_REMOVER_URL:
+        return True
+    if capability == "contour-clip" and (GPU_CONTOUR_URL or GPU_REMOVER_URL):
         return True
 
     if GPU_SERVICE_URL:
@@ -109,24 +118,33 @@ if APP_ENV == "local":
     _accel = _get_local_accelerator()
     logger.info(f"🍎 PROCESSING MODE: LOCAL — Hardware accelerator: {_accel.upper()} (Env: {APP_ENV})")
 else:
-    if _should_use_cloud_gpu():
-        logger.info(f"🚀 PROCESSING MODE: CLOUD GPU ENABLED (Env: {APP_ENV})")
+    gpu_caps = []
+    if _should_use_cloud_gpu("upscale"):
+        gpu_caps.append("upscale")
+    if _should_use_cloud_gpu("remove-background"):
+        gpu_caps.append("remove-bg")
+    if _should_use_cloud_gpu("contour-clip"):
+        gpu_caps.append("contour-clip")
+    
+    if gpu_caps:
+        logger.info(f"🚀 PROCESSING MODE: CLOUD GPU ENABLED — [{', '.join(gpu_caps)}] (Env: {APP_ENV})")
     else:
-        logger.info(f"💻 PROCESSING MODE: CLOUD CPU FALLBACK (Env: {APP_ENV})")
+        logger.info(f"💻 PROCESSING MODE: CLOUD CPU FALLBACK — no GPU URLs configured (Env: {APP_ENV})")
 
 async def call_gpu_service(service_type: str, image_bytes: bytes, params: dict = None, data: dict = None) -> bytes:
     """
     Helper to call the GPU worker service.
-    service_type: 'upscale' or 'remove-background'
+    service_type: 'upscale', 'remove-background', or 'contour-clip'
     """
     url = None
     if service_type == "upscale":
         url = GPU_UPSCALE_URL
     elif service_type == "remove-background":
         url = GPU_REMOVER_URL
-    
+    elif service_type == "contour-clip":
+        url = GPU_CONTOUR_URL or GPU_REMOVER_URL
+
     if not url:
-        # If specific URL not found, check if legacy monolithic URL is set (Koyeb fallback)
         base_url = os.getenv("GPU_SERVICE_URL")
         if base_url:
              url = f"{base_url}/{service_type}"
@@ -156,7 +174,7 @@ async def _call_cloud_gpu_with_retry(
     Wrapper con retry exponencial para cloud GPU services.
     
     Args:
-        service_type: 'upscale' o 'remove-background'
+        service_type: 'upscale', 'remove-background', o 'contour-clip'
         image_bytes: imagen a procesar
         params: query params
         data: form data
@@ -537,8 +555,8 @@ async def remove_background(
 ) -> bytes:
     """
     Removes background.
-    - Production: tries Cloud GPU first, falls back to local.
-    - Local: uses CoreML (Neural Engine on M-chips) or CPU via rembg.
+    - Production: Cloud GPU (Modal T4) → CPU fallback (rembg on Koyeb).
+    - Local dev: CoreML (Neural Engine) or CPU via rembg.
     model: rembg model name (e.g. 'u2net', 'birefnet-general', 'isnet-general-use')
     alpha_matting: enable soft edge matting via pymatting (best for hair/fur/fine details)
     erode_size: trimap erosion radius; smaller = preserves thin outlines better (auto-calculated if None)
@@ -548,7 +566,7 @@ async def remove_background(
             logger.info("🎨 Removing background via Cloud GPU (with retry)...")
             return await _call_cloud_gpu_with_retry("remove-background", image_bytes)
         except Exception as e:
-            logger.error(f"❌ Cloud GPU BG Removal failed after retries: {e}. Falling back to local engine.")
+            logger.error(f"❌ Cloud GPU BG Removal failed after retries: {e}. Falling back to CPU.")
 
     accelerator = _get_local_accelerator()
     logger.info(f"🍎 Removing background via local engine (model: {model}, accelerator: {accelerator.upper()})...")
@@ -998,20 +1016,44 @@ def _smooth_alpha_edge_aware(rgba: np.ndarray) -> np.ndarray:
 async def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str = 'manual', refine: bool = False, colors: list = None, tolerance: int = 30) -> bytes:
     """
     Advanced Contour Clipping.
-    - mode='auto': birefnet-general + alpha matting + cleanup pipeline (SOTA quality).
-    - mode='manual': GrabCut guided by user brush strokes.
+    
+    Production routing architecture:
+    - mode='auto': Neural inference (rembg) → Cloud GPU (Modal T4)
+                    Post-processing (chromakey, morphology, decontamination) → CPU (Koyeb)
+                    Falls back to CPU rembg if GPU unavailable.
+    - mode='manual': GrabCut — CPU only (no GPU needed).
+    
+    Dimension limit (MAX_DIMENSION_CPU=4000px) enforced in production to prevent OOM.
     """
     img_pil = read_image_file(image_bytes).convert("RGB")
+
+    # Production dimension limit — avoid OOM on cloud CPU instances
+    w_orig, h_orig = img_pil.size
+    max_dim = MAX_DIMENSION_CPU
+    if max(w_orig, h_orig) > max_dim:
+        scale = max_dim / max(w_orig, h_orig)
+        new_w, new_h = int(w_orig * scale), int(h_orig * scale)
+        logger.info(f"   📏 Downscaling {w_orig}x{h_orig} → {new_w}x{new_h} (max {max_dim}px)")
+        img_pil = img_pil.resize((new_w, new_h), Image.LANCZOS)
+        img_pil = img_pil.convert("RGB")
+        buf = io.BytesIO()
+        img_pil.save(buf, format='PNG')
+        image_bytes = buf.getvalue()
+
     img_cv = pil_to_cv2(img_pil)
     h, w = img_cv.shape[:2]
 
     if mode == 'auto':
-        logger.info("🔬 Auto contour clip — chromakey-augmented pipeline v2")
+        if _should_use_cloud_gpu("contour-clip"):
+            logger.info(f"🔬 Auto contour clip ({w}x{h}) — Neural inference → Cloud GPU | Post-processing → CPU")
+        else:
+            accelerator = _get_local_accelerator()
+            logger.info(f"🔬 Auto contour clip ({w}x{h}) — Local engine (accelerator: {accelerator.upper()})")
 
         # Original image for color analysis (rembg may zero RGB in transparent pixels)
         orig_rgb = np.array(img_pil)  # (h, w, 3) RGB
 
-        # 1. Fast model for ROUGH subject location only — chromakey handles pixel-level detail
+        # 1. Neural inference via rembg — routes to Cloud GPU in production
         rembg_res = await remove_background(image_bytes, model="u2net", alpha_matting=False)
         rgba = np.array(Image.open(io.BytesIO(rembg_res)).convert("RGBA"))
         if rgba.shape[:2] != (h, w):
@@ -1077,9 +1119,11 @@ async def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str =
         logger.info("✅ Auto contour clip complete")
         return pil_to_bytes(Image.fromarray(rgba))
 
-    # ── Manual Mode (GrabCut) ────────────────────────────────────────────────
+    # ── Manual Mode (GrabCut) — CPU only, no GPU needed ───────────────────────
     if not mask_bytes:
         return await remove_background(image_bytes)
+
+    logger.info(f"✂️ Manual contour clip ({w}x{h}) — GrabCut (CPU)")
 
     mask_pil = read_image_file(mask_bytes).convert("L")
     mask_cv = np.array(mask_pil)
@@ -1125,6 +1169,7 @@ async def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str =
     if refine:
         img_rgba[:, :, 3] = cv2.GaussianBlur(img_rgba[:, :, 3], (3, 3), 0)
 
+    logger.info(f"✅ Manual contour clip complete ({w}x{h})")
     return pil_to_bytes(Image.fromarray(img_rgba))
 
 def apply_watermark(base_bytes: bytes, watermark_bytes: bytes, x: int, y: int, scale: float = 1.0, shape: str = "original") -> bytes:

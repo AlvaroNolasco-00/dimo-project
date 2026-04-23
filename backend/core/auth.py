@@ -5,8 +5,8 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 # Secret key to sign JWT tokens
-# In a real app, use environment variables!
-SECRET_KEY = "your-secret-key-for-dimo-project-very-secure"
+# Production: MUST be set via SECRET_KEY env var (generate with: python -c "import secrets; print(secrets.token_urlsafe(48))")
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-fallback-not-secure")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 43200  # 30 days
 
