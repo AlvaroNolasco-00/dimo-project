@@ -62,15 +62,9 @@ export class ApiService {
         return this.http.post<{ task_id: string }>(`${environment.apiUrl}/upscale`, formData).pipe(
             switchMap(res => this.pollTaskWithProgress(res.task_id, progressCallback)),
             switchMap(task => {
-                // Determine absolute URL for the result.
-                // task.result_url is like "/api/static/..."
-                // Since our API is at e.g. https://.../api, and static is at https://.../api/static
-                // If apiUrl already includes /api, we might need to handle it.
-                // Our environment.apiUrl usually is "https://.../api"
-                // So result_url starts with /api... we can just use the base domain.
-
-                const baseUrl = environment.apiUrl.replace(/\/api$/, '');
-                const finalUrl = `${baseUrl}${task.result_url}`;
+                const finalUrl = task.result_url.startsWith('http')
+                    ? task.result_url
+                    : `${environment.apiUrl.replace(/\/api$/, '')}${task.result_url}`;
                 return this.http.get(finalUrl, { responseType: 'blob' });
             })
         );
@@ -175,8 +169,9 @@ export class ApiService {
         return this.http.post<{ task_id: string }>(`${environment.apiUrl}/contour-clip`, formData).pipe(
             switchMap(res => this.pollTaskWithProgress(res.task_id, progressCallback)),
             switchMap(task => {
-                const baseUrl = environment.apiUrl.replace(/\/api$/, '');
-                const finalUrl = `${baseUrl}${task.result_url}`;
+                const finalUrl = task.result_url.startsWith('http')
+                    ? task.result_url
+                    : `${environment.apiUrl.replace(/\/api$/, '')}${task.result_url}`;
                 return this.http.get(finalUrl, { responseType: 'blob' });
             })
         );
