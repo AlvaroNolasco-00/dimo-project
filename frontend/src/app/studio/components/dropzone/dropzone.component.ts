@@ -38,13 +38,13 @@ import { Component, output, ChangeDetectionStrategy } from '@angular/core';
 
       &:hover, &.drag-over {
         border-color: var(--accent-color);
-        background: rgba(var(--accent-rgb), 0.04);
+        background: color-mix(in srgb, var(--accent-color) 15%, var(--card-bg));
       }
 
       i { font-size: 48px; color: var(--text-secondary); }
 
-      .title { margin: 0; font-size: 18px; font-weight: 600; color: var(--text-primary); }
-      .sub   { margin: 0; font-size: 13px; color: var(--text-secondary); }
+      .title { margin: 0; font-size: 18px; font-weight: 600; color: var(--text-primary); text-align: center; }
+      .sub   { margin: 0; font-size: 13px; color: var(--text-secondary); text-align: center; }
 
       input { display: none; }
     }

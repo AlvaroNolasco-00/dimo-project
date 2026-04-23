@@ -34,7 +34,12 @@ import { TOOLS, ToolDef, ToolId } from '../../models/tool.types';
       background: var(--card-bg);
       border-right: 1px solid rgba(0,0,0,0.06);
       overflow-y: auto;
+      max-height: 100%;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.1) transparent;
     }
+    .tool-sidebar::-webkit-scrollbar { width: 4px; }
+    .tool-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
 
     .tool-btn {
       display: flex;
