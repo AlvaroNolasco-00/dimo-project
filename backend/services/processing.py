@@ -266,8 +266,6 @@ async def _call_cloud_gpu_with_retry(
                         f"🔄 Modal provisioning ({service_type}, attempt {attempt + 1}/{max_retries + 1}). "
                         f"Waiting {backoff:.1f}s for container..."
                     )
-                    # Extend backoff on 503 — container is still starting
-                    backoff = max(backoff, 10.0)
                 else:
                     logger.warning(
                         f"⚠️ HTTP {e.response.status_code} {service_type} "
@@ -1535,3 +1533,77 @@ def transform_image(image_bytes: bytes, rotation: float = 0, flip_h: bool = Fals
     if flip_v:
         img = img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
     return pil_to_bytes(img)
+
+
+# ─── Orphaned Task Rescue ────────────────────────────────────────────────────
+
+_ORPHAN_THRESHOLD_SECONDS = 300  # 5 minutes
+
+
+async def rescue_orphan_tasks(orphan_threshold_seconds: int = _ORPHAN_THRESHOLD_SECONDS) -> int:
+    """
+    Finds PENDING tasks older than threshold and marks them as FAILED.
+    Background tasks are in-memory only — if Koyeb restarts/scales, the task
+    record stays PENDING forever. This rescue worker detects and cleans them up.
+
+    Returns the number of rescued tasks.
+    """
+    import time as _time
+    from datetime import datetime, timedelta, timezone
+
+    db = SessionLocal()
+    rescued = 0
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(seconds=orphan_threshold_seconds)
+        orphaned = (
+            db.query(models.ProcessingTask)
+            .filter(
+                models.ProcessingTask.status == "PENDING",
+                models.ProcessingTask.created_at < cutoff
+            )
+            .all()
+        )
+
+        for task in orphaned:
+            logger.warning(f"🚨 Rescuing orphaned task {task.id} (created {task.created_at})")
+            task.status = "FAILED"
+            task.error = "Task was lost due to server restart or timeout. Please retry."
+            task.updated_at = datetime.now(timezone.utc)
+            rescued += 1
+
+            # Also update the audit log
+            audit = (
+                db.query(models.ProcessingAuditLog)
+                .filter(models.ProcessingAuditLog.task_id == task.id)
+                .first()
+            )
+            if audit and audit.status == "PENDING":
+                audit.status = "FAILED"
+                audit.error_message = "Task was lost due to server restart or timeout."
+
+        if rescued > 0:
+            db.commit()
+            logger.info(f"✅ Rescued {rescued} orphaned task(s)")
+
+    except Exception as e:
+        logger.error(f"❌ Error in rescue_orphan_tasks: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
+    return rescued
+
+
+async def _rescue_worker_loop(interval_seconds: int = 120):
+    """
+    Periodic background worker that rescues orphaned PENDING tasks.
+    Runs every `interval_seconds` (default: 2 minutes).
+    """
+    import asyncio
+    logger.info("🔍 Orphan task rescue worker started (interval: %ds)", interval_seconds)
+    while True:
+        try:
+            await rescue_orphan_tasks()
+        except Exception as e:
+            logger.error(f"❌ Rescue worker iteration failed: {e}")
+        await asyncio.sleep(interval_seconds)
