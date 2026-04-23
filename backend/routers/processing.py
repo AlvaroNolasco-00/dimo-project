@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Response, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Response, Request
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from PIL import UnidentifiedImageError
+import asyncio
 import uuid
 import json
 import base64
@@ -169,7 +170,6 @@ async def api_enhance_quality(
 
 @router.post("/upscale", response_model=schemas.TaskResponse)
 async def api_upscale(
-    background_tasks: BackgroundTasks,
     image: UploadFile = File(...),
     factor: float = Form(2.0),
     detail_boost: float = Form(1.5),
@@ -195,14 +195,15 @@ async def api_upscale(
         db.commit()
         audit_log_id = audit.get_id()
 
-        # Iniciar background task pasando el audit_log_id
-        background_tasks.add_task(
-            processing.run_upscale_task,
-            task_id,
-            audit_log_id,
-            image_bytes,
-            factor,
-            detail_boost
+        # Iniciar tarea asíncrona independiente del request (evita Worker Timeout de Gunicorn)
+        asyncio.create_task(
+            processing.run_upscale_task(
+                task_id,
+                audit_log_id,
+                image_bytes,
+                factor,
+                detail_boost
+            )
         )
 
         return {"task_id": task_id}
@@ -276,7 +277,6 @@ async def api_halftone(
 
 @router.post("/contour-clip", response_model=schemas.TaskResponse)
 async def api_contour_clip(
-    background_tasks: BackgroundTasks,
     image: UploadFile = File(...),
     mask: Optional[UploadFile] = File(None),
     mode: str = Form('manual'),
@@ -311,16 +311,18 @@ async def api_contour_clip(
             db.commit()
             audit_log_id = audit.get_id()
 
-            background_tasks.add_task(
-                processing.run_contour_clip_task,
-                task_id,
-                audit_log_id,
-                image_bytes,
-                mask_bytes,
-                mode,
-                refine,
-                colors_list,
-                threshold
+            # Iniciar tarea asíncrona independiente del request (evita Worker Timeout de Gunicorn)
+            asyncio.create_task(
+                processing.run_contour_clip_task(
+                    task_id,
+                    audit_log_id,
+                    image_bytes,
+                    mask_bytes,
+                    mode,
+                    refine,
+                    colors_list,
+                    threshold
+                )
             )
 
             return {"task_id": task_id}

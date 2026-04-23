@@ -8,7 +8,7 @@ runtime: python
 build:
   command: pip install -r requirements.txt && python -c "from rembg import new_session; new_session('u2net')"
 run:
-  command: python -m backend.scripts.run_migrations && gunicorn -w 1 -k uvicorn.workers.UvicornWorker --timeout 120 backend.main:app
+  command: python -m backend.scripts.run_migrations && gunicorn -w 1 -k uvicorn.workers.UvicornWorker --timeout 300 backend.main:app
 ports:
   - port: 8000
     path: /
