@@ -414,7 +414,208 @@ CREATE TABLE IF NOT EXISTS product_cost_lines (
 CREATE INDEX IF NOT EXISTS ix_product_cost_lines_product_id ON product_cost_lines(product_id);
 
 -- ===========================================================================
--- 10) PERMISSIONS (final — after all tables created)
+-- 10) ALTER TABLE — Add missing columns to existing tables
+--     (handles incremental migrations that added columns after table creation)
+-- ===========================================================================
+
+-- user_projects.role (from add_role_to_user_projects.sql)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'user_projects' AND column_name = 'role'
+    ) THEN
+        ALTER TABLE user_projects ADD COLUMN role VARCHAR(20) NOT NULL DEFAULT 'editor';
+    END IF;
+END
+$$;
+
+-- Set existing admin users as owners
+UPDATE user_projects up
+SET role = 'owner'
+FROM users u
+WHERE up.user_id = u.id
+  AND u.is_admin = TRUE
+  AND up.role = 'editor';
+
+-- cost_types.requires_art (from add_requires_art_to_cost_types.sql)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'cost_types' AND column_name = 'requires_art'
+    ) THEN
+        ALTER TABLE cost_types ADD COLUMN requires_art BOOLEAN DEFAULT FALSE;
+    END IF;
+END
+$$;
+
+-- cost_types.profit_margin (from add_profit_margin_to_cost_types.sql)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'cost_types' AND column_name = 'profit_margin'
+    ) THEN
+        ALTER TABLE cost_types ADD COLUMN profit_margin NUMERIC(5, 2) DEFAULT 0;
+    END IF;
+END
+$$;
+
+-- operative_costs.parent_cost_id (from add_parent_cost_id.sql)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'operative_costs' AND column_name = 'parent_cost_id'
+    ) THEN
+        ALTER TABLE operative_costs ADD COLUMN parent_cost_id INTEGER REFERENCES operative_costs(id) ON DELETE CASCADE;
+    END IF;
+END
+$$;
+
+-- order_states.color (from update_order_states_color.sql)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'order_states' AND column_name = 'color'
+    ) THEN
+        ALTER TABLE order_states ADD COLUMN color VARCHAR(7) DEFAULT '#6c757d';
+    END IF;
+END
+$$;
+
+-- Set colors for existing order states
+UPDATE order_states SET color = '#9ca3af' WHERE name = 'Creado' AND color IS NULL;
+UPDATE order_states SET color = '#3b82f6' WHERE name = 'Edición' AND color IS NULL;
+UPDATE order_states SET color = '#f59e0b' WHERE name = 'Insumos' AND color IS NULL;
+UPDATE order_states SET color = '#6366f1' WHERE name = 'Manufacturando' AND color IS NULL;
+UPDATE order_states SET color = '#ec4899' WHERE name = 'Revelado' AND color IS NULL;
+UPDATE order_states SET color = '#14b8a6' WHERE name = 'Corte' AND color IS NULL;
+UPDATE order_states SET color = '#06b6d4' WHERE name = 'Impresión' AND color IS NULL;
+UPDATE order_states SET color = '#eab308' WHERE name = 'Control de Calidad' AND color IS NULL;
+UPDATE order_states SET color = '#22c55e' WHERE name = 'Listo para enviar' AND color IS NULL;
+UPDATE order_states SET color = '#2563eb' WHERE name = 'Enviado' AND color IS NULL;
+UPDATE order_states SET color = '#8b5cf6' WHERE name = 'Entregado' AND color IS NULL;
+
+-- delivery_zones.coordinates (from add_coordinates_to_zones.sql)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'delivery_zones' AND column_name = 'coordinates'
+    ) THEN
+        ALTER TABLE delivery_zones ADD COLUMN coordinates JSON;
+    END IF;
+END
+$$;
+
+-- coupons.single_use
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'coupons' AND column_name = 'single_use'
+    ) THEN
+        ALTER TABLE coupons ADD COLUMN single_use BOOLEAN DEFAULT FALSE;
+    END IF;
+END
+$$;
+
+-- coupons.created_by_id
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'coupons' AND column_name = 'created_by_id'
+    ) THEN
+        ALTER TABLE coupons ADD COLUMN created_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    END IF;
+END
+$$;
+
+-- orders.access_token
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'orders' AND column_name = 'access_token'
+    ) THEN
+        ALTER TABLE orders ADD COLUMN access_token VARCHAR(255) UNIQUE;
+        CREATE INDEX IF NOT EXISTS ix_orders_access_token ON orders(access_token);
+    END IF;
+END
+$$;
+
+-- orders.down_payment_amount
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'orders' AND column_name = 'down_payment_amount'
+    ) THEN
+        ALTER TABLE orders ADD COLUMN down_payment_amount NUMERIC(12, 2) DEFAULT 0.00;
+    END IF;
+END
+$$;
+
+-- orders.coupon_id
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'orders' AND column_name = 'coupon_id'
+    ) THEN
+        ALTER TABLE orders ADD COLUMN coupon_id INTEGER REFERENCES coupons(id) ON DELETE SET NULL;
+    END IF;
+END
+$$;
+
+-- orders.delivery_zone_id
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'orders' AND column_name = 'delivery_zone_id'
+    ) THEN
+        ALTER TABLE orders ADD COLUMN delivery_zone_id INTEGER REFERENCES delivery_zones(id) ON DELETE SET NULL;
+    END IF;
+END
+$$;
+
+-- orders.client_id (link to clients table)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'orders' AND column_name = 'client_id'
+    ) THEN
+        ALTER TABLE orders ADD COLUMN client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL;
+    END IF;
+END
+$$;
+
+-- product_categories.access_token (from add_category_access_token.sql)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'product_categories' AND column_name = 'access_token'
+    ) THEN
+        ALTER TABLE product_categories ADD COLUMN access_token VARCHAR UNIQUE;
+        CREATE INDEX IF NOT EXISTS ix_product_categories_access_token ON product_categories(access_token);
+    END IF;
+END
+$$;
+
+-- Generate tokens for existing categories if missing
+UPDATE product_categories
+SET access_token = gen_random_uuid()::text
+WHERE access_token IS NULL;
+
+-- ===========================================================================
+-- 11) PERMISSIONS (final — after all tables and columns created)
 -- ===========================================================================
 
 DO $$
