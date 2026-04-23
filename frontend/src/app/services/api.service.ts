@@ -160,7 +160,7 @@ export class ApiService {
         return this.http.post(`${environment.apiUrl}/halftone`, formData, { responseType: 'blob' });
     }
 
-    contourClip(image: Blob, mask?: Blob, mode: string = 'manual', refine: boolean = false, colors?: Array<[number, number, number]>, threshold: number = 30): Observable<Blob> {
+    contourClip(image: Blob, mask?: Blob, mode: string = 'manual', refine: boolean = false, colors?: Array<[number, number, number]>, threshold: number = 30, progressCallback?: (progress: number, step: string) => void): Observable<Blob> {
         const formData = new FormData();
         formData.append('image', image);
         if (mask) {
@@ -172,7 +172,14 @@ export class ApiService {
             formData.append('colors', JSON.stringify(colors));
             formData.append('threshold', threshold.toString());
         }
-        return this.http.post(`${environment.apiUrl}/contour-clip`, formData, { responseType: 'blob' });
+        return this.http.post<{ task_id: string }>(`${environment.apiUrl}/contour-clip`, formData).pipe(
+            switchMap(res => this.pollTaskWithProgress(res.task_id, progressCallback)),
+            switchMap(task => {
+                const baseUrl = environment.apiUrl.replace(/\/api$/, '');
+                const finalUrl = `${baseUrl}${task.result_url}`;
+                return this.http.get(finalUrl, { responseType: 'blob' });
+            })
+        );
     }
 
     applyWatermark(baseImage: Blob, watermarkImage: Blob, x: number, y: number, scale: number = 1.0, shape: string = 'original'): Observable<Blob> {

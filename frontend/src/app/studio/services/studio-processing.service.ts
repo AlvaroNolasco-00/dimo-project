@@ -105,7 +105,8 @@ export class StudioProcessingService {
       refine?: boolean;
       colors?: [number, number, number][];
       threshold?: number;
-    }
+    },
+    onProgress?: (p: number) => void
   ): Promise<Blob> {
     const fd = new FormData();
     fd.append('image', image, 'image.png');
@@ -114,7 +115,19 @@ export class StudioProcessingService {
     if (options.mask) fd.append('mask', options.mask, 'mask.png');
     if (options.colors?.length) fd.append('colors', JSON.stringify(options.colors));
     if (options.threshold != null) fd.append('threshold', String(options.threshold));
-    return firstValueFrom(this.http.post(`${BASE}/contour-clip`, fd, { responseType: 'blob' }));
+
+    onProgress?.(10);
+    const { task_id } = await firstValueFrom(
+      this.http.post<{ task_id: string }>(`${BASE}/contour-clip`, fd)
+    );
+
+    onProgress?.(20);
+    const resultUrl = await this._pollTask(task_id, onProgress);
+
+    onProgress?.(90);
+    const blob = await firstValueFrom(this.http.get(resultUrl, { responseType: 'blob' }));
+    onProgress?.(100);
+    return blob;
   }
 
   async watermark(

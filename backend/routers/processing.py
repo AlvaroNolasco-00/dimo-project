@@ -274,8 +274,9 @@ async def api_halftone(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.post("/contour-clip")
+@router.post("/contour-clip", response_model=schemas.TaskResponse)
 async def api_contour_clip(
+    background_tasks: BackgroundTasks,
     image: UploadFile = File(...),
     mask: Optional[UploadFile] = File(None),
     mode: str = Form('manual'),
@@ -303,9 +304,26 @@ async def api_contour_clip(
                     audit.fail(f"invalid_color_format: {e}")
                     raise HTTPException(status_code=400, detail=f"Invalid color format: {str(e)}")
 
-            result = await processing.contour_clip(image_bytes, mask_bytes, mode, refine, colors_list, threshold)
-            audit.complete(result)
-            return Response(content=result, media_type="image/png")
+            task_id = str(uuid.uuid4())
+            task = models.ProcessingTask(id=task_id, status="PENDING")
+            db.add(task)
+            audit.set_task_id(task_id)
+            db.commit()
+            audit_log_id = audit.get_id()
+
+            background_tasks.add_task(
+                processing.run_contour_clip_task,
+                task_id,
+                audit_log_id,
+                image_bytes,
+                mask_bytes,
+                mode,
+                refine,
+                colors_list,
+                threshold
+            )
+
+            return {"task_id": task_id}
 
         except HTTPException:
             raise

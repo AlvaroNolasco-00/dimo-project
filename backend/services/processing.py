@@ -767,6 +767,86 @@ async def run_upscale_task(task_id: str, audit_log_id: Optional[int], image_byte
     finally:
         db.close()
 
+
+async def run_contour_clip_task(
+    task_id: str,
+    audit_log_id: Optional[int],
+    image_bytes: bytes,
+    mask_bytes: Optional[bytes],
+    mode: str,
+    refine: bool,
+    colors: Optional[list],
+    tolerance: int
+):
+    """
+    Background worker for contour-clip task.
+    Handles GPU -> CPU fallback and updates DB status.
+    """
+    import time as _time
+    start_time = _time.monotonic()
+
+    db = SessionLocal()
+    try:
+        result_bytes = None
+
+        # 1. Try GPU if enabled (auto mode only)
+        if mode == 'auto' and _should_use_gpu("contour-clip"):
+            try:
+                result_bytes = await contour_clip(image_bytes, mask_bytes, mode, refine, colors, tolerance)
+            except Exception as e:
+                logger.error(f"⚠️ GPU Contour-Clip Task {task_id} failed: {e}")
+                task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
+                if task:
+                    task.status = "FALLBACK_CPU"
+                    db.commit()
+                result_bytes = None
+
+        # 2. CPU fallback (manual mode or GPU failure)
+        if result_bytes is None:
+            logger.info(f"🔄 Task {task_id}: Using CPU contour-clip (mode: {mode}).")
+            result_bytes = await contour_clip(image_bytes, mask_bytes, mode, refine, colors, tolerance)
+
+        # 3. Save Success
+        if result_bytes:
+            filename = f"contour_clip_{task_id}.png"
+            result_url = await storage.upload_file(result_bytes, "", filename)
+
+            task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
+            if task:
+                task.status = "COMPLETED"
+                task.result_url = result_url
+                db.commit()
+
+            if audit_log_id:
+                from backend.services.audit import update_audit_log_async
+                elapsed_ms = int((_time.monotonic() - start_time) * 1000)
+                update_audit_log_async(db, audit_log_id, "SUCCESS",
+                                       duration_ms=elapsed_ms,
+                                       output_file_size=len(result_bytes))
+
+    except Exception as e:
+        logger.error(f"❌ Error in run_contour_clip_task for task {task_id}: {str(e)}")
+        try:
+            task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
+            if task:
+                task.status = "FAILED"
+                task.error = str(e)
+                db.commit()
+        except Exception as db_err:
+            logger.error(f"DB session broken for task {task_id}: {db_err}")
+
+        if audit_log_id:
+            try:
+                from backend.services.audit import update_audit_log_async
+                elapsed_ms = int((_time.monotonic() - start_time) * 1000)
+                update_audit_log_async(db, audit_log_id, "FAILED",
+                                       duration_ms=elapsed_ms,
+                                       error_message=str(e))
+            except Exception:
+                pass
+    finally:
+        db.close()
+
 # 4. Aumentar Resolución (Upscaling)
 async def upscale_image(image_bytes: bytes, factor=2, detail_boost=1.5) -> bytes:
     """
