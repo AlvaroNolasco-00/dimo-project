@@ -192,7 +192,7 @@ async def warmup_gpu_service() -> bool:
 
     # Replace endpoint path with /warmup
     # Modal URLs look like: https://user--app-endpoint.modal.run
-    warmup_url = base_url.rsplit("/", 1)[0] + "/warmup" if "/" in base_url.rsplit("modal.run", 1)[-1] else base_url.replace("remove-background", "warmup").replace("upscale", "warmup")
+    warmup_url = base_url.rsplit("/", 1)[0] + "/warmup" if "/" in base_url.rsplit("modal.run", 1)[-1] else base_url.replace("remove-background", "warmup").replace("upscale", "warmup").replace("contour_clip", "warmup")
 
     try:
         client = _get_http_client()
@@ -800,21 +800,14 @@ async def run_contour_clip_task(
     try:
         result_bytes = None
 
-        # 1. Try GPU if enabled (auto mode only)
-        if mode == 'auto' and _should_use_gpu("contour-clip"):
-            try:
-                result_bytes = await contour_clip(image_bytes, mask_bytes, mode, refine, colors, tolerance)
-            except Exception as e:
-                logger.error(f"⚠️ GPU Contour-Clip Task {task_id} failed: {e}")
-                task = db.query(models.ProcessingTask).filter(models.ProcessingTask.id == task_id).first()
-                if task:
-                    task.status = "FALLBACK_CPU"
-                    db.commit()
-                result_bytes = None
+        # 1. Auto mode: routes to Cloud GPU (Modal) if configured, local engine otherwise.
+        #    Fail-fast on GPU failure — no CPU fallback (prevents OOM on Koyeb free tier).
+        if mode == 'auto':
+            result_bytes = await contour_clip(image_bytes, mask_bytes, mode, refine, colors, tolerance)
 
-        # 2. CPU fallback (manual mode or GPU failure)
+        # 2. Manual mode (GrabCut) — CPU only, no GPU needed.
         if result_bytes is None:
-            logger.info(f"🔄 Task {task_id}: Using CPU contour-clip (mode: {mode}).")
+            logger.info(f"🔄 Task {task_id}: Manual contour-clip (GrabCut, CPU).")
             result_bytes = await contour_clip(image_bytes, mask_bytes, mode, refine, colors, tolerance)
 
         # 3. Save Success
@@ -1203,15 +1196,21 @@ async def contour_clip(image_bytes: bytes, mask_bytes: bytes = None, mode: str =
 
     if mode == 'auto':
         if _should_use_cloud_gpu("contour-clip"):
-            logger.info(f"🔬 Auto contour clip ({w}x{h}) — Neural inference → Cloud GPU | Post-processing → CPU")
-        else:
-            accelerator = _get_local_accelerator()
-            logger.info(f"🔬 Auto contour clip ({w}x{h}) — Local engine (accelerator: {accelerator.upper()})")
+            import json as _json
+            logger.info(f"🔬 Auto contour clip ({w}x{h}) — Full pipeline → Cloud GPU (Modal)")
+            form = {
+                "colors": _json.dumps(colors if colors else []),
+                "tolerance": str(tolerance),
+            }
+            return await _call_cloud_gpu_with_retry("contour-clip", image_bytes, data=form)
+
+        accelerator = _get_local_accelerator()
+        logger.info(f"🔬 Auto contour clip ({w}x{h}) — Local engine (accelerator: {accelerator.upper()})")
 
         # Original image for color analysis (rembg may zero RGB in transparent pixels)
         orig_rgb = np.array(img_pil)  # (h, w, 3) RGB
 
-        # 1. Neural inference via rembg — routes to Cloud GPU in production
+        # 1. Neural inference via rembg
         rembg_res = await remove_background(image_bytes, model="u2net", alpha_matting=False)
         rgba = np.array(Image.open(io.BytesIO(rembg_res)).convert("RGBA"))
         if rgba.shape[:2] != (h, w):

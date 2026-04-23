@@ -41,7 +41,7 @@ app = modal.App("dimo-gpu-worker", image=image)
 gpu_secret = modal.Secret.from_name("dimo-gpu-secret")
 
 try:
-    from fastapi import UploadFile, File, HTTPException, Header
+    from fastapi import UploadFile, File, Form, HTTPException, Header
     from fastapi.responses import Response
 except ImportError:
     # Fallback for when fastapi isn't installed locally
@@ -186,6 +186,178 @@ class BackgroundRemover:
         output = remove(image_bytes, session=self.session)
         return output
 
+
+# --- Contour-Clip helpers (ported from backend/services/processing.py) ---
+
+_ROI_DILATE_RATIO = 15
+_ROI_DILATE_MIN = 31
+_CHROMA_THRESHOLD = 28
+_BG_CORNER_SAMPLE_RATIO = 20
+_BG_CORNER_SAMPLE_MIN = 20
+_BG_VARIANCE_FALLBACK = 40.0
+
+
+def _keep_largest_components(mask: np.ndarray, min_area_ratio: float = 0.005) -> np.ndarray:
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    total = mask.shape[0] * mask.shape[1]
+    min_area = int(total * min_area_ratio)
+    out = np.zeros_like(mask)
+    areas = stats[1:, cv2.CC_STAT_AREA]
+    if len(areas) == 0:
+        return mask
+    max_label = int(np.argmax(areas)) + 1
+    for label_idx in range(1, num_labels):
+        area = stats[label_idx, cv2.CC_STAT_AREA]
+        if area >= min_area or label_idx == max_label:
+            out[labels == label_idx] = 255
+    return out
+
+
+def _fill_holes(mask: np.ndarray) -> np.ndarray:
+    h, w = mask.shape
+    inverted = 255 - mask
+    padded = cv2.copyMakeBorder(inverted, 1, 1, 1, 1, cv2.BORDER_CONSTANT, value=255)
+    flood = np.zeros((h + 4, w + 4), np.uint8)
+    cv2.floodFill(padded, flood, (0, 0), 0)
+    inner = padded[1:-1, 1:-1]
+    holes = (inner == 255).astype(np.uint8) * 255
+    return cv2.bitwise_or(mask, holes)
+
+
+def _decontaminate_edges(rgba: np.ndarray) -> np.ndarray:
+    alpha = rgba[:, :, 3].astype(np.float32) / 255.0
+    semi_mask = (alpha > 0.05) & (alpha < 0.95)
+    if not semi_mask.any():
+        return rgba
+    result = rgba.copy().astype(np.float32)
+    bg_sample = rgba[:, :, :3].astype(np.float32)
+    transparent_mask = (rgba[:, :, 3] < 10).astype(np.uint8) * 255
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9, 9))
+    for c in range(3):
+        channel = bg_sample[:, :, c]
+        filled = cv2.dilate(channel.astype(np.uint8), kernel).astype(np.float32)
+        bg_sample[:, :, c] = np.where(transparent_mask > 0, channel, filled)
+    a = alpha[:, :, np.newaxis]
+    fg = (result[:, :, :3] - (1.0 - a) * bg_sample) / np.where(a > 0.05, a, 1.0)
+    decontaminated = np.clip(fg, 0, 255)
+    result[:, :, :3] = np.where(semi_mask[:, :, np.newaxis], decontaminated, result[:, :, :3])
+    return result.astype(np.uint8)
+
+
+def _smooth_alpha_edge_aware(rgba: np.ndarray) -> np.ndarray:
+    alpha = rgba[:, :, 3]
+    guide = rgba[:, :, :3]
+    try:
+        smoothed = cv2.ximgproc.jointBilateralFilter(
+            joint=guide, src=alpha, d=5, sigmaColor=30, sigmaSpace=5
+        )
+    except AttributeError:
+        smoothed = cv2.bilateralFilter(alpha, d=5, sigmaColor=30, sigmaSpace=5)
+    result = rgba.copy()
+    result[:, :, 3] = smoothed
+    return result
+
+
+def _estimate_bg_color_from_image(rgb: np.ndarray, subject_mask: np.ndarray) -> np.ndarray:
+    h, w = rgb.shape[:2]
+    cs = max(_BG_CORNER_SAMPLE_MIN, min(h, w) // _BG_CORNER_SAMPLE_RATIO)
+    corners = np.vstack([
+        rgb[:cs, :cs].reshape(-1, 3),
+        rgb[:cs, -cs:].reshape(-1, 3),
+        rgb[-cs:, :cs].reshape(-1, 3),
+        rgb[-cs:, -cs:].reshape(-1, 3),
+    ]).astype(np.int32)
+    corner_std = float(np.mean(np.std(corners, axis=0)))
+    if corner_std < _BG_VARIANCE_FALLBACK:
+        return np.median(corners, axis=0).astype(np.int32)
+    outside = cv2.bitwise_not(subject_mask)
+    ring_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (31, 31))
+    ring = cv2.dilate(subject_mask, ring_kernel, iterations=1) & outside
+    ring_pixels = rgb[ring > 0]
+    if len(ring_pixels) >= 200:
+        return np.median(ring_pixels.astype(np.int32), axis=0)
+    all_outside = rgb[outside > 0]
+    if len(all_outside) == 0:
+        return np.median(corners, axis=0).astype(np.int32)
+    return np.median(all_outside.astype(np.int32), axis=0)
+
+
+class ContourClipProcessor:
+    def __init__(self, rembg_session):
+        self.session = rembg_session
+
+    def process(
+        self,
+        image_bytes: bytes,
+        colors: list = None,
+        tolerance: int = 30,
+    ) -> bytes:
+        img_pil = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        w, h = img_pil.size
+        orig_rgb = np.array(img_pil)
+
+        # Neural inference via rembg (GPU on Modal T4)
+        rembg_res = remove(image_bytes, session=self.session)
+        rgba = np.array(Image.open(io.BytesIO(rembg_res)).convert("RGBA"))
+        if rgba.shape[:2] != (h, w):
+            rgba = cv2.resize(rgba, (w, h), interpolation=cv2.INTER_LINEAR)
+        soft_alpha = rgba[:, :, 3].copy()
+
+        # Chromakey: force alpha=0 on pixels matching user-supplied BG color hints
+        if colors:
+            data_lab = cv2.cvtColor(rgba[:, :, :3].astype(np.uint8), cv2.COLOR_RGB2LAB)
+            for color in colors:
+                target_lab = cv2.cvtColor(
+                    np.array([[color[:3]]], dtype=np.uint8),
+                    cv2.COLOR_RGB2LAB
+                )[0, 0]
+                dist = np.linalg.norm(data_lab.astype(np.float32) - target_lab.astype(np.float32), axis=2)
+                soft_alpha[dist <= tolerance] = 0
+
+        # Build birefnet hint → keep largest → dilate to ROI
+        birefnet_hint = (soft_alpha > 30).astype(np.uint8) * 255
+        birefnet_hint = _keep_largest_components(birefnet_hint, min_area_ratio=0.005)
+
+        roi_kernel_sz = max(_ROI_DILATE_MIN, min(h, w) // _ROI_DILATE_RATIO)
+        if roi_kernel_sz % 2 == 0:
+            roi_kernel_sz += 1
+        roi_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (roi_kernel_sz, roi_kernel_sz))
+        roi = cv2.dilate(birefnet_hint, roi_kernel, iterations=1)
+
+        # Estimate bg color from original image
+        bg_color = _estimate_bg_color_from_image(orig_rgb, birefnet_hint)
+
+        # Chromakey inside ROI
+        orig_int = orig_rgb.astype(np.int32)
+        color_dist = np.linalg.norm(orig_int - bg_color[np.newaxis, np.newaxis, :], axis=2)
+        chroma_mask = (color_dist > _CHROMA_THRESHOLD).astype(np.uint8) * 255
+        chroma_in_roi = cv2.bitwise_and(chroma_mask, roi)
+
+        # Combine + clean
+        combined = cv2.bitwise_or(birefnet_hint, chroma_in_roi)
+        combined = _keep_largest_components(combined, min_area_ratio=0.005)
+        combined = _fill_holes(combined)
+
+        # Alpha assembly
+        final_alpha = np.zeros_like(soft_alpha)
+        inside = combined > 0
+        soft_zone = inside & (soft_alpha >= 40) & (soft_alpha < 220)
+        final_alpha[inside] = 255
+        final_alpha[soft_zone] = np.maximum(soft_alpha[soft_zone], final_alpha[soft_zone])
+
+        # Restore RGB from original (avoid rembg zeroing bg pixels)
+        rgba[:, :, :3] = orig_rgb
+        rgba[:, :, 3] = final_alpha
+
+        # Edge-aware alpha smoothing + color decontamination
+        rgba = _smooth_alpha_edge_aware(rgba)
+        rgba = _decontaminate_edges(rgba)
+
+        buf = io.BytesIO()
+        Image.fromarray(rgba).save(buf, format="PNG", compress_level=1)
+        return buf.getvalue()
+
+
 # --- Modal Class with Web Endpoints ---
 
 @app.cls(
@@ -201,6 +373,7 @@ class GPUWorker:
         # Load models when the container starts
         self.upscaler = Upscaler()
         self.remover = BackgroundRemover()
+        self.contour = ContourClipProcessor(self.remover.session)
         self._last_warmup = 0
 
     @modal.fastapi_endpoint(method="GET")
@@ -255,7 +428,7 @@ class GPUWorker:
 
         try:
             content = file.file.read()
-            
+
             # Validate file before processing
             try:
                 validate_upload(file, content)
@@ -267,9 +440,54 @@ class GPUWorker:
                     raise HTTPException(status_code=415, detail=str(e))
                 else:
                     raise HTTPException(status_code=400, detail=str(e))
-            
+
             result_bytes = self.remover.process(content)
             return Response(content=result_bytes, media_type="image/png")
         except Exception as e:
             print(f"Remove BG error: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+
+    @modal.fastapi_endpoint(method="POST")
+    def contour_clip(
+        self,
+        file: UploadFile = File(...),
+        secret: str = Header(alias="x-api-key"),
+        colors: str = Form("[]"),
+        tolerance: int = Form(30),
+    ):
+        import json as _json
+        expected_secret = os.environ["GPU_SERVICE_SECRET"]
+        if secret != expected_secret:
+            raise HTTPException(status_code=401, detail="Invalid API Key")
+
+        try:
+            content = file.file.read()
+
+            try:
+                validate_upload(file, content)
+            except ValueError as e:
+                if "exceeds maximum" in str(e) and "File size" in str(e):
+                    raise HTTPException(status_code=413, detail=str(e))
+                elif "not allowed" in str(e):
+                    raise HTTPException(status_code=415, detail=str(e))
+                else:
+                    raise HTTPException(status_code=400, detail=str(e))
+
+            try:
+                colors_list = _json.loads(colors)
+                if not isinstance(colors_list, list):
+                    raise ValueError("colors must be a JSON array")
+            except (ValueError, TypeError) as e:
+                raise HTTPException(status_code=400, detail=f"Invalid colors format: {e}")
+
+            result_bytes = self.contour.process(
+                content,
+                colors=colors_list if colors_list else None,
+                tolerance=tolerance,
+            )
+            return Response(content=result_bytes, media_type="image/png")
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"Contour-clip error: {e}")
             raise HTTPException(status_code=500, detail=str(e))
