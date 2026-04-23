@@ -15,8 +15,20 @@
 
 BEGIN;
 
--- Required for gen_random_uuid() used when generating access tokens.
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- Required for gen_random_uuid() — available natively in PostgreSQL 13+.
+-- Skip on managed databases where CREATE EXTENSION requires superuser.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgcrypto') THEN
+        BEGIN
+            CREATE EXTENSION IF NOT EXISTS pgcrypto;
+        EXCEPTION WHEN insufficient_privilege THEN
+            -- gen_random_uuid() is native in PG13+, skip silently
+            NULL;
+        END;
+    END IF;
+END
+$$;
 
 -- Ensure the app user can create objects and access existing ones.
 DO $$
@@ -92,7 +104,7 @@ CREATE TABLE IF NOT EXISTS operative_costs (
 );
 
 CREATE INDEX IF NOT EXISTS ix_operative_costs_type ON operative_costs (cost_type_id);
-CREATE INDEX IF NOT EXISTS ix_operative_costs_parent ON operative_costs (parent_cost_id);
+-- ix_operative_costs_parent created in ALTER TABLE section (column may not exist yet)
 
 -- ===========================================================================
 -- 3) ORDER STATES (global + per-project config)
@@ -133,7 +145,36 @@ CREATE TABLE IF NOT EXISTS project_order_states (
 );
 
 -- ===========================================================================
--- 4) CLIENTS & ADDRESSES
+-- 4) DELIVERY ZONES & HISTORY
+-- ===========================================================================
+
+CREATE TABLE IF NOT EXISTS delivery_zones (
+    id SERIAL PRIMARY KEY,
+    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    price NUMERIC(10, 2) DEFAULT 0.00,
+    zone_type VARCHAR(50) DEFAULT 'STANDARD_PAID',
+    is_active BOOLEAN DEFAULT TRUE,
+    coordinates JSON,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS ix_delivery_zones_project_id ON delivery_zones(project_id);
+
+CREATE TABLE IF NOT EXISTS delivery_zone_history (
+    id SERIAL PRIMARY KEY,
+    zone_id INTEGER NOT NULL REFERENCES delivery_zones(id) ON DELETE CASCADE,
+    modified_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    modified_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    previous_state JSONB NOT NULL,
+    change_reason TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS ix_delivery_zone_history_zone_id ON delivery_zone_history(zone_id);
+
+-- ===========================================================================
+-- 5) CLIENTS & ADDRESSES
 -- ===========================================================================
 
 CREATE TABLE IF NOT EXISTS clients (
@@ -167,35 +208,6 @@ CREATE TABLE IF NOT EXISTS client_addresses (
 );
 
 CREATE INDEX IF NOT EXISTS ix_client_addresses_client_id ON client_addresses(client_id);
-
--- ===========================================================================
--- 5) DELIVERY ZONES & HISTORY
--- ===========================================================================
-
-CREATE TABLE IF NOT EXISTS delivery_zones (
-    id SERIAL PRIMARY KEY,
-    project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    price NUMERIC(10, 2) DEFAULT 0.00,
-    zone_type VARCHAR(50) DEFAULT 'STANDARD_PAID',
-    is_active BOOLEAN DEFAULT TRUE,
-    coordinates JSON,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS ix_delivery_zones_project_id ON delivery_zones(project_id);
-
-CREATE TABLE IF NOT EXISTS delivery_zone_history (
-    id SERIAL PRIMARY KEY,
-    zone_id INTEGER NOT NULL REFERENCES delivery_zones(id) ON DELETE CASCADE,
-    modified_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-    modified_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    previous_state JSONB NOT NULL,
-    change_reason TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX IF NOT EXISTS ix_delivery_zone_history_zone_id ON delivery_zone_history(zone_id);
 
 -- ===========================================================================
 -- 6) COUPONS & HISTORY
@@ -257,7 +269,7 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE INDEX IF NOT EXISTS ix_orders_project_id ON orders(project_id);
 CREATE INDEX IF NOT EXISTS ix_orders_client_id ON orders(client_id);
 CREATE INDEX IF NOT EXISTS ix_orders_state_id ON orders(current_state_id);
-CREATE INDEX IF NOT EXISTS ix_orders_access_token ON orders(access_token);
+-- ix_orders_access_token created in ALTER TABLE section (column may not exist yet)
 
 CREATE TABLE IF NOT EXISTS order_items (
     id SERIAL PRIMARY KEY,
@@ -470,6 +482,7 @@ BEGIN
         WHERE table_name = 'operative_costs' AND column_name = 'parent_cost_id'
     ) THEN
         ALTER TABLE operative_costs ADD COLUMN parent_cost_id INTEGER REFERENCES operative_costs(id) ON DELETE CASCADE;
+        CREATE INDEX IF NOT EXISTS ix_operative_costs_parent ON operative_costs (parent_cost_id);
     END IF;
 END
 $$;

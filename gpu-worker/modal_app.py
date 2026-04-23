@@ -37,17 +37,14 @@ image = (
 
 app = modal.App("dimo-gpu-worker", image=image)
 
-# Security: Shared Secret - required environment variable
-if "GPU_SERVICE_SECRET" not in os.environ:
-    raise RuntimeError("GPU_SERVICE_SECRET environment variable is required")
+# Security: Shared Secret via Modal Secrets
+gpu_secret = modal.Secret.from_name("dimo-gpu-secret")
 
 try:
-    from fastapi import UploadFile, File, HTTPException, Header, Depends
+    from fastapi import UploadFile, File, HTTPException, Header
     from fastapi.responses import Response
 except ImportError:
-    # These imports are only needed locally for the type hints 
-    # when Modal parses the file for deployment.
-    # Inside the container, image.imports() handles them.
+    # Fallback for when fastapi isn't installed locally
     pass
 
 with image.imports():
@@ -193,9 +190,10 @@ class BackgroundRemover:
 
 @app.cls(
     gpu="T4",
-    scaledown_window=300, # rename from container_idle_timeout
-    max_containers=10,    # rename from concurrency_limit
-    min_containers=0      # rename from keep_warm
+    scaledown_window=300,
+    max_containers=10,
+    min_containers=0,
+    secrets=[gpu_secret]
 )
 class GPUWorker:
     @modal.enter()
