@@ -3,6 +3,7 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from PIL import UnidentifiedImageError
 import asyncio
+import threading
 import uuid
 import json
 import base64
@@ -10,6 +11,11 @@ import time
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _run_async_in_thread(coro):
+    """Run an async coroutine in a separate thread with its own event loop."""
+    asyncio.run(coro)
 
 from typing import Optional, List
 from backend import models
@@ -195,16 +201,20 @@ async def api_upscale(
         db.commit()
         audit_log_id = audit.get_id()
 
-        # Iniciar tarea asíncrona independiente del request (evita Worker Timeout de Gunicorn)
-        asyncio.create_task(
-            processing.run_upscale_task(
-                task_id,
-                audit_log_id,
-                image_bytes,
-                factor,
-                detail_boost
-            )
-        )
+        # Iniciar tarea en hilo separado con su propio event loop (evita bloquear el worker de Gunicorn)
+        threading.Thread(
+            target=_run_async_in_thread,
+            args=(
+                processing.run_upscale_task(
+                    task_id,
+                    audit_log_id,
+                    image_bytes,
+                    factor,
+                    detail_boost
+                ),
+            ),
+            daemon=True,
+        ).start()
 
         return {"task_id": task_id}
     except HTTPException:
@@ -311,19 +321,23 @@ async def api_contour_clip(
             db.commit()
             audit_log_id = audit.get_id()
 
-            # Iniciar tarea asíncrona independiente del request (evita Worker Timeout de Gunicorn)
-            asyncio.create_task(
-                processing.run_contour_clip_task(
-                    task_id,
-                    audit_log_id,
-                    image_bytes,
-                    mask_bytes,
-                    mode,
-                    refine,
-                    colors_list,
-                    threshold
-                )
-            )
+            # Iniciar tarea en hilo separado con su propio event loop (evita bloquear el worker de Gunicorn)
+            threading.Thread(
+                target=_run_async_in_thread,
+                args=(
+                    processing.run_contour_clip_task(
+                        task_id,
+                        audit_log_id,
+                        image_bytes,
+                        mask_bytes,
+                        mode,
+                        refine,
+                        colors_list,
+                        threshold
+                    ),
+                ),
+                daemon=True,
+            ).start()
 
             return {"task_id": task_id}
 
