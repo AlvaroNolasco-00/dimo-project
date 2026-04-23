@@ -1,8 +1,10 @@
 import {
   Component, input, output, signal,
-  ChangeDetectionStrategy, ViewChild, ElementRef
+  ChangeDetectionStrategy, ViewChild, ElementRef,
+  effect, OnDestroy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import Cropper from 'cropperjs';
 import { MaskPainterComponent } from '../mask-painter/mask-painter.component';
 import { CanvasPoint } from '../../models/tool.types';
 
@@ -89,7 +91,7 @@ interface DotPos { x: number; y: number; }
     }
   `]
 })
-export class CanvasViewportComponent {
+export class CanvasViewportComponent implements OnDestroy {
   @ViewChild('img') imgRef!: ElementRef<HTMLImageElement>;
   @ViewChild('wrapper') wrapperRef!: ElementRef<HTMLDivElement>;
 
@@ -97,6 +99,8 @@ export class CanvasViewportComponent {
   readonly maskActive = input<boolean>(false);
   readonly clickMode = input<boolean>(false);
   readonly brushSize = input<number>(30);
+  readonly cropMode = input<boolean>(false);
+  readonly cropAspect = input<number>(NaN);
 
   readonly imageClick = output<CanvasPoint>();
   readonly maskChange = output<Blob>();
@@ -106,10 +110,71 @@ export class CanvasViewportComponent {
   readonly naturalHeight = signal(0);
   readonly dotPos = signal<DotPos | null>(null);
 
+  private cropper: Cropper | null = null;
+
+  constructor() {
+    effect(() => {
+      const active = this.cropMode();
+      if (active) {
+        // defer so img is rendered
+        setTimeout(() => this._initCropper(), 0);
+      } else {
+        this._destroyCropper();
+      }
+    });
+
+    effect(() => {
+      const ratio = this.cropAspect();
+      if (this.cropper) {
+        this.cropper.setAspectRatio(isNaN(ratio) ? NaN : ratio);
+      }
+    });
+  }
+
+  private _initCropper(): void {
+    this._destroyCropper();
+    const img = this.imgRef?.nativeElement;
+    if (!img) return;
+    this.cropper = new Cropper(img, {
+      aspectRatio: isNaN(this.cropAspect()) ? NaN : this.cropAspect(),
+      viewMode: 1,
+      dragMode: 'move',
+      cropBoxMovable: true,
+      cropBoxResizable: true,
+      zoomable: true,
+      autoCropArea: 0.9,
+      guides: true,
+      background: false,
+    });
+  }
+
+  private _destroyCropper(): void {
+    if (this.cropper) {
+      this.cropper.destroy();
+      this.cropper = null;
+    }
+  }
+
+  getCroppedBlob(): Promise<Blob | null> {
+    return new Promise(resolve => {
+      const canvas = this.cropper?.getCroppedCanvas();
+      if (!canvas) return resolve(null);
+      canvas.toBlob(b => resolve(b), 'image/png');
+    });
+  }
+
+  ngOnDestroy(): void {
+    this._destroyCropper();
+  }
+
   onLoad(): void {
     const img = this.imgRef.nativeElement;
     this.naturalWidth.set(img.naturalWidth);
     this.naturalHeight.set(img.naturalHeight);
+    if (this.cropMode()) {
+      this._destroyCropper();
+      setTimeout(() => this._initCropper(), 0);
+    }
   }
 
   clearDot(): void {
