@@ -5,6 +5,7 @@ import io
 import os
 import httpx
 import asyncio
+import threading
 from typing import Optional
 
 import logging
@@ -29,18 +30,30 @@ APP_ENV = os.getenv("APP_ENV", "local")
 _LOCAL_ACCELERATOR_CACHE = None
 _REMBG_SESSIONS: dict = {}
 _HTTP_CLIENT: Optional[httpx.AsyncClient] = None
+_HTTP_CLIENT_THREAD_LOCAL = threading.local()
 
 def _get_http_client() -> httpx.AsyncClient:
     """Returns a reusable httpx AsyncClient with connection pooling.
-    Connect timeout set to 60s to accommodate Modal cold-start (container provisioning + model load).
+    Thread-safe: creates one client per thread/event loop.
     """
     global _HTTP_CLIENT
-    if _HTTP_CLIENT is None:
-        _HTTP_CLIENT = httpx.AsyncClient(
+    
+    # Check if we're in the main thread
+    if threading.current_thread() is threading.main_thread():
+        if _HTTP_CLIENT is None:
+            _HTTP_CLIENT = httpx.AsyncClient(
+                timeout=httpx.Timeout(180.0, connect=60.0),
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+            )
+        return _HTTP_CLIENT
+    
+    # In worker threads, use thread-local client
+    if not hasattr(_HTTP_CLIENT_THREAD_LOCAL, 'client') or _HTTP_CLIENT_THREAD_LOCAL.client.is_closed:
+        _HTTP_CLIENT_THREAD_LOCAL.client = httpx.AsyncClient(
             timeout=httpx.Timeout(180.0, connect=60.0),
             limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
         )
-    return _HTTP_CLIENT
+    return _HTTP_CLIENT_THREAD_LOCAL.client
 
 # ─── Local Hardware Accelerator Detection ───────────────────────────────────
 
