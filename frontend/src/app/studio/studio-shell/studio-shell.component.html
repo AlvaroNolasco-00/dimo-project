@@ -26,6 +26,8 @@
       [imageUrl]="state.currentUrl()"
       [maskActive]="maskActive()"
       [clickMode]="clickMode() || eyedropMode()"
+      [cropMode]="cropMode()"
+      [cropAspect]="cropAspect()"
       (imageClick)="onImageClick($event)"
       (maskChange)="onMaskChange($event)"
     >
@@ -56,6 +58,21 @@
           }
           @case ('watermark') {
             <app-watermark-tool />
+          }
+          @case ('crop') {
+            <app-crop-tool
+              (aspectChange)="onCropAspect($event)"
+              (applyClicked)="onCropApply()"
+            />
+          }
+          @case ('filters') {
+            <app-filters-tool />
+          }
+          @case ('color') {
+            <app-color-tool />
+          }
+          @case ('transform') {
+            <app-transform-tool />
           }
         }
       </div>

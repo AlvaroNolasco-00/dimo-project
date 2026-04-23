@@ -358,6 +358,98 @@ async def api_watermark(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@router.post("/apply-filter")
+async def api_apply_filter(
+    image: UploadFile = File(...),
+    filter_name: str = Form(...),
+    intensity: float = Form(1.0),
+    user: models.User = Depends(get_approved_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        image_bytes = await image.read()
+        params = {"filter_name": filter_name, "intensity": intensity}
+        audit = AuditContext(db, user, "APPLY_FILTER", image_bytes, params)
+
+        try:
+            result = await run_in_threadpool(processing.apply_filter, image_bytes, filter_name, intensity)
+            audit.complete(result)
+            return Response(content=result, media_type="image/png")
+        except Exception as e:
+            audit.fail(str(e))
+            raise
+
+    except HTTPException:
+        raise
+    except UnidentifiedImageError:
+        raise HTTPException(status_code=400, detail="Invalid or corrupted image file")
+    except MemoryError:
+        raise HTTPException(status_code=503, detail="Image too large to process. Try a smaller image.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/color-correct")
+async def api_color_correct(
+    image: UploadFile = File(...),
+    hue: float = Form(0),
+    saturation: float = Form(1.0),
+    lightness: float = Form(1.0),
+    user: models.User = Depends(get_approved_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        image_bytes = await image.read()
+        params = {"hue": hue, "saturation": saturation, "lightness": lightness}
+        audit = AuditContext(db, user, "COLOR_CORRECT", image_bytes, params)
+
+        try:
+            result = await run_in_threadpool(processing.color_correct, image_bytes, hue, saturation, lightness)
+            audit.complete(result)
+            return Response(content=result, media_type="image/png")
+        except Exception as e:
+            audit.fail(str(e))
+            raise
+
+    except HTTPException:
+        raise
+    except UnidentifiedImageError:
+        raise HTTPException(status_code=400, detail="Invalid or corrupted image file")
+    except MemoryError:
+        raise HTTPException(status_code=503, detail="Image too large to process. Try a smaller image.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/transform")
+async def api_transform(
+    image: UploadFile = File(...),
+    rotation: float = Form(0),
+    flip_h: bool = Form(False),
+    flip_v: bool = Form(False),
+    user: models.User = Depends(get_approved_user),
+    db: Session = Depends(get_db)
+):
+    try:
+        image_bytes = await image.read()
+        params = {"rotation": rotation, "flip_h": flip_h, "flip_v": flip_v}
+        audit = AuditContext(db, user, "TRANSFORM", image_bytes, params)
+
+        try:
+            result = await run_in_threadpool(processing.transform_image, image_bytes, rotation, flip_h, flip_v)
+            audit.complete(result)
+            return Response(content=result, media_type="image/png")
+        except Exception as e:
+            audit.fail(str(e))
+            raise
+
+    except HTTPException:
+        raise
+    except UnidentifiedImageError:
+        raise HTTPException(status_code=400, detail="Invalid or corrupted image file")
+    except MemoryError:
+        raise HTTPException(status_code=503, detail="Image too large to process. Try a smaller image.")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/pipeline", response_model=schemas.PipelineResponse)
 async def api_pipeline(
     request: Request,

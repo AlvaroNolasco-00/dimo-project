@@ -5,7 +5,11 @@ export type ToolId =
   | 'upscale'
   | 'halftone'
   | 'contour-clip'
-  | 'watermark';
+  | 'watermark'
+  | 'crop'
+  | 'filters'
+  | 'color'
+  | 'transform';
 
 export interface ToolDef {
   id: ToolId;
@@ -24,6 +28,10 @@ export const TOOLS: ToolDef[] = [
   { id: 'halftone',        label: 'Halftone',       icon: 'ph-circles-three', description: 'Halftone dot effect',    hasMask: false, hasClick: false },
   { id: 'contour-clip',    label: 'Contour Clip',   icon: 'ph-path',          description: 'Clip to contour shape',  hasMask: true,  hasClick: false },
   { id: 'watermark',       label: 'Watermark',      icon: 'ph-stamp',         description: 'Add watermark overlay',  hasMask: false, hasClick: true  },
+  { id: 'crop',            label: 'Recorte',        icon: 'ph-crop',          description: 'Recortar imagen',        hasMask: false, hasClick: false },
+  { id: 'filters',         label: 'Filtros',        icon: 'ph-palette',       description: 'Filtros y presets',      hasMask: false, hasClick: false },
+  { id: 'color',           label: 'Color',          icon: 'ph-paint-brush',   description: 'Ajuste HSL',             hasMask: false, hasClick: false },
+  { id: 'transform',       label: 'Transformar',    icon: 'ph-arrows-clockwise', description: 'Rotar y voltear',     hasMask: false, hasClick: false },
 ];
 
 export interface HistoryEntry {

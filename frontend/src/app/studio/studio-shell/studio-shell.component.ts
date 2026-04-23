@@ -2,6 +2,7 @@ import {
   Component, inject, signal, computed,
   ViewChild, ChangeDetectionStrategy, effect
 } from '@angular/core';
+import { ToastService } from '../../services/toast.service';
 import { CommonModule } from '@angular/common';
 
 import { StudioStateService } from '../services/studio-state.service';
@@ -21,6 +22,10 @@ import { UpscaleToolComponent } from '../tools/upscale-tool/upscale-tool.compone
 import { HalftoneToolComponent } from '../tools/halftone-tool/halftone-tool.component';
 import { ContourClipToolComponent } from '../tools/contour-clip-tool/contour-clip-tool.component';
 import { WatermarkToolComponent } from '../tools/watermark-tool/watermark-tool.component';
+import { CropToolComponent } from '../tools/crop-tool/crop-tool.component';
+import { FiltersToolComponent } from '../tools/filters-tool/filters-tool.component';
+import { ColorToolComponent } from '../tools/color-tool/color-tool.component';
+import { TransformToolComponent } from '../tools/transform-tool/transform-tool.component';
 
 @Component({
   selector: 'app-studio-shell',
@@ -32,6 +37,7 @@ import { WatermarkToolComponent } from '../tools/watermark-tool/watermark-tool.c
     RemoveBgToolComponent, RemoveObjectsToolComponent,
     EnhanceToolComponent, UpscaleToolComponent,
     HalftoneToolComponent, ContourClipToolComponent, WatermarkToolComponent,
+    CropToolComponent, FiltersToolComponent, ColorToolComponent, TransformToolComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './studio-shell.component.html',
@@ -40,6 +46,7 @@ import { WatermarkToolComponent } from '../tools/watermark-tool/watermark-tool.c
 export class StudioShellComponent {
   readonly state = inject(StudioStateService);
   readonly history = inject(StudioHistoryService);
+  private toast = inject(ToastService);
 
   @ViewChild(RemoveBgToolComponent) removeBgTool?: RemoveBgToolComponent;
   @ViewChild(HalftoneToolComponent) halftoneTool?: HalftoneToolComponent;
@@ -48,6 +55,8 @@ export class StudioShellComponent {
   @ViewChild(CanvasViewportComponent) viewport?: CanvasViewportComponent;
 
   readonly activeTool = this.state.activeToolId;
+  readonly cropMode = computed(() => this.activeTool() === 'crop');
+  readonly cropAspect = signal<number>(NaN);
 
   readonly maskActive = computed(() => {
     const t = this.activeTool();
@@ -116,6 +125,23 @@ export class StudioShellComponent {
 
   onMaskChange(mask: Blob): void {
     this.state.setMask(mask);
+  }
+
+  onCropAspect(ratio: number): void {
+    this.cropAspect.set(ratio);
+  }
+
+  async onCropApply(): Promise<void> {
+    if (!this.viewport) return;
+    this.state.setBusy(true);
+    try {
+      const blob = await this.viewport.getCroppedBlob();
+      if (!blob) throw new Error('Sin selección de recorte');
+      this.state.applyResult(blob, 'crop', 'Recorte');
+    } catch (e: any) {
+      this.toast.error('Recorte falló: ' + (e.message ?? 'Error desconocido'));
+      this.state.setBusy(false);
+    }
   }
 
   onUndo(): void { this.history.undo(); }

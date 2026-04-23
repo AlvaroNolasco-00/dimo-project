@@ -1203,10 +1203,143 @@ def apply_watermark(base_bytes: bytes, watermark_bytes: bytes, x: int, y: int, s
         # Use high quality resizing
         watermark_img = watermark_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
     
-    # 3. Paste
+    # 3. Paste (x, y is the center of the watermark)
     transparent_layer = Image.new('RGBA', base_img.size, (0, 0, 0, 0))
-    transparent_layer.paste(watermark_img, (x, y), mask=watermark_img)
+    final_w, final_h = watermark_img.size
+    paste_x = x - final_w // 2
+    paste_y = y - final_h // 2
+    transparent_layer.paste(watermark_img, (paste_x, paste_y), mask=watermark_img)
     
     combined_img = Image.alpha_composite(base_img, transparent_layer)
-    
+
     return pil_to_bytes(combined_img)
+
+FILTERS = {
+    'grayscale': lambda img: img.convert('L').convert('RGBA'),
+    'sepia': lambda img: _apply_sepia(img),
+    'vintage': lambda img: _apply_vintage(img),
+    'cinematic': lambda img: _apply_cinematic(img),
+    'vivid': lambda img: ImageEnhance.Color(img).enhance(1.8),
+    'cool': lambda img: _apply_cool_tint(img),
+    'warm': lambda img: _apply_warm_tint(img),
+    'fade': lambda img: _apply_fade(img),
+    'noir': lambda img: _apply_noir(img),
+    'dramatic': lambda img: _apply_dramatic(img),
+}
+
+def _apply_sepia(img: Image.Image) -> Image.Image:
+    pixels = np.array(img, dtype=np.float32)
+    r, g, b = pixels[:, :, 0], pixels[:, :, 1], pixels[:, :, 2]
+    tr = (0.393 * r + 0.769 * g + 0.189 * b).clip(0, 255)
+    tg = (0.349 * r + 0.686 * g + 0.168 * b).clip(0, 255)
+    tb = (0.272 * r + 0.534 * g + 0.131 * b).clip(0, 255)
+    result = np.stack([tr, tg, tb], axis=-1).astype(np.uint8)
+    return Image.fromarray(result, 'RGB')
+
+def _apply_vintage(img: Image.Image) -> Image.Image:
+    img = ImageEnhance.Contrast(img).enhance(0.8)
+    img = ImageEnhance.Brightness(img).enhance(1.1)
+    img = ImageEnhance.Color(img).enhance(0.7)
+    img = img.convert('RGB')
+    pixels = np.array(img, dtype=np.float32)
+    r, g, b = pixels[:, :, 0], pixels[:, :, 1], pixels[:, :, 2]
+    tr = (0.5 * r + 0.4 * g + 0.1 * b).clip(0, 255)
+    tg = (0.2 * r + 0.6 * g + 0.2 * b).clip(0, 255)
+    tb = (0.1 * r + 0.3 * g + 0.5 * b).clip(0, 255)
+    result = np.stack([tr, tg, tb], axis=-1).astype(np.uint8)
+    return Image.fromarray(result, 'RGB')
+
+def _apply_cinematic(img: Image.Image) -> Image.Image:
+    img = ImageEnhance.Contrast(img).enhance(1.3)
+    img = ImageEnhance.Color(img).enhance(0.85)
+    img = img.convert('RGB')
+    pixels = np.array(img, dtype=np.float32)
+    r, g, b = pixels[:, :, 0], pixels[:, :, 1], pixels[:, :, 2]
+    teal = (0.0 * r + 0.3 * g + 0.4 * b).clip(0, 255)
+    orange = (0.6 * r + 0.3 * g + 0.1 * b).clip(0, 255)
+    result = np.stack([orange, g * 0.9, teal], axis=-1).astype(np.uint8)
+    return Image.fromarray(result, 'RGB')
+
+def _apply_cool_tint(img: Image.Image) -> Image.Image:
+    img = img.convert('RGB')
+    pixels = np.array(img, dtype=np.float32)
+    pixels[:, :, 2] = (pixels[:, :, 2] * 1.2).clip(0, 255)
+    pixels[:, :, 0] = (pixels[:, :, 0] * 0.9).clip(0, 255)
+    return Image.fromarray(pixels.astype(np.uint8), 'RGB')
+
+def _apply_warm_tint(img: Image.Image) -> Image.Image:
+    img = img.convert('RGB')
+    pixels = np.array(img, dtype=np.float32)
+    pixels[:, :, 0] = (pixels[:, :, 0] * 1.15).clip(0, 255)
+    pixels[:, :, 1] = (pixels[:, :, 1] * 1.05).clip(0, 255)
+    pixels[:, :, 2] = (pixels[:, :, 2] * 0.85).clip(0, 255)
+    return Image.fromarray(pixels.astype(np.uint8), 'RGB')
+
+def _apply_fade(img: Image.Image) -> Image.Image:
+    img = ImageEnhance.Contrast(img).enhance(0.7)
+    img = ImageEnhance.Brightness(img).enhance(1.15)
+    img = img.convert('RGB')
+    pixels = np.array(img, dtype=np.float32)
+    pixels = (pixels * 0.8 + 30).clip(0, 255)
+    return Image.fromarray(pixels.astype(np.uint8), 'RGB')
+
+def _apply_noir(img: Image.Image) -> Image.Image:
+    img = img.convert('L').convert('RGB')
+    img = ImageEnhance.Contrast(img).enhance(1.4)
+    return img
+
+def _apply_dramatic(img: Image.Image) -> Image.Image:
+    img = ImageEnhance.Contrast(img).enhance(1.6)
+    img = ImageEnhance.Brightness(img).enhance(0.9)
+    img = ImageEnhance.Color(img).enhance(1.3)
+    return img
+
+def apply_filter(image_bytes: bytes, filter_name: str, intensity: float = 1.0) -> bytes:
+    if filter_name not in FILTERS:
+        raise ValueError(f"Unknown filter: {filter_name}")
+    img = read_image_file(image_bytes)
+    has_alpha = img.mode == 'RGBA'
+    if has_alpha:
+        alpha = img.split()[3]
+    base = img.convert('RGB')
+    filtered = FILTERS[filter_name](base).convert('RGB')
+    if intensity < 1.0:
+        filtered = Image.blend(base, filtered, intensity)
+    if has_alpha:
+        filtered = filtered.convert('RGBA')
+        filtered.putalpha(alpha)
+    return pil_to_bytes(filtered)
+
+def color_correct(image_bytes: bytes, hue: float = 0, saturation: float = 1.0, lightness: float = 1.0) -> bytes:
+    img = read_image_file(image_bytes)
+    has_alpha = img.mode == 'RGBA'
+    if has_alpha:
+        alpha = img.split()[3]
+    img = img.convert('RGB')
+    arr = np.array(img, dtype=np.float32) / 255.0
+    import colorsys
+    hls_arr = np.zeros_like(arr)
+    for i in range(arr.shape[0]):
+        for j in range(arr.shape[1]):
+            r, g, b = arr[i, j]
+            h, l, s = colorsys.rgb_to_hls(r, g, b)
+            h = (h + hue / 360.0) % 1.0
+            s = min(1.0, s * saturation)
+            l = min(1.0, l * lightness)
+            hls_arr[i, j] = colorsys.hls_to_rgb(h, l, s)
+    result = (hls_arr * 255).clip(0, 255).astype(np.uint8)
+    out = Image.fromarray(result, 'RGB')
+    if has_alpha:
+        out = out.convert('RGBA')
+        out.putalpha(alpha)
+    return pil_to_bytes(out)
+
+def transform_image(image_bytes: bytes, rotation: float = 0, flip_h: bool = False, flip_v: bool = False) -> bytes:
+    img = read_image_file(image_bytes)
+    if rotation != 0:
+        img = img.rotate(-rotation, expand=True, resample=Image.Resampling.BICUBIC)
+    if flip_h:
+        img = img.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    if flip_v:
+        img = img.transpose(Image.Transpose.FLIP_TOP_BOTTOM)
+    return pil_to_bytes(img)

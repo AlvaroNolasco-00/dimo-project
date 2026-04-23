@@ -135,6 +135,32 @@ export class StudioProcessingService {
     return firstValueFrom(this.http.post(`${BASE}/watermark`, fd, { responseType: 'blob' }));
   }
 
+  async applyFilter(image: Blob, filterName: string, intensity: number): Promise<Blob> {
+    const fd = new FormData();
+    fd.append('image', image, 'image.png');
+    fd.append('filter_name', filterName);
+    fd.append('intensity', String(intensity));
+    return firstValueFrom(this.http.post(`${BASE}/apply-filter`, fd, { responseType: 'blob' }));
+  }
+
+  async colorCorrect(image: Blob, hue: number, saturation: number, lightness: number): Promise<Blob> {
+    const fd = new FormData();
+    fd.append('image', image, 'image.png');
+    fd.append('hue', String(hue));
+    fd.append('saturation', String(saturation));
+    fd.append('lightness', String(lightness));
+    return firstValueFrom(this.http.post(`${BASE}/color-correct`, fd, { responseType: 'blob' }));
+  }
+
+  async transform(image: Blob, rotation: number, flipH: boolean, flipV: boolean): Promise<Blob> {
+    const fd = new FormData();
+    fd.append('image', image, 'image.png');
+    fd.append('rotation', String(rotation));
+    fd.append('flip_h', String(flipH));
+    fd.append('flip_v', String(flipV));
+    return firstValueFrom(this.http.post(`${BASE}/transform`, fd, { responseType: 'blob' }));
+  }
+
   private async _pollTask(taskId: string, onProgress?: (p: number) => void): Promise<string> {
     for (let i = 0; i < MAX_POLLS; i++) {
       await new Promise(r => setTimeout(r, POLL_INTERVALS[Math.min(i, POLL_INTERVALS.length - 1)]));

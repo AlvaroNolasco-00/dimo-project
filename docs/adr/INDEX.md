@@ -32,6 +32,9 @@
 | [0023](./0023-studio-shell-nueva-interfaz-de-edicion-de-imagenes.md) | Studio Shell - Nueva Interfaz de Edición de Imágenes | accepted | frontend | 2026-04-21 |
 | [0024](./0024-limpieza-de-dot-al-cambiar-herramienta.md) | Limpieza de dot al cambiar herramienta | accepted | frontend | 2026-04-22 |
 | [0025](./0025-control-de-modo-mask-desde-herramientas.md) | Control de modo mask desde herramientas | accepted | frontend | 2026-04-22 |
+| [0026](./0026-herramienta-crop-en-studio-shell.md) | Herramienta Crop en Studio Shell | accepted | frontend | 2026-04-23 |
+| [0027](./0027-filtros-color-y-transformacion-en-studio-shell.md) | Filtros, Color y Transformación en Studio Shell | accepted | fullstack | 2026-04-23 |
+| [0028](./0028-fix-coordenadas-watermark-centradas.md) | Fix: Coordenadas de Watermark centradas en lugar de top-left | accepted | backend | 2026-04-23 |
 
 ## Cómo usar
 
