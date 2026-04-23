@@ -16,6 +16,11 @@ from backend.core.database import engine
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    # Startup: warm up GPU service to avoid cold start on first request
+    if APP_ENV != "local":
+        import asyncio
+        from backend.services.processing import warmup_gpu_service
+        asyncio.create_task(warmup_gpu_service())
     yield
     # Graceful shutdown: close shared httpx client
     from backend.services.processing import _HTTP_CLIENT

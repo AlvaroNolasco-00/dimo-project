@@ -31,11 +31,13 @@ _REMBG_SESSIONS: dict = {}
 _HTTP_CLIENT: Optional[httpx.AsyncClient] = None
 
 def _get_http_client() -> httpx.AsyncClient:
-    """Returns a reusable httpx AsyncClient with connection pooling."""
+    """Returns a reusable httpx AsyncClient with connection pooling.
+    Connect timeout set to 60s to accommodate Modal cold-start (container provisioning + model load).
+    """
     global _HTTP_CLIENT
     if _HTTP_CLIENT is None:
         _HTTP_CLIENT = httpx.AsyncClient(
-            timeout=httpx.Timeout(120.0, connect=10.0),
+            timeout=httpx.Timeout(180.0, connect=60.0),
             limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
         )
     return _HTTP_CLIENT
@@ -162,6 +164,43 @@ async def call_gpu_service(service_type: str, image_bytes: bytes, params: dict =
 
     return response.content
 
+
+async def warmup_gpu_service() -> bool:
+    """
+    Sends a lightweight GET request to Modal warmup endpoint.
+    Triggers container provisioning without processing an image.
+    Call this on backend startup or periodically to avoid cold starts.
+    Returns True if warmup succeeded, False otherwise.
+    """
+    # Use the remover URL as base (same container serves both endpoints)
+    base_url = GPU_REMOVER_URL or GPU_UPSCALE_URL
+    if not base_url:
+        return False
+
+    # Replace endpoint path with /warmup
+    # Modal URLs look like: https://user--app-endpoint.modal.run
+    warmup_url = base_url.rsplit("/", 1)[0] + "/warmup" if "/" in base_url.rsplit("modal.run", 1)[-1] else base_url.replace("remove-background", "warmup").replace("upscale", "warmup")
+
+    try:
+        client = _get_http_client()
+        response = await client.get(warmup_url, timeout=30.0)
+        if response.status_code == 200:
+            logger.info("✅ GPU service warmed up successfully")
+            global _LAST_GPU_CALL_TIME
+            import time
+            _LAST_GPU_CALL_TIME = time.monotonic()
+            return True
+        logger.warning(f"⚠️ GPU warmup returned {response.status_code}")
+        return False
+    except Exception as e:
+        logger.warning(f"⚠️ GPU warmup failed: {e}")
+        return False
+
+# Track last successful GPU call to detect potential cold starts
+_LAST_GPU_CALL_TIME: float = 0.0
+_GPU_IDLE_THRESHOLD = 300  # 5 min matches Modal scaledown_window
+
+
 async def _call_cloud_gpu_with_retry(
     service_type: str,
     image_bytes: bytes,
@@ -172,6 +211,7 @@ async def _call_cloud_gpu_with_retry(
 ) -> bytes:
     """
     Wrapper con retry exponencial para cloud GPU services.
+    Detecta cold-start de Modal y ajusta el backoff automáticamente.
     
     Args:
         service_type: 'upscale', 'remove-background', o 'contour-clip'
@@ -185,27 +225,54 @@ async def _call_cloud_gpu_with_retry(
         ValueError: Si URLs GPU no configuradas
         Exception: Si todos los reintentos fallan
     """
+    import time
     import httpx
     
+    global _LAST_GPU_CALL_TIME, _GPU_IDLE_THRESHOLD
+    
+    # Detect potential cold start: if idle > 5 min, Modal likely scaled to zero
+    now = time.monotonic()
+    idle_time = now - _LAST_GPU_CALL_TIME if _LAST_GPU_CALL_TIME > 0 else float('inf')
+    is_likely_cold_start = idle_time > _GPU_IDLE_THRESHOLD
+    
+    if is_likely_cold_start:
+        logger.info(f"🥶 Potential Modal cold-start detected (idle {idle_time:.0f}s). Using extended backoff.")
+        # Use longer initial backoff for cold start: 8s → 16s → 32s
+        # This gives Modal time to provision container + load models
+        effective_backoff = max(initial_backoff, 8.0)
+    else:
+        effective_backoff = initial_backoff
+    
     last_exception = None
-    backoff = initial_backoff
+    backoff = effective_backoff
     
     for attempt in range(max_retries + 1):
         try:
-            return await call_gpu_service(service_type, image_bytes, params, data)
+            result = await call_gpu_service(service_type, image_bytes, params, data)
+            _LAST_GPU_CALL_TIME = time.monotonic()
+            return result
         except httpx.TimeoutException as e:
             last_exception = e
             logger.warning(
                 f"⏱️ Timeout {service_type} (attempt {attempt + 1}/{max_retries + 1}), "
-                f"retrying in {backoff}s..."
+                f"retrying in {backoff:.1f}s..."
             )
         except httpx.HTTPStatusError as e:
             if e.response.status_code >= 500:
                 last_exception = e
-                logger.warning(
-                    f"⚠️ HTTP {e.response.status_code} {service_type} "
-                    f"(attempt {attempt + 1}/{max_retries + 1}), retrying..."
-                )
+                # 503 often means Modal is provisioning
+                if e.response.status_code == 503:
+                    logger.warning(
+                        f"🔄 Modal provisioning ({service_type}, attempt {attempt + 1}/{max_retries + 1}). "
+                        f"Waiting {backoff:.1f}s for container..."
+                    )
+                    # Extend backoff on 503 — container is still starting
+                    backoff = max(backoff, 10.0)
+                else:
+                    logger.warning(
+                        f"⚠️ HTTP {e.response.status_code} {service_type} "
+                        f"(attempt {attempt + 1}/{max_retries + 1}), retrying..."
+                    )
             else:
                 raise
         except Exception as e:

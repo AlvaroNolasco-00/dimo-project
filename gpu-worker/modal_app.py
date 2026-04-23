@@ -203,6 +203,23 @@ class GPUWorker:
         # Load models when the container starts
         self.upscaler = Upscaler()
         self.remover = BackgroundRemover()
+        self._last_warmup = 0
+
+    @modal.fastapi_endpoint(method="GET")
+    def warmup(self):
+        """Health check / keep-alive endpoint.
+        Call periodically (every 4 min) to prevent scale-to-zero.
+        Returns container status and time since last warmup.
+        """
+        import time
+        now = time.time()
+        elapsed = now - self._last_warmup if self._last_warmup > 0 else None
+        self._last_warmup = now
+        return {
+            "status": "warm",
+            "models_loaded": True,
+            "seconds_since_last_warmup": elapsed,
+        }
 
     @modal.fastapi_endpoint(method="POST")
     def upscale(self, file: UploadFile = File(...), secret: str = Header(alias="x-api-key")):

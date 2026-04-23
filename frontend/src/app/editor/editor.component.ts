@@ -91,6 +91,7 @@ export class EditorComponent implements OnDestroy {
     progress: number;
     estimatedSecondsRemaining: number | null;
   } | null>(null);
+  private warmupTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Params - Enhance
   contrast = signal(1.2);
@@ -280,22 +281,31 @@ export class EditorComponent implements OnDestroy {
 
     this.isLoading.set(true);
     this.processingState.set({ step: 'Iniciando...', progress: 0, estimatedSecondsRemaining: null });
+
+    // Show "Preparing GPU..." message after 3s (covers Modal cold-start scenario)
+    this.warmupTimer = setTimeout(() => {
+      const current = this.processingState();
+      if (current && current.progress < 50) {
+        this.processingState.set({ step: 'Preparando GPU... (puede tardar ~20s)', progress: current.progress, estimatedSecondsRemaining: 20 });
+      }
+    }, 3000);
+
     let resultBlob: Blob;
 
     try {
       switch (this.mode()) {
         case 'remove-bg':
-          this.processingState.set({ step: 'Analizando imagen...', progress: 20, estimatedSecondsRemaining: 5 });
+          this.processingState.set({ step: 'Analizando imagen...', progress: 20, estimatedSecondsRemaining: 8 });
           if (this.bgRemovalMode() === 'draw') {
             const maskBlob = await this.previewComponent.getMaskBlob();
             if (!maskBlob) throw new Error('Por favor dibuja una máscara primero');
-            this.processingState.set({ step: 'Eliminando fondo con IA...', progress: 50, estimatedSecondsRemaining: 3 });
+            this.processingState.set({ step: 'Eliminando fondo con IA...', progress: 50, estimatedSecondsRemaining: 5 });
             resultBlob = await lastValueFrom(this.api.removeBackground(blob, undefined, undefined, maskBlob, this.smartRefine()));
           } else if (this.bgRemovalMode() === 'manual' && this.selectedColors().length > 0) {
-            this.processingState.set({ step: 'Procesando colores seleccionados...', progress: 50, estimatedSecondsRemaining: 3 });
+            this.processingState.set({ step: 'Procesando colores seleccionados...', progress: 50, estimatedSecondsRemaining: 5 });
             resultBlob = await lastValueFrom(this.api.removeBackground(blob, this.selectedColors(), this.colorTolerance()));
           } else {
-            this.processingState.set({ step: 'Eliminando fondo automáticamente...', progress: 50, estimatedSecondsRemaining: 5 });
+            this.processingState.set({ step: 'Eliminando fondo automáticamente...', progress: 50, estimatedSecondsRemaining: 8 });
             resultBlob = await lastValueFrom(this.api.removeBackground(blob));
           }
           break;
@@ -322,7 +332,7 @@ export class EditorComponent implements OnDestroy {
 
         case 'upscale':
           resultBlob = await lastValueFrom(this.api.upscale(blob, this.upscaleFactor(), this.upscaleDetailBoost(), (progress, step) => {
-            this.processingState.set({ step, progress, estimatedSecondsRemaining: this.calculateRemainingTime(progress, 30) });
+            this.processingState.set({ step, progress, estimatedSecondsRemaining: this.calculateRemainingTime(progress, 60) });
           }));
           break;
 
@@ -332,14 +342,14 @@ export class EditorComponent implements OnDestroy {
           break;
 
         case 'contour-clip':
-          this.processingState.set({ step: 'Detectando contorno...', progress: 20, estimatedSecondsRemaining: 5 });
+          this.processingState.set({ step: 'Detectando contorno...', progress: 20, estimatedSecondsRemaining: 8 });
           if (this.bgRemovalMode() === 'manual') {
             const maskBlob = await this.previewComponent.getMaskBlob();
             if (!maskBlob) throw new Error('Por favor marca el objeto primero');
-            this.processingState.set({ step: 'Recortando objeto...', progress: 50, estimatedSecondsRemaining: 3 });
+            this.processingState.set({ step: 'Recortando objeto...', progress: 50, estimatedSecondsRemaining: 5 });
             resultBlob = await lastValueFrom(this.api.contourClip(blob, maskBlob, 'manual', this.smartRefine()));
           } else {
-            this.processingState.set({ step: 'Recortando automáticamente...', progress: 50, estimatedSecondsRemaining: 5 });
+            this.processingState.set({ step: 'Recortando automáticamente...', progress: 50, estimatedSecondsRemaining: 8 });
             resultBlob = await lastValueFrom(this.api.contourClip(blob, undefined, 'auto', false, this.selectedColors(), this.colorTolerance()));
           }
           break;
@@ -382,6 +392,10 @@ export class EditorComponent implements OnDestroy {
       const errorMessage = err.message || 'Error al procesar';
       this.toastService.error(errorMessage, true, () => this.process());
     } finally {
+      if (this.warmupTimer) {
+        clearTimeout(this.warmupTimer);
+        this.warmupTimer = null;
+      }
       this.isLoading.set(false);
       this.processingState.set(null);
     }
