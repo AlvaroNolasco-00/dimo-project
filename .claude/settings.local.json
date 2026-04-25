@@ -34,7 +34,9 @@
       "mcp__plugin_context-mode_context-mode__ctx_doctor",
       "mcp__plugin_context-mode_context-mode__ctx_batch_execute",
       "mcp__plugin_context-mode_context-mode__ctx_search",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4200)"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4200)",
+      "Bash(git checkout *)",
+      "Bash(git stash *)"
     ]
   }
 }
