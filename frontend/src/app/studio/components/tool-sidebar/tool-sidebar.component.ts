@@ -13,7 +13,7 @@ import { TOOLS, ToolDef, ToolId } from '../../models/tool.types';
         <button
           class="tool-btn"
           [class.active]="activeTool() === tool.id"
-          [disabled]="!hasImage()"
+          [disabled]="!hasImage() && !tool.alwaysEnabled"
           (click)="toolSelect.emit(tool.id)"
           [title]="tool.description"
         >

@@ -1,8 +1,8 @@
 /** Screen display DPI */
 export const SCREEN_DPI = 96;
 
-/** Print export DPI */
-export const PRINT_DPI = 300;
+/** Print export DPI — 600 for DTF shirt printing */
+export const PRINT_DPI = 600;
 
 /** Convert centimeters to pixels at given DPI */
 export function cmToPx(cm: number, dpi: number = SCREEN_DPI): number {

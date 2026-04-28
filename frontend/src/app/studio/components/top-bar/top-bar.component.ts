@@ -1,5 +1,6 @@
-import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-studio-top-bar',
@@ -21,7 +22,13 @@ import { CommonModule } from '@angular/common';
       </div>
 
       <div class="center">
-        <span class="brand">Studio</span>
+        <div class="mode-switcher">
+          <button class="mode-btn active">Editor</button>
+          <button class="mode-btn" (click)="router.navigate(['/lienzo'])">
+            <i class="ph ph-squares-four"></i>
+            Lienzo
+          </button>
+        </div>
       </div>
 
       <div class="right">
@@ -58,11 +65,39 @@ import { CommonModule } from '@angular/common';
     .right { justify-content: flex-end; }
     .center { flex: 0 0 auto; }
 
-    .brand {
-      font-weight: 700;
-      font-size: 18px;
-      color: var(--accent-color);
-      letter-spacing: -0.5px;
+    .mode-switcher {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: var(--bg-color);
+      border-radius: 10px;
+      padding: 3px;
+    }
+
+    .mode-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 14px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      cursor: pointer;
+      transition: all 0.15s;
+
+      i { font-size: 15px; }
+
+      &:hover:not(.active) { color: var(--text-primary); }
+
+      &.active {
+        background: var(--card-bg);
+        color: var(--accent-color);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      }
     }
 
     .filename {
@@ -128,6 +163,7 @@ import { CommonModule } from '@angular/common';
   `]
 })
 export class TopBarComponent {
+  readonly router = inject(Router);
   readonly filename = input<string>('');
   readonly hasImage = input<boolean>(false);
   readonly canUndo = input<boolean>(false);

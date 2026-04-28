@@ -127,7 +127,7 @@ export const routes: Routes = [
         ]
     },
 
-    // Studio — new image editor
+    // Studio — image editor
     {
         path: 'studio',
         loadComponent: () => import('./layout/main-layout/main-layout.component').then(m => m.MainLayoutComponent),
@@ -136,6 +136,19 @@ export const routes: Routes = [
             {
                 path: '',
                 loadComponent: () => import('./studio/studio-shell/studio-shell.component').then(m => m.StudioShellComponent),
+            }
+        ]
+    },
+
+    // Lienzo — multi-image canvas composer
+    {
+        path: 'lienzo',
+        loadComponent: () => import('./layout/main-layout/main-layout.component').then(m => m.MainLayoutComponent),
+        canActivate: [approvedGuard, projectGuard],
+        children: [
+            {
+                path: '',
+                loadComponent: () => import('./studio/components/lienzo-shell/lienzo-shell.component').then(m => m.LienzoShellComponent),
             }
         ]
     },

@@ -2,6 +2,7 @@ import {
   Component, inject, ChangeDetectionStrategy, signal,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { LienzoStateService } from '../../services/lienzo-state.service';
 
 @Component({
@@ -11,7 +12,13 @@ import { LienzoStateService } from '../../services/lienzo-state.service';
   template: `
     <div class="toolbar">
       <div class="group">
-        <span class="toolbar-brand">Lienzo</span>
+        <div class="mode-switcher">
+          <button class="mode-btn" (click)="router.navigate(['/studio'])">Editor</button>
+          <button class="mode-btn active">
+            <i class="ph ph-squares-four"></i>
+            Lienzo
+          </button>
+        </div>
       </div>
 
       <div class="group">
@@ -123,11 +130,39 @@ import { LienzoStateService } from '../../services/lienzo-state.service';
       gap: 8px;
     }
 
-    .toolbar-brand {
-      font-weight: 700;
-      font-size: 18px;
-      color: var(--accent-color);
-      letter-spacing: -0.5px;
+    .mode-switcher {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: var(--bg-color);
+      border-radius: 10px;
+      padding: 3px;
+    }
+
+    .mode-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 14px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      cursor: pointer;
+      transition: all 0.15s;
+
+      i { font-size: 15px; }
+
+      &:hover:not(.active) { color: var(--text-primary); }
+
+      &.active {
+        background: var(--card-bg);
+        color: var(--accent-color);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      }
     }
 
     .size-field {
@@ -257,6 +292,7 @@ import { LienzoStateService } from '../../services/lienzo-state.service';
 })
 export class LienzoToolbarComponent {
   readonly state = inject(LienzoStateService);
+  readonly router = inject(Router);
 
   fitToView = signal<(() => void) | null>(null);
 

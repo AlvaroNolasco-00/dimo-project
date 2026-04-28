@@ -18,6 +18,7 @@ export interface ToolDef {
   description: string;
   hasMask: boolean;
   hasClick: boolean;
+  alwaysEnabled?: boolean;
 }
 
 export const TOOLS: ToolDef[] = [

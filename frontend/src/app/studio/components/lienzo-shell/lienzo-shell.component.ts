@@ -25,8 +25,10 @@ import { LienzoStateService } from '../../services/lienzo-state.service';
     :host {
       display: flex;
       flex-direction: column;
-      height: 100%;
+      flex: 1;
+      min-width: 0;
       min-height: 0;
+      overflow: hidden;
     }
 
     .lienzo-shell {
