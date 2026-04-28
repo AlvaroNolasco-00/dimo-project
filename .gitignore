@@ -102,3 +102,5 @@ test_output_upscale.png
 .agents/skills/typescript-advanced-types/SKILL.md
 .vercel
 .env*.local
+# Added by code-review-graph
+.code-review-graph/

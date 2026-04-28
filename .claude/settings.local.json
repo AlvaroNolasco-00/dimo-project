@@ -36,7 +36,14 @@
       "mcp__plugin_context-mode_context-mode__ctx_search",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:4200)",
       "Bash(git checkout *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "mcp__plugin_context-mode_context-mode__ctx_upgrade",
+      "Bash(node \"/Users/alvaronolasco/.claude/plugins/cache/context-mode/context-mode/1.0.89/cli.bundle.mjs\" upgrade)",
+      "Bash(rtk tsc *)",
+      "Bash(bash docs/adr/new-adr.sh \"lienzo-modo-independiente\")",
+      "Bash(rtk ls *)",
+      "Bash(rtk read *)",
+      "Bash(rtk git *)"
     ]
   }
 }

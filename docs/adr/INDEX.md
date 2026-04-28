@@ -35,6 +35,8 @@
 | [0026](./0026-herramienta-crop-en-studio-shell.md) | Herramienta Crop en Studio Shell | accepted | frontend | 2026-04-23 |
 | [0027](./0027-filtros-color-y-transformacion-en-studio-shell.md) | Filtros, Color y Transformación en Studio Shell | accepted | fullstack | 2026-04-23 |
 | [0028](./0028-fix-coordenadas-watermark-centradas.md) | Fix: Coordenadas de Watermark centradas en lugar de top-left | accepted | backend | 2026-04-23 |
+| [0029](./0029-lienzo-multi-imagen-con-canvas-y-signals.md) | Lienzo Multi-Imagen con Canvas2D y Signals | accepted | frontend | 2026-04-27 |
+| [0030](./0030-lienzo-modo-independiente.md) | Lienzo como Modo Independiente del Studio | accepted | frontend | 2026-04-27 |
 
 ## Cómo usar
 
